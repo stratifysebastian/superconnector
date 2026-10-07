@@ -1,5 +1,6 @@
 import { getAdminSessionFromRequest } from '@/auth/session';
 import { escapeHtml, htmlResponse, messagePage, pageHeaders } from '@/auth/html';
+import { deriveKeyString } from '@/auth/keys';
 import { sessionSecret } from '@/auth/session-token';
 import { hashToken, hmacSign, randomToken, timingSafeEqualStr } from '@/lib/crypto';
 import type { ServerContext } from '@/server/context';
@@ -14,6 +15,8 @@ import {
 } from './common';
 
 const MAX_STATE = 1024;
+/** Only these exact callbacks are treated as the real Claude clients; any other name is self-declared. */
+const VERIFIED_REDIRECT_URIS = new Set(['https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback']);
 const CSRF_MAX_AGE_MS = 15 * 60 * 1000;
 
 export interface AuthorizeParams {
@@ -67,10 +70,12 @@ async function validate(ctx: ServerContext, p: Map<string, string> | null): Prom
   };
 }
 
-function redirectWith(redirectUri: string, params: Record<string, string>, state: string): Response {
+/** Every redirect back to the client carries `iss` (RFC 9207), success and error alike. */
+function redirectWith(ctx: ServerContext, redirectUri: string, params: Record<string, string>, state: string): Response {
   const u = new URL(redirectUri);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
   if (state) u.searchParams.set('state', state);
+  u.searchParams.set('iss', ctx.baseUrl);
   return new Response(null, { status: 302, headers: { Location: u.toString(), 'Cache-Control': 'no-store' } });
 }
 
@@ -78,7 +83,7 @@ const errorPage = (message: string): Response => messagePage(400, 'Authorization
 
 // CSRF token: `<ts>.<hmac(session subject + request parameters)>`.
 function csrfMac(secret: string, ts: string, sub: string, p: AuthorizeParams): string {
-  return hmacSign(secret, JSON.stringify(['authorize-csrf', ts, sub, p.clientId, p.redirectUri, p.codeChallenge, p.state, p.scope, p.resource]));
+  return hmacSign(deriveKeyString(secret, 'csrf'), JSON.stringify(['authorize-csrf', ts, sub, p.clientId, p.redirectUri, p.codeChallenge, p.state, p.scope, p.resource]));
 }
 export function makeCsrf(secret: string, sub: string, p: AuthorizeParams, now = Date.now()): string {
   const ts = String(now);
@@ -96,17 +101,13 @@ export function checkCsrf(secret: string, sub: string, p: AuthorizeParams, token
 function consentPage(ctx: ServerContext, v: Extract<Validation, { kind: 'ok' }>, email: string, csrf: string): Response {
   const p = v.params;
   const hidden = (n: string, val: string): string => `<input type="hidden" name="${n}" value="${escapeHtml(val)}">`;
-  let host = '';
-  try {
-    host = new URL(p.redirectUri).host;
-  } catch {
-    host = '';
-  }
+  const verified = VERIFIED_REDIRECT_URIS.has(p.redirectUri);
+  const nameLabel = verified ? escapeHtml(v.clientName) : `${escapeHtml(v.clientName)} (self-declared, unverified)`;
   const body =
     `<h1>Authorize access</h1>` +
-    `<p><strong>${escapeHtml(v.clientName)}</strong> wants to connect to your Google accounts through this server.</p>` +
+    `<p><strong>${nameLabel}</strong> wants to connect to your Google accounts through this server.</p>` +
     `<dl><dt>Client ID</dt><dd>${escapeHtml(p.clientId)}</dd>` +
-    `<dt>You will be sent back to</dt><dd>${escapeHtml(host)}</dd>` +
+    `<dt>You will be sent back to</dt><dd>${escapeHtml(p.redirectUri)}</dd>` +
     `<dt>Signed in as</dt><dd>${escapeHtml(email)}</dd></dl>` +
     `<form method="post" action="${escapeHtml(ctx.baseUrl)}/authorize">` +
     hidden('response_type', 'code') +
@@ -134,7 +135,7 @@ function signinRedirect(ctx: ServerContext, req: Request): Response {
 export async function handleAuthorizeGet(ctx: ServerContext, req: Request): Promise<Response> {
   const v = await validate(ctx, singleParams(new URL(req.url).searchParams));
   if (v.kind === 'page_error') return errorPage(v.message);
-  if (v.kind === 'redirect_error') return redirectWith(v.redirectUri, { error: v.error, error_description: v.description }, v.state);
+  if (v.kind === 'redirect_error') return redirectWith(ctx, v.redirectUri, { error: v.error, error_description: v.description }, v.state);
   const session = await getAdminSessionFromRequest(req, ctx.env);
   if (!session) return signinRedirect(ctx, req);
   const csrf = makeCsrf(sessionSecret(ctx.env), session.email, v.params);
@@ -148,7 +149,7 @@ export async function handleAuthorizePost(ctx: ServerContext, req: Request): Pro
   const form = parseFormStrict(text);
   const v = await validate(ctx, form);
   if (v.kind === 'page_error') return errorPage(v.message);
-  if (v.kind === 'redirect_error') return redirectWith(v.redirectUri, { error: v.error, error_description: v.description }, v.state);
+  if (v.kind === 'redirect_error') return redirectWith(ctx, v.redirectUri, { error: v.error, error_description: v.description }, v.state);
 
   const session = await getAdminSessionFromRequest(req, ctx.env);
   if (!session) return messagePage(401, 'Signed out', 'Your session expired. Open the authorization link again.', { href: '/signin', text: 'Sign in' });
@@ -159,7 +160,7 @@ export async function handleAuthorizePost(ctx: ServerContext, req: Request): Pro
   }
 
   if (form?.get('decision') !== 'approve') {
-    return redirectWith(v.params.redirectUri, { error: 'access_denied' }, v.params.state);
+    return redirectWith(ctx, v.params.redirectUri, { error: 'access_denied' }, v.params.state);
   }
   const code = randomToken();
   await ctx.store.oauth.saveCode({
@@ -171,5 +172,5 @@ export async function handleAuthorizePost(ctx: ServerContext, req: Request): Pro
     expiresAt: Date.now() + CODE_TTL_SECONDS * 1000,
   });
   ctx.log.info({ msg: 'authorization granted', outcome: 'ok', tool: 'oauth.authorize' });
-  return redirectWith(v.params.redirectUri, { code }, v.params.state);
+  return redirectWith(ctx, v.params.redirectUri, { code }, v.params.state);
 }

@@ -10,7 +10,7 @@ import { mockAccessToken } from '@/google/mock/token';
 import { seedMockAccounts } from '@/google/mock/seed';
 import { createTokenManager, type TokenManager } from '@/google/token-manager';
 import { createCipher } from '@/lib/crypto';
-import { getEnv, type Env } from '@/lib/env';
+import { getEnv, withMockSecrets, type Env } from '@/lib/env';
 import { createLogger } from '@/lib/log';
 import { getStore } from '@/store';
 
@@ -27,6 +27,11 @@ export interface ServerContext {
 
 const MOCK_BASE_URL = 'http://localhost:3000';
 
+function requireSecret(v: string | undefined): string {
+  if (!v) throw new Error('CURSOR_SECRET is required');
+  return v;
+}
+
 function notYet(product: string): never {
   throw new Error(`${product} tools are not available yet`);
 }
@@ -41,7 +46,8 @@ export interface CreateServerContextOptions {
 }
 
 export async function createServerContext(opts: CreateServerContextOptions = {}): Promise<ServerContext> {
-  const env = opts.env ?? getEnv();
+  // Mock mode without secrets gets fresh random ones for this context; nothing constant is ever used.
+  const env = withMockSecrets(opts.env ?? getEnv());
   const mock = env.GOOGLE_MODE === 'mock';
   // Live mode env validation guarantees PUBLIC_BASE_URL and CURSOR_SECRET.
   const baseUrl = env.PUBLIC_BASE_URL ?? MOCK_BASE_URL;
@@ -59,7 +65,7 @@ export async function createServerContext(opts: CreateServerContextOptions = {})
 
   const fanout = createFanOutEngine({
     listAccounts: () => store.accounts.list(),
-    cursorSecret: env.CURSOR_SECRET ?? 'mock-cursor-secret-not-for-production-use',
+    cursorSecret: requireSecret(env.CURSOR_SECRET),
     reconnectUrl: `${baseUrl}/connect`,
   });
 

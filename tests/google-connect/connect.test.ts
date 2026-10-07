@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import type { LogEvent } from '@/core/contracts/tool';
 import { ALL_SCOPES } from '@/core/products';
 import { ProviderError } from '@/core/errors';
-import { buildGoogleAuthUrl, derivePkceVerifier, pkceChallenge } from '@/google/oauth';
+import { buildGoogleAuthUrl, derivePkceVerifier, exchangeCode, pkceChallenge } from '@/google/oauth';
 import { createTokenManager } from '@/google/token-manager';
 import { hashToken } from '@/lib/crypto';
 import { parseEnv } from '@/lib/env';
@@ -137,6 +137,34 @@ describe('connect route', () => {
   });
 });
 
+describe('connect route Sec-Fetch-Site', () => {
+  const call = (site?: string) =>
+    connectGET(new NextRequest(`${BASE}/api/google/connect?org=${orgId}`, { headers: site ? { 'sec-fetch-site': site } : {} }));
+
+  it('refuses cross-site with a plain 403 and starts no flow', async () => {
+    const res = await call('cross-site');
+    expect(res.status).toBe(403);
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.text()).toBe('Forbidden');
+  });
+
+  it('allows a missing header, same-origin, same-site and none', async () => {
+    for (const site of [undefined, 'same-origin', 'none', 'same-site']) {
+      expect((await call(site)).status, String(site)).toBe(302);
+    }
+  });
+});
+
+describe('PKCE secret', () => {
+  it('derivePkceVerifier throws without a secret and differs per secret', () => {
+    expect(() => derivePkceVerifier('s', undefined)).toThrow();
+    expect(() => derivePkceVerifier('s', '')).toThrow();
+    expect(derivePkceVerifier('s', SECRET)).not.toBe(derivePkceVerifier('s', SECRET + 'y'));
+    expect(derivePkceVerifier('s', SECRET)).toBe(derivePkceVerifier('s', SECRET));
+  });
+});
+
 describe('callback', () => {
   it('connects the account, encrypts the refresh token, leaks nothing in the redirect', async () => {
     const state = await startState();
@@ -240,6 +268,18 @@ describe('token manager', () => {
     return { acct, tm };
   }
 
+  it('passes a 10s timeout signal and redirect:error, and a timeout becomes upstream_error', async () => {
+    const now = { t: 1_000_000 };
+    const f = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    });
+    const { acct, tm } = await setup(now, f as unknown as typeof fetch);
+    await expect(tm.getAccessToken(acct)).rejects.toMatchObject({ kind: 'upstream_error', message: 'Google token request failed' });
+    const init = f.mock.calls[0]![1];
+    expect(init.redirect).toBe('error');
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it('reuses a fresh cached token without fetching', async () => {
     const now = { t: 1_000_000 };
     const f = vi.fn();
@@ -329,5 +369,25 @@ describe('no leaks', () => {
     locations.push((await callback(`code=${CODE}&state=${await startState()}`)).headers.get('location')!);
     const all = JSON.stringify(logs) + locations.join('\n');
     for (const s of [REFRESH, ACCESS, CODE, 'fake-client-secret-stratify']) expect(all).not.toContain(s);
+  });
+});
+
+describe('code exchange timeout', () => {
+  it('sends timeout signal + redirect:error and maps a timeout to a generic exchange_failed error', async () => {
+    const f = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => {
+      throw new DOMException('timeout secret-detail', 'TimeoutError');
+    });
+    const err = await exchangeCode({
+      orgClient: { clientId: 'cid', clientSecret: 'csecret' },
+      code: 'c',
+      codeVerifier: 'v',
+      redirectUri: `${BASE}/api/google/callback`,
+      fetchImpl: f as unknown as typeof fetch,
+    }).catch((e: unknown) => e);
+    expect(err).toMatchObject({ kind: 'exchange_failed', reason: 'Could not reach Google token endpoint' });
+    expect(String((err as Error).message)).not.toContain('secret-detail');
+    const init = f.mock.calls[0]![1];
+    expect(init.redirect).toBe('error');
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 });

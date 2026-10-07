@@ -3,7 +3,7 @@ import { handleAuthorizeGet, handleAuthorizePost } from '@/oauth/authorize';
 import { verifyBearerWithContext } from '@/oauth/bearer';
 import { handleToken } from '@/oauth/token';
 import { hashToken } from '@/lib/crypto';
-import { ADMIN, BASE, form, get, makeCtx, obtainCode, pkce, REDIRECT, register, sessionCookie } from './helpers';
+import { ADMIN, authorizeQuery, BASE, form, get, makeCtx, obtainCode, pkce, REDIRECT, register, sessionCookie } from './helpers';
 
 afterEach(() => vi.useRealTimers());
 
@@ -203,5 +203,22 @@ describe('no leaks', () => {
     const hay = JSON.stringify(s.logs) + bodies.join('\n');
     for (const secret of secrets) expect(hay).not.toContain(secret);
     expect(s.logs.length).toBeGreaterThan(0);
+  });
+});
+
+describe('malformed client_id', () => {
+  it('store returns null and /token + /authorize answer invalid_client / an error page cleanly', async () => {
+    const s = await setup();
+    for (const bad of ['not-a-uuid', "'; drop table--", 'x'.repeat(500), '../../etc', '%00']) {
+      expect(await s.store.oauth.getClient(bad)).toBeNull();
+      for (const grant of ['authorization_code', 'refresh_token']) {
+        const res = await handleToken(s.ctx, form('/token', { grant_type: grant, client_id: bad }));
+        expect(res.status, bad).toBe(400);
+        expect((await res.json()).error).toBe('invalid_client');
+      }
+      const a = await handleAuthorizeGet(s.ctx, get(`/authorize?${authorizeQuery(bad, s.p.challenge)}`, s.cookie));
+      expect(a.status).toBe(400);
+      expect(a.headers.get('location')).toBeNull();
+    }
   });
 });

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAdminSession } from '@/auth/session';
+import { sessionSecret } from '@/auth/session-token';
 import { startGoogleAuth } from '@/google/oauth';
 import { getServerContext } from '@/server/context';
 
@@ -11,6 +12,10 @@ function noStore(r: NextResponse): NextResponse {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  // Cross-site navigations must not start a connect flow; a missing header, same-origin and none are fine.
+  if (req.headers.get('sec-fetch-site') === 'cross-site') {
+    return noStore(new NextResponse('Forbidden', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
+  }
   const ctx = await getServerContext();
   const session = await getAdminSession();
   if (!session) return noStore(NextResponse.redirect(new URL('/signin?next=/connect', ctx.baseUrl), 302));
@@ -34,7 +39,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     ...(accountId ? { accountId } : {}),
     ...(loginHint ? { loginHint } : {}),
     redirectUri: `${ctx.baseUrl}/api/google/callback`,
-    ...(ctx.env.SESSION_SECRET ? { sessionSecret: ctx.env.SESSION_SECRET } : {}),
+    sessionSecret: sessionSecret(ctx.env),
   });
   return noStore(NextResponse.redirect(url, 302));
 }

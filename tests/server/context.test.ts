@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createSessionToken, verifySessionToken } from '@/auth/session-token';
 import { parseEnv } from '@/lib/env';
 import { createMemoryStore } from '@/store/memory';
 import { createCipher } from '@/lib/crypto';
@@ -22,5 +23,33 @@ describe('createServerContext (mock mode)', () => {
     await createServerContext({ env, store, log });
     await createServerContext({ env, store, log });
     expect((await store.accounts.list()).length).toBe(2);
+  });
+
+  it('two mock contexts without secrets get different session and cursor secrets', async () => {
+    const mk = () =>
+      createServerContext({
+        env: parseEnv({ GOOGLE_MODE: 'mock' }),
+        store: createMemoryStore(createCipher(Buffer.alloc(32, 7).toString('base64'))),
+        log: { info() {}, warn() {}, error() {} },
+      });
+    const [a, b] = [await mk(), await mk()];
+    expect(a.env.SESSION_SECRET).toBeTruthy();
+    expect(a.env.CURSOR_SECRET).toBeTruthy();
+    expect(a.env.SESSION_SECRET).not.toBe(b.env.SESSION_SECRET);
+    expect(a.env.CURSOR_SECRET).not.toBe(b.env.CURSOR_SECRET);
+    expect(a.env.SESSION_SECRET).not.toBe(a.env.CURSOR_SECRET);
+  });
+
+  it('rejects a session token minted with the old public mock constant', async () => {
+    const env = parseEnv({ GOOGLE_MODE: 'mock', ADMIN_EMAILS: 'a@example.test' });
+    const ctx = await createServerContext({
+      env,
+      store: createMemoryStore(createCipher(Buffer.alloc(32, 7).toString('base64'))),
+      log: { info() {}, warn() {}, error() {} },
+    });
+    const old = await createSessionToken('a@example.test', { secret: 'mock-mode-session-secret-not-for-production-use' });
+    expect(await verifySessionToken(old, ctx.env)).toBeNull();
+    const fresh = await createSessionToken('a@example.test', { secret: ctx.env.SESSION_SECRET as string });
+    expect((await verifySessionToken(fresh, ctx.env))?.email).toBe('a@example.test');
   });
 });

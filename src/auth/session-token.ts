@@ -1,23 +1,23 @@
 import { jwtVerify, SignJWT } from 'jose';
 import type { Env } from '@/lib/env';
 import { isAdminEmail } from './allowlist';
+import { deriveKey } from './keys';
 
 export const SESSION_COOKIE = 'sc_session';
 export const SESSION_TTL_SECONDS = 12 * 60 * 60;
 const ISSUER = 'superconnector';
 const AUDIENCE = 'superconnector-admin-session';
 
-/** Used ONLY in mock mode, where SESSION_SECRET is not required. Never used when GOOGLE_MODE=live. */
-const MOCK_ONLY_SESSION_SECRET = 'mock-mode-session-secret-not-for-production-use';
-
-/** The session HMAC secret. Live mode: getEnv already guarantees SESSION_SECRET; if absent we throw. */
-export function sessionSecret(env: Pick<Env, 'GOOGLE_MODE' | 'SESSION_SECRET'>): string {
+/**
+ * The session root secret. Mock mode gets a random per-process value filled in by getEnv or
+ * createServerContext, so by the time we get here it is always present; otherwise we throw.
+ */
+export function sessionSecret(env: Pick<Env, 'SESSION_SECRET'>): string {
   if (env.SESSION_SECRET) return env.SESSION_SECRET;
-  if (env.GOOGLE_MODE === 'mock') return MOCK_ONLY_SESSION_SECRET;
   throw new Error('SESSION_SECRET is required');
 }
 
-const keyOf = (secret: string): Uint8Array => new TextEncoder().encode(secret);
+const keyOf = (secret: string): Uint8Array => deriveKey(secret, 'session');
 
 export interface MintOptions {
   ttlSeconds?: number;
@@ -51,7 +51,7 @@ export interface VerifiedSession {
 /** Verifies signature, expiry and the CURRENT allowlist. Null on any failure. */
 export async function verifySessionToken(
   token: string | undefined,
-  env: Pick<Env, 'GOOGLE_MODE' | 'SESSION_SECRET' | 'ADMIN_EMAILS'>,
+  env: Pick<Env, 'SESSION_SECRET' | 'ADMIN_EMAILS'>,
 ): Promise<VerifiedSession | null> {
   if (!token || token.length > 4096) return null;
   try {

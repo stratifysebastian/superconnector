@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
 import { EncryptJWT, jwtDecrypt, type JWTVerifyGetKey } from 'jose';
 import { randomToken, timingSafeEqualStr } from '@/lib/crypto';
 import type { ServerContext } from '@/server/context';
 import { isAdminEmail } from './allowlist';
+import { deriveKey } from './keys';
 import { clearCookie, parseCookies, serializeCookie } from './cookies';
 import {
   buildGoogleAuthUrl,
@@ -36,8 +36,7 @@ interface OidcState {
   next: string;
 }
 
-const oidcKey = (secret: string): Uint8Array =>
-  createHash('sha256').update(`oidc-cookie|${secret}`, 'utf8').digest();
+const oidcKey = (secret: string): Uint8Array => deriveKey(secret, 'oidc-cookie');
 
 async function sealOidc(secret: string, s: OidcState): Promise<string> {
   return new EncryptJWT({ ...s })
