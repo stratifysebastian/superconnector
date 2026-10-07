@@ -172,16 +172,60 @@ describe('read: paging', () => {
         .map((i) => i.id);
       expect(new Set(seen).size).toBe(18);
       expect([...seen].sort()).toEqual([...expected].sort());
-      // each account's own items always arrive in order
-      for (const l of ['s', 'p']) {
-        const mine = seen.filter((id) => id.startsWith(l));
-        expect(mine).toEqual(expected.filter((id) => id.startsWith(l)));
-      }
-      // global order is exact whenever the whole data set fits one merged page;
-      // across pages it is best-effort (see report: page-token merge limitation)
-      if (pageSize >= 18) expect(seen).toEqual(expected);
+      expect(seen).toEqual(expected);
     });
   }
+  it('keeps global order across pages when one account returns short pages', async () => {
+    // stratify: newest items, but only 2 per page; prime: older items, full pages
+    const data: Record<string, Item[][]> = {
+      stratify: [
+        [{ id: 's0', t: 100 }, { id: 's1', t: 99 }],
+        [{ id: 's2', t: 98 }, { id: 's3', t: 97 }],
+        [{ id: 's4', t: 96 }, { id: 's5', t: 95 }],
+      ],
+      prime: [
+        [{ id: 'p0', t: 94 }, { id: 'p1', t: 93 }, { id: 'p2', t: 92 }, { id: 'p3', t: 91 }, { id: 'p4', t: 90 }],
+        [{ id: 'p5', t: 89 }, { id: 'p6', t: 88 }],
+      ],
+    };
+    const engine = engineFor([stratify, prime]);
+    const fetch = pagedFetcher(data);
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    let guard = 0;
+    do {
+      const r = await engine.read({ selector: undefined, page: { pageSize: 5, cursor }, fetch, dateOf: (i) => i.t });
+      seen.push(...r.items.map((i) => i.id));
+      cursor = r.nextCursor;
+    } while (cursor && ++guard < 20);
+    const expected = [...data.stratify!.flat(), ...data.prime!.flat()].sort((a, b) => b.t - a.t).map((i) => i.id);
+    expect(seen).toEqual(expected);
+  });
+  it('caps extra fetches at 3 per account per call', async () => {
+    // stratify has 10 one-item pages, all newer than prime's single page
+    const stratPages: Item[][] = Array.from({ length: 10 }, (_, k) => [{ id: `s${k}`, t: 1000 - k }]);
+    const fetch = pagedFetcher({ stratify: stratPages, prime: [[{ id: 'p0', t: 1 }]] });
+    const r = await engineFor([stratify, prime]).read({
+      selector: undefined,
+      page: { pageSize: 8 },
+      fetch,
+      dateOf: (i) => i.t,
+    });
+    expect(fetch.mock.calls.filter((c) => c[0].label === 'stratify')).toHaveLength(4); // 1 + 3 extra
+    expect(r.items.map((i) => i.id)).toEqual(['s0', 's1', 's2', 's3', 'p0']);
+    expect(decodeCursor(r.nextCursor!, SECRET)).toEqual({ stratify: { pageToken: '4', offset: 0 } });
+  });
+  it('throws a programmer error when dedupeKey is set without idOf', async () => {
+    await expect(
+      engineFor([stratify]).read({
+        selector: undefined,
+        page: { pageSize: 5 },
+        fetch: pagedFetcher({}),
+        dateOf: (i: Item) => i.t,
+        dedupeKey: (i) => i.key,
+      }),
+    ).rejects.toThrow(/idOf is required/);
+  });
   it('counts collapsed copies as consumed', async () => {
     const data: Record<string, Item[][]> = {
       stratify: [[{ id: 'a', t: 9, key: 'k' }, { id: 'b', t: 5, key: 'b' }], [{ id: 'c', t: 2, key: 'c' }]],

@@ -8,7 +8,6 @@ export interface FanOutOptions {
   listAccounts: () => Promise<Account[]>;
   cursorSecret: string;
   reconnectUrl: string;
-  now?: () => number;
 }
 
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -33,9 +32,16 @@ interface Group<T> {
   rep: Entry<T>;
   members: Entry<T>[];
 }
-type Outcome<T> =
-  | { a: Account; order: number; st: CursorState[string]; error: AccountError }
-  | { a: Account; order: number; st: CursorState[string]; page: AccountPage<T> };
+interface AcctState<T> {
+  a: Account;
+  order: number;
+  st: CursorState[string];
+  pages: { token: string | undefined; page: AccountPage<T> }[];
+  extra: number;
+  stopped: boolean;
+}
+
+const MAX_EXTRA_FETCHES = 3;
 
 export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
   const { listAccounts, cursorSecret, reconnectUrl } = opts;
@@ -83,6 +89,9 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
   }
 
   async function read<T>(spec: FanOutReadSpec<T>): Promise<FanOutReadResult<T>> {
+    if (spec.dedupeKey && !spec.idOf) {
+      throw new Error('FanOutReadSpec.idOf is required when dedupeKey is set (programmer error).');
+    }
     const resolved = resolveAccounts(spec.selector, await listAccounts());
     const timeoutMs = spec.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const pageSize = spec.page.pageSize;
@@ -103,74 +112,109 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
       targets = resolved.filter((a) => a.label in state);
     }
 
-    const accountErrors: AccountError[] = [];
+    const errorsByOrder: { order: number; seq: number; error: AccountError }[] = [];
+    const addError = (order: number, error: AccountError) =>
+      errorsByOrder.push({ order, seq: errorsByOrder.length, error });
     const nextState: CursorState = {};
-    const entries: Entry<T>[] = [];
-    const fetchedCount = new Map<string, number>();
-    const nextTokens = new Map<string, string | undefined>();
 
-    const outcomes: Outcome<T>[] = await Promise.all(
-      targets.map(async (a, order): Promise<Outcome<T>> => {
+    const fetchPage = (a: Account, token: string | undefined) =>
+      withTimeout(Promise.resolve().then(() => spec.fetch(a, token, pageSize)), timeoutMs);
+
+    const live: AcctState<T>[] = [];
+    await Promise.all(
+      targets.map(async (a, order) => {
         const st = cursorState?.[a.label] ?? { offset: 0 };
-        if (a.status === 'needs_reconnect') return { a, order, st, error: disconnected(a) };
+        if (a.status === 'needs_reconnect') {
+          addError(order, disconnected(a));
+          nextState[a.label] = st;
+          return;
+        }
         try {
-          const page = await withTimeout(
-            Promise.resolve().then(() => spec.fetch(a, st.pageToken, pageSize)),
-            timeoutMs,
-          );
-          return { a, order, st, page };
+          const page = await fetchPage(a, st.pageToken);
+          live.push({ a, order, st, pages: [{ token: st.pageToken, page }], extra: 0, stopped: false });
         } catch (err) {
-          return { a, order, st, error: toError(a, err, timeoutMs) };
+          addError(order, toError(a, err, timeoutMs));
+          nextState[a.label] = st; // keep old position so the next page retries it
         }
       }),
     );
+    live.sort((x, y) => x.order - y.order);
 
-    for (const o of outcomes) {
-      if ('error' in o) {
-        accountErrors.push(o.error);
-        nextState[o.a.label] = o.st; // keep old position so the next page retries it
-        continue;
+    const poolOf = (s: AcctState<T>): T[] =>
+      s.pages.flatMap((p, k) => (k === 0 ? p.page.items.slice(s.st.offset) : p.page.items));
+
+    let taken: Group<T>[] = [];
+    let consumed = new Map<string, number>();
+    for (;;) {
+      const entries: Entry<T>[] = [];
+      for (const s of live) poolOf(s).forEach((item, idx) => entries.push({ item, account: s.a, order: s.order, idx }));
+      entries.sort((x, y) => spec.dateOf(y.item) - spec.dateOf(x.item) || x.order - y.order || x.idx - y.idx);
+
+      const groups: Group<T>[] = [];
+      const byKey = new Map<string, Group<T>>();
+      for (const e of entries) {
+        const key = spec.dedupeKey?.(e.item);
+        const existing = key === undefined ? undefined : byKey.get(key);
+        if (existing) {
+          existing.members.push(e);
+          if (e.order < existing.rep.order) existing.rep = e;
+        } else {
+          const g: Group<T> = { rep: e, members: [e] };
+          groups.push(g);
+          if (key !== undefined) byKey.set(key, g);
+        }
       }
-      const usable = o.page.items.slice(o.st.offset);
-      fetchedCount.set(o.a.label, usable.length);
-      nextTokens.set(o.a.label, o.page.nextPageToken);
-      usable.forEach((item, idx) => entries.push({ item, account: o.a, order: o.order, idx }));
-    }
-
-    entries.sort((x, y) => spec.dateOf(y.item) - spec.dateOf(x.item) || x.order - y.order || x.idx - y.idx);
-
-    const groups: Group<T>[] = [];
-    const byKey = new Map<string, Group<T>>();
-    for (const e of entries) {
-      const key = spec.dedupeKey?.(e.item);
-      const existing = key === undefined ? undefined : byKey.get(key);
-      if (existing) {
-        existing.members.push(e);
-        if (e.order < existing.rep.order) existing.rep = e;
-      } else {
-        const g: Group<T> = { rep: e, members: [e] };
-        groups.push(g);
-        if (key !== undefined) byKey.set(key, g);
+      taken = groups.slice(0, pageSize);
+      consumed = new Map<string, number>();
+      for (const g of taken) {
+        for (const m of g.members) consumed.set(m.account.label, (consumed.get(m.account.label) ?? 0) + 1);
       }
+
+      // An account whose whole pool was consumed may hold newer items on its next page than the
+      // oldest item in the cut (or the cut is short). Fetch it, then merge and cut again.
+      const full = taken.length >= pageSize;
+      const cutDate = full ? spec.dateOf(taken[taken.length - 1]!.rep.item) : -Infinity;
+      const needMore = live.filter((s) => {
+        if (s.stopped || s.extra >= MAX_EXTRA_FETCHES) return false;
+        if (!s.pages[s.pages.length - 1]!.page.nextPageToken) return false;
+        const pool = poolOf(s);
+        if ((consumed.get(s.a.label) ?? 0) < pool.length) return false;
+        if (!full || pool.length === 0) return true;
+        return spec.dateOf(pool[pool.length - 1]!) >= cutDate;
+      });
+      if (needMore.length === 0) break;
+      await Promise.all(
+        needMore.map(async (s) => {
+          s.extra += 1;
+          const token = s.pages[s.pages.length - 1]!.page.nextPageToken;
+          try {
+            s.pages.push({ token, page: await fetchPage(s.a, token) });
+          } catch (err) {
+            addError(s.order, toError(s.a, err, timeoutMs));
+            s.stopped = true; // cursor resumes at the failed page, so the next call retries it
+          }
+        }),
+      );
     }
 
-    const taken = groups.slice(0, pageSize);
-    const consumed = new Map<string, number>();
-    for (const g of taken) {
-      for (const m of g.members) consumed.set(m.account.label, (consumed.get(m.account.label) ?? 0) + 1);
-    }
-
-    for (const o of outcomes) {
-      if ('error' in o) continue;
-      const label = o.a.label;
-      const used = consumed.get(label) ?? 0;
-      if (used >= (fetchedCount.get(label) ?? 0)) {
-        const token = nextTokens.get(label);
-        if (token) nextState[label] = { pageToken: token, offset: 0 };
-      } else {
-        nextState[label] = o.st.pageToken
-          ? { pageToken: o.st.pageToken, offset: o.st.offset + used }
-          : { offset: o.st.offset + used };
+    // Next cursor: resume each account at the page holding its first unconsumed item.
+    for (const s of live) {
+      let remaining = consumed.get(s.a.label) ?? 0;
+      let resumed = false;
+      for (let k = 0; k < s.pages.length && !resumed; k++) {
+        const p = s.pages[k]!;
+        const usable = k === 0 ? Math.max(p.page.items.length - s.st.offset, 0) : p.page.items.length;
+        if (remaining < usable) {
+          const offset = (k === 0 ? s.st.offset : 0) + remaining;
+          nextState[s.a.label] = p.token ? { pageToken: p.token, offset } : { offset };
+          resumed = true;
+        } else {
+          remaining -= usable;
+        }
+      }
+      if (!resumed) {
+        const token = s.pages[s.pages.length - 1]!.page.nextPageToken;
+        if (token) nextState[s.a.label] = { pageToken: token, offset: 0 };
       }
     }
 
@@ -180,16 +224,17 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
       if (!dedupe) return tagged;
       const members = [...g.members].sort((a, b) => a.order - b.order);
       const sources = members.map((m) => {
-        const native = spec.idOf?.(m.item);
+        const native = spec.idOf!(m.item);
         return {
           account: m.account.label,
-          id: native?.id ?? '',
-          ...(native?.calendarId !== undefined ? { calendarId: native.calendarId } : {}),
+          id: native.id,
+          ...(native.calendarId !== undefined ? { calendarId: native.calendarId } : {}),
         };
       });
       return { ...tagged, accounts: members.map((m) => m.account.label), sources };
     });
 
+    const accountErrors = errorsByOrder.sort((x, y) => x.order - y.order || x.seq - y.seq).map((e) => e.error);
     const result: FanOutReadResult<T> = { items, accountErrors };
     if (Object.keys(nextState).length > 0) result.nextCursor = encodeCursor(nextState, cursorSecret);
     return result;
