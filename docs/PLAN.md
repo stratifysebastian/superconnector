@@ -6,7 +6,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 
 | Phase | Status |
 | --- | --- |
-| 0 Foundation | 🟦 plan approved 2026-10-07; building |
+| 0 Foundation | 🟦 mock-complete (639 tests); awaiting deploy approval and live verification |
 | 1 Calendar | ⬜ |
 | 2 Gmail | ⬜ |
 | 3 Drive | ⬜ |
