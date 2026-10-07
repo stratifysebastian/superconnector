@@ -58,9 +58,7 @@ export interface BannedPattern {
 export const ALLOWLIST: Record<string, string[]> = {
   // GoogleHttp has no DELETE method; it may name 'DELETE' only inside its method-allowlist rejection logic.
   // This file is NOT allowed for any other pattern (in particular `delete-method`).
-  // src/core/contracts/adapter.ts: a doc comment ("no 'DELETE' method exists on GoogleHttp"), no code. Remove this
-  // entry if that comment is ever reworded.
-  'delete-verb': ['src/google/http.ts', 'src/core/contracts/adapter.ts'],
+  'delete-verb': ['src/google/http.ts'],
 
   // The one place Drive permissions may be mentioned: a dedicated read-only (GET) file backing
   // get_file_permissions. The `drive-permissions-nonget` pattern polices this file for any write verb.

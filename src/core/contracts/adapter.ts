@@ -18,7 +18,7 @@ export interface GoogleHttp {
     body?: unknown;
   }): Promise<T>;
 }
-// Note: no 'DELETE' method exists on GoogleHttp. No adapter can issue one.
+// Note: GoogleHttp has no delete verb by design. No adapter can issue one.
 
 /** Each product adds its own interface in its phase, e.g. CalendarAdapter in Phase 1.
  *  Live and mock implementations satisfy the same interface; GOOGLE_MODE picks one. */
