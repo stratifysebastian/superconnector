@@ -4,16 +4,19 @@ import { GuardrailError, ProviderError } from '@/core/errors';
 import { ENDPOINT_RULES } from '@/google/endpoints';
 import { GoogleAuthError, isInvalidGrant } from '@/google/errors';
 import { createGoogleHttp } from '@/google/http';
+import { checkRequest } from '@/google/endpoints/policy';
 import type { EndpointRule } from '@/google/endpoints/policy';
 
 const URL_OK = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 const URL_WRITE = 'https://www.googleapis.com/drive/v3/files/abc';
 const HOST = 'www.googleapis.com';
 
+/** Test-only: every query key the tests pass, so rules do not reject on query before the thing under test. */
+const TEST_QUERY = ['fields', 'sendUpdates', 'sendNotifications', 'text', 'transferOwnership', 'q', 'a', 'b', 'c'];
 /** Permissive test-only rules; the real ENDPOINT_RULES is empty in Phase 0. */
 const TEST_RULES: EndpointRule[] = (['GET', 'POST', 'PATCH', 'PUT'] as const).flatMap((method) => [
-  { id: `t-cal-${method}`, product: 'calendar' as const, method, host: HOST, path: /^\/calendar\/v3\/calendars\/primary\/events$/ },
-  { id: `t-drive-${method}`, product: 'drive' as const, method, host: HOST, path: /^\/drive\/v3\/files\/[^/]+$/ },
+  { id: `t-cal-${method}`, product: 'calendar' as const, method, host: HOST, path: /^\/calendar\/v3\/calendars\/primary\/events$/, allowedQuery: TEST_QUERY },
+  { id: `t-drive-${method}`, product: 'drive' as const, method, host: HOST, path: /^\/drive\/v3\/files\/[^/]+$/, allowedQuery: TEST_QUERY },
 ]);
 const TOKEN = 'tok-SECRET-MARKER-123';
 const BODY_MARKER = 'BODY-MARKER-XYZ';
@@ -250,6 +253,7 @@ const MATCH_ALL: EndpointRule[] = (['GET', 'POST', 'PATCH', 'PUT'] as const).fla
     method,
     host,
     path: /^\/.*$/,
+    allowedQuery: [...TEST_QUERY, 'access_token', 'key', 'oauth_token', 'apikey', 'bearer_token', 'upload_protocol', 'ACCESS_TOKEN'],
   })),
 );
 
@@ -382,6 +386,55 @@ const REJECTIONS: Reject[] = [
   { name: 'body: permission shape (role + emailAddress)', req: () => ({ method: 'POST', url: URL_WRITE, body: { role: 'writer', type: 'user', emailAddress: 'a@b.co' } }), rule: /permission-shape/ },
   { name: 'body: nested permission shape (type + domain)', req: () => ({ method: 'POST', url: URL_WRITE, body: { w: [{ type: 'domain', domain: 'b.co' }] } }), rule: /permission-shape/ },
   { name: 'body: too deeply nested', req: deepBody, rule: /body-depth/ },
+
+  // H4: Calendar deletes in disguise.
+  { name: 'ban: calendars clear', req: () => ({ method: 'POST', url: `${CAL}/clear`, query: NONE, body: {} }), rules: MATCH_ALL, rule: /calendar-clear/ },
+  { name: 'ban: calendars clear (uppercase, no query)', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/calendar/v3/calendars/primary/CLEAR', body: {} }), rules: MATCH_ALL, rule: /calendar-clear/ },
+  { name: 'ban: calendars:clear custom verb', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/calendar/v3/calendars/primary:clear', query: NONE, body: {} }), rules: MATCH_ALL, rule: /calendar-clear/ },
+  { name: 'body: status cancelled', req: () => ({ method: 'PATCH', url: `${CAL}/events/e1`, query: NONE, body: { status: 'cancelled' } }), rules: MATCH_ALL, rule: /status-cancelled/ },
+  { name: 'body: status Cancelled (case, padded)', req: () => ({ method: 'PATCH', url: `${CAL}/events/e1`, query: NONE, body: { Status: ' Cancelled ' } }), rules: MATCH_ALL, rule: /status-cancelled/ },
+  { name: 'body: nested status cancelled', req: () => ({ method: 'POST', url: URL_WRITE, body: { a: [{ b: { status: 'CANCELLED' } }] } }), rule: /status-cancelled/ },
+
+  // H4: Gmail messages.insert / import by collection POST, watch, stop.
+  { name: 'ban: gmail messages collection POST', req: () => ({ method: 'POST', url: `${GMAIL}/messages`, body: {} }), rules: MATCH_ALL, rule: /messages-collection-post/ },
+  { name: 'ban: gmail messages collection POST (other user id)', req: () => ({ method: 'POST', url: 'https://gmail.googleapis.com/gmail/v1/users/a%40b.co/messages', body: {} }), rules: MATCH_ALL, rule: /messages-collection-post/ },
+  { name: 'ban: upload gmail messages collection POST', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/upload/gmail/v1/users/me/messages', body: {} }), rules: MATCH_ALL, rule: /messages-collection-post/ },
+  { name: 'ban: gmail watch', req: () => ({ method: 'POST', url: `${GMAIL}/watch`, body: {} }), rules: MATCH_ALL, rule: /gmail-watch/ },
+  { name: 'ban: gmail stop', req: () => ({ method: 'POST', url: `${GMAIL}/stop`, body: {} }), rules: MATCH_ALL, rule: /gmail-watch/ },
+
+  // H4: path tricks.
+  { name: 'trick: send%20', req: () => ({ method: 'POST', url: `${GMAIL}/messages/send%20`, body: {} }), rules: MATCH_ALL, rule: /gmail-send/ },
+  { name: 'trick: x:send%20', req: () => ({ method: 'POST', url: `${GMAIL}/drafts/x:send%20`, body: {} }), rules: MATCH_ALL, rule: /custom-method|gmail-send/ },
+  { name: 'trick: send;x=1', req: () => ({ method: 'POST', url: `${GMAIL}/messages/send;x=1`, body: {} }), rules: MATCH_ALL, rule: /matrix-param/ },
+  { name: 'trick: messages;x/send', req: () => ({ method: 'POST', url: `${GMAIL}/messages;x/send`, body: {} }), rules: MATCH_ALL, rule: /matrix-param/ },
+  { name: 'trick: encoded ; (%3B)', req: () => ({ method: 'POST', url: `${GMAIL}/drafts%3Bx`, body: {} }), rules: MATCH_ALL, rule: /matrix-param/ },
+  { name: 'trick: trash%20 in drive', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/drive/v3/files/abc/trash%20', body: {} }), rules: MATCH_ALL, rule: /trash/ },
+  ...['access_token', 'key', 'oauth_token', 'apikey', 'bearer_token', 'upload_protocol', 'ACCESS_TOKEN', 'Key'].map((k): Reject => ({
+    name: `query key ${k}`,
+    req: () => ({ method: 'GET', url: URL_WRITE, query: { [k]: 'x' } }),
+    rules: MATCH_ALL,
+    rule: /auth-query/,
+  })),
+
+  // H4: scoped segment bans still apply on Drive and Calendar.
+  { name: 'ban: drive files/{id}/trash', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/drive/v3/files/abc/trash', body: {} }), rules: MATCH_ALL, rule: /trash/ },
+  { name: 'ban: calendar import', req: () => ({ method: 'POST', url: `${CAL}/events/import`, query: NONE, body: {} }), rules: MATCH_ALL, rule: /import/ },
+
+  // H4: rule hygiene, enforced by checkRequest itself.
+  ...([
+    ['unanchored start', { path: /\/drive\/v3\/files$/ }],
+    ['unanchored end', { path: /^\/drive\/v3\/files/ }],
+    ['global flag', { path: /^\/drive\/v3\/files$/g }],
+    ['sticky flag', { path: /^\/drive\/v3\/files$/y }],
+    ['top-level alternation', { path: /^\/drive\/v3\/files|\/x$/ }],
+    ['escaped trailing $', { path: /^\/drive\/v3\/files\$/ }],
+    ['missing allowedQuery', { path: /^\/drive\/v3\/files$/, allowedQuery: undefined }],
+  ] as const).map(([name, over]): Reject => ({
+    name: `bad rule: ${name}`,
+    req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files' }),
+    rules: [{ id: 'bad', product: 'drive', method: 'GET', host: HOST, allowedQuery: [], ...over } as unknown as EndpointRule],
+    rule: /bad-rule/,
+  })),
 ];
 
 describe('GoogleHttp guardrails: rejections never reach fetch', () => {
@@ -459,7 +512,7 @@ describe('GoogleHttp guardrails: allowed requests', () => {
 
   it('allows percent-encoded ids such as calendar ids containing @', async () => {
     const rules: EndpointRule[] = [
-      { id: 'cal-get', product: 'calendar', method: 'GET', host: HOST, path: /^\/calendar\/v3\/calendars\/[^/]+\/events$/ },
+      { id: 'cal-get', product: 'calendar', method: 'GET', host: HOST, path: /^\/calendar\/v3\/calendars\/[^/]+\/events$/, allowedQuery: [] },
     ];
     const { http, calls } = setup([res(200, {})], { rules });
     await http.json({ method: 'GET', url: 'https://www.googleapis.com/calendar/v3/calendars/a%40b.co/events' });
@@ -519,6 +572,62 @@ describe('GoogleHttp guardrails: allowed requests', () => {
     await http.json({ method: 'POST', url: URL_WRITE, body });
     expect(n).toBe(1);
     expect(calls[0]!.init.body).toBe('{"ok":1}');
+  });
+});
+
+describe('H4 guard scoping', () => {
+  const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
+  const rules: EndpointRule[] = [
+    { id: 't-sheets', product: 'sheets', method: 'GET', host: 'sheets.googleapis.com', path: /^\/v4\/spreadsheets\/[^/]+\/values\/.+$/, allowedQuery: [] },
+    { id: 't-fb', product: 'calendar', method: 'POST', host: HOST, path: /^\/calendar\/v3\/freeBusy$/, allowedQuery: [] },
+    { id: 't-gm-drafts', product: 'gmail', method: 'POST', host: 'gmail.googleapis.com', path: /^\/gmail\/v1\/users\/[^/]+\/drafts$/, allowedQuery: [] },
+    { id: 't-ev', product: 'calendar', method: 'POST', host: HOST, path: /^\/calendar\/v3\/calendars\/[^/]+\/events$/, allowedQuery: ['sendUpdates'] },
+  ];
+
+  it('a Sheets range named Trash or Import passes the guards', () => {
+    for (const range of ['Trash!A1:B2', 'Import!A1:B2', 'untrash!A1']) {
+      expect(checkRequest(rules, { method: 'GET', url: `${SHEETS}/s1/values/${range}` })).toEqual({ ok: true });
+    }
+  });
+
+  it('batch and acl stay banned on Sheets paths', () => {
+    expect(checkRequest(MATCH_ALL, { method: 'GET', url: `${SHEETS}/s1/values/batch` })).toMatchObject({ ok: false });
+    expect(checkRequest(MATCH_ALL, { method: 'GET', url: `${SHEETS}/s1/acl` })).toMatchObject({ ok: false });
+  });
+
+  it('POST freeBusy without sendUpdates passes the guards', () => {
+    expect(checkRequest(rules, { method: 'POST', url: 'https://www.googleapis.com/calendar/v3/freeBusy', body: { timeMin: 'a' } })).toEqual({ ok: true });
+  });
+
+  it('an events POST without sendUpdates is still rejected, with sendUpdates=none it passes', () => {
+    const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+    expect(checkRequest(rules, { method: 'POST', url, body: {} })).toMatchObject({ ok: false, rule: 'hard-ban/calendar-send-updates' });
+    expect(checkRequest(rules, { method: 'POST', url: `${url}/e1`, body: {} })).toMatchObject({ ok: false });
+    expect(checkRequest(rules, { method: 'POST', url, query: { sendUpdates: 'none' }, body: {} })).toEqual({ ok: true });
+  });
+
+  it('sendUpdates values other than none are banned on every path', () => {
+    expect(checkRequest(rules, { method: 'POST', url: 'https://www.googleapis.com/calendar/v3/freeBusy', query: { sendUpdates: 'all' }, body: {} })).toMatchObject({ ok: false, rule: 'hard-ban/send-updates' });
+  });
+
+  it('Gmail drafts POST stays allowed; messages GET list is not a collection POST', () => {
+    expect(checkRequest(rules, { method: 'POST', url: `${GMAIL}/drafts`, body: { message: { raw: 'x' } } })).toEqual({ ok: true });
+    expect(checkRequest(MATCH_ALL, { method: 'GET', url: `${GMAIL}/messages` })).toEqual({ ok: true });
+  });
+});
+
+describe('ENDPOINT_RULES hygiene (every phase)', () => {
+  it('every rule is anchored, stateless, has allowedQuery, unique id and an allowed method', () => {
+    const ids = new Set<string>();
+    for (const r of ENDPOINT_RULES) {
+      expect(r.path.source.startsWith('^'), `${r.id}: path must start with ^`).toBe(true);
+      expect(r.path.source.endsWith('$'), `${r.id}: path must end with $`).toBe(true);
+      expect(r.path.flags.includes('g') || r.path.flags.includes('y'), `${r.id}: no g or y flag`).toBe(false);
+      expect(Array.isArray(r.allowedQuery), `${r.id}: allowedQuery must be an array`).toBe(true);
+      expect(ids.has(r.id), `duplicate id ${r.id}`).toBe(false);
+      ids.add(r.id);
+      expect(['GET', 'POST', 'PATCH', 'PUT']).toContain(r.method);
+    }
   });
 });
 

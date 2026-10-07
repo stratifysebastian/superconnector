@@ -9,7 +9,8 @@ export interface EndpointRule {
   host: string;
   /** Anchored; matched against the normalised (still percent-encoded) pathname. */
   path: RegExp;
-  allowedQuery?: string[];
+  /** Required. An empty array means no query keys are allowed. */
+  allowedQuery: string[];
   requiredQuery?: Record<string, string>;
   /** Returns a violation reason, or null if the body is fine. */
   checkBody?: (body: unknown) => string | null;
@@ -50,6 +51,29 @@ export function parseGoogleUrl(url: unknown): URL | PolicyResult {
   return u;
 }
 
+/** Returns why a rule is malformed (unanchored or stateful regex, missing allowedQuery), or null. */
+function badRule(r: EndpointRule): string | null {
+  if (!(r?.path instanceof RegExp)) return 'path is not a RegExp';
+  if (!Array.isArray(r.allowedQuery)) return 'allowedQuery must be an array';
+  const { source, flags } = r.path;
+  if (flags.includes('g') || flags.includes('y')) return 'path regex must not have the g or y flag';
+  if (!source.startsWith('^')) return 'path regex must start with ^';
+  if (!source.endsWith('$') || /(?:^|[^\\])(?:\\\\)*\\\$$/.test(source)) return 'path regex must end with an unescaped $';
+  // A top-level alternation (^a|b$) is not anchored on every branch.
+  let depth = 0;
+  let inClass = false;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i]!;
+    if (c === '\\') i++;
+    else if (inClass) inClass = c !== ']';
+    else if (c === '[') inClass = true;
+    else if (c === '(') depth++;
+    else if (c === ')') depth--;
+    else if (c === '|' && depth === 0) return 'path regex has a top-level alternation';
+  }
+  return null;
+}
+
 /**
  * Deny by default: the request must satisfy the universal checks and the hard bans, then match a rule
  * on method + host + path, then that rule's query and body constraints.
@@ -72,14 +96,17 @@ export function checkRequest(rules: readonly EndpointRule[], req: PolicyRequest)
     if (b) return deny(b.rule, b.reason);
   }
 
+  for (const r of rules) {
+    const bad = badRule(r);
+    if (bad) return deny('policy/bad-rule', `programming error in endpoint rule "${String(r?.id)}": ${bad}`);
+  }
+
   const rule = rules.find((r) => r.method === method && r.host === parsed.hostname && r.path.test(pathname));
   if (!rule) return deny('no-matching-rule', `${method} ${parsed.hostname}${pathname} matches no endpoint rule`);
 
-  if (rule.allowedQuery) {
-    const allowed = new Set([...rule.allowedQuery, ...Object.keys(rule.requiredQuery ?? {})]);
-    for (const k of Object.keys(query)) {
-      if (!allowed.has(k)) return deny(rule.id, `query key "${k}" is not allowed`);
-    }
+  const allowed = new Set([...rule.allowedQuery, ...Object.keys(rule.requiredQuery ?? {})]);
+  for (const k of Object.keys(query)) {
+    if (!allowed.has(k)) return deny(rule.id, `query key "${k}" is not allowed`);
   }
   for (const [k, v] of Object.entries(rule.requiredQuery ?? {})) {
     if (query[k] !== v) return deny(rule.id, `query "${k}" must be "${v}"`);
