@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { createCipher } from '@/lib/crypto';
 import { parseEnv } from '@/lib/env';
