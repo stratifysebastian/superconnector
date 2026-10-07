@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { LogEvent } from '@/core/contracts/tool';
-import { ProviderError } from '@/core/errors';
+import { GuardrailError, ProviderError } from '@/core/errors';
+import { ENDPOINT_RULES } from '@/google/endpoints';
 import { GoogleAuthError, isInvalidGrant } from '@/google/errors';
 import { createGoogleHttp } from '@/google/http';
+import type { EndpointRule } from '@/google/endpoints/policy';
 
 const URL_OK = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+const URL_WRITE = 'https://www.googleapis.com/drive/v3/files/abc';
+const HOST = 'www.googleapis.com';
+
+/** Permissive test-only rules; the real ENDPOINT_RULES is empty in Phase 0. */
+const TEST_RULES: EndpointRule[] = (['GET', 'POST', 'PATCH', 'PUT'] as const).flatMap((method) => [
+  { id: `t-cal-${method}`, product: 'calendar' as const, method, host: HOST, path: /^\/calendar\/v3\/calendars\/primary\/events$/ },
+  { id: `t-drive-${method}`, product: 'drive' as const, method, host: HOST, path: /^\/drive\/v3\/files\/[^/]+$/ },
+]);
 const TOKEN = 'tok-SECRET-MARKER-123';
 const BODY_MARKER = 'BODY-MARKER-XYZ';
 const QUERY_MARKER = 'QUERY-MARKER-QQQ';
@@ -33,6 +43,7 @@ function setup(responses: (Response | Error)[], extra: Partial<Parameters<typeof
     },
     random: () => 0.5,
     log: { info: (e) => events.push(e), warn: (e) => events.push(e), error: (e) => events.push(e) },
+    rules: TEST_RULES,
     ...extra,
   });
   return { http, calls, delays, events };
@@ -55,12 +66,13 @@ describe('createGoogleHttp', () => {
     const { http, calls } = setup([res(200, { ok: 1 })]);
     const out = await http.json({
       method: 'POST',
-      url: URL_OK,
+      url: URL_WRITE,
       query: { a: 1, b: undefined, c: true },
       body: { x: 1 },
     });
     expect(out).toEqual({ ok: 1 });
-    expect(calls[0]!.url).toBe(`${URL_OK}?a=1&c=true`);
+    expect(calls[0]!.url).toBe(`${URL_WRITE}?a=1&c=true`);
+    expect(calls[0]!.init.redirect).toBe('error');
     const h = calls[0]!.init.headers as Record<string, string>;
     expect(h.authorization).toBe(`Bearer ${TOKEN}`);
     expect(h['content-type']).toBe('application/json');
@@ -126,6 +138,7 @@ describe('createGoogleHttp', () => {
       fetchImpl: (() => {
         throw new Error('should not fetch');
       }) as unknown as typeof fetch,
+      rules: TEST_RULES,
     });
     expect((await kindOf(http.json(get))).kind).toBe('needs_reconnect');
   });
@@ -146,7 +159,7 @@ describe('createGoogleHttp', () => {
   it('does not retry 5xx for POST or PATCH, but does for GET and PUT', async () => {
     for (const method of ['POST', 'PATCH'] as const) {
       const s = setup([res(500), res(200)]);
-      const err = await kindOf(s.http.json({ method, url: URL_OK, body: {} }));
+      const err = await kindOf(s.http.json({ method, url: URL_WRITE, body: {} }));
       expect(err.kind).toBe('upstream_error');
       expect(err.message).toContain('may or may not have been applied');
       expect(s.calls).toHaveLength(1);
@@ -155,10 +168,10 @@ describe('createGoogleHttp', () => {
     expect((await kindOf(g.http.json(get))).kind).toBe('upstream_error');
     expect(g.calls).toHaveLength(4);
     const p = setup([res(503), res(200, { ok: 1 })]);
-    await p.http.json({ method: 'PUT', url: URL_OK, body: {} });
+    await p.http.json({ method: 'PUT', url: URL_WRITE, body: {} });
     expect(p.calls).toHaveLength(2);
     const r = setup([res(429), res(200, {})]);
-    await r.http.json({ method: 'POST', url: URL_OK, body: {} });
+    await r.http.json({ method: 'POST', url: URL_WRITE, body: {} });
     expect(r.calls).toHaveLength(2);
   });
 
@@ -167,7 +180,7 @@ describe('createGoogleHttp', () => {
       new Promise((_r, reject) => {
         init.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
       })) as unknown as typeof fetch;
-    const http = createGoogleHttp({ getAccessToken: async () => TOKEN, fetchImpl, timeoutMs: 20 });
+    const http = createGoogleHttp({ getAccessToken: async () => TOKEN, fetchImpl, timeoutMs: 20, rules: TEST_RULES });
     expect((await kindOf(http.json(get))).kind).toBe('timeout');
   });
 
@@ -218,6 +231,294 @@ describe('createGoogleHttp', () => {
     expect(json).not.toContain(QUERY_MARKER);
     expect(json).not.toContain('?');
     expect(json).not.toContain(TOKEN);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------
+// Runtime guardrails: every rejection must be a GuardrailError and must never reach fetch.
+// ---------------------------------------------------------------------------------------------------------
+
+const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me';
+const CAL = 'https://www.googleapis.com/calendar/v3/calendars/primary';
+const NONE = { sendUpdates: 'none' };
+
+/** Permissive on purpose (matches everything on every allowed host) to prove the hard bans win over a rule. */
+const MATCH_ALL: EndpointRule[] = (['GET', 'POST', 'PATCH', 'PUT'] as const).flatMap((method) =>
+  ['www.googleapis.com', 'gmail.googleapis.com', 'docs.googleapis.com'].map((host) => ({
+    id: `all-${method}-${host}`,
+    product: 'gmail' as const,
+    method,
+    host,
+    path: /^\/.*$/,
+  })),
+);
+
+type Req = Parameters<ReturnType<typeof createGoogleHttp>['json']>[0];
+interface Reject {
+  name: string;
+  req: () => unknown;
+  rules?: EndpointRule[];
+  rule?: RegExp;
+}
+
+function getterMethod(): unknown {
+  let n = 0;
+  return {
+    get method() {
+      return n++ === 0 ? 'DELETE' : 'GET';
+    },
+    url: URL_WRITE,
+  };
+}
+
+function getterUrl(): unknown {
+  let n = 0;
+  return {
+    method: 'GET',
+    get url() {
+      return n++ === 0 ? 'https://evil.example/x' : URL_WRITE;
+    },
+  };
+}
+
+function cyclicBody(): unknown {
+  const o: Record<string, unknown> = {};
+  o.self = o;
+  return { method: 'POST', url: URL_WRITE, body: o };
+}
+
+function deepBody(): unknown {
+  let o: unknown = {};
+  for (let i = 0; i < 100; i++) o = { a: o };
+  return { method: 'POST', url: URL_WRITE, body: o };
+}
+
+function spreadBody(): unknown {
+  const extra = { attendees: [{ email: 'x@y.co' }] };
+  return { method: 'POST', url: URL_WRITE, body: { summary: 's', ...extra } };
+}
+
+const REJECTIONS: Reject[] = [
+  { name: 'method via getter (first read is what counts)', req: getterMethod },
+  { name: 'url via getter (first read is what counts)', req: getterUrl },
+  { name: 'DELETE method', req: () => ({ method: 'DELETE', url: URL_WRITE }), rule: /method/ },
+  { name: 'lowercase method', req: () => ({ method: 'get', url: URL_WRITE }), rule: /method/ },
+  { name: '$httpMethod query key', req: () => ({ method: 'GET', url: URL_WRITE, query: { $httpMethod: 'DELETE' } }), rule: /query-dollar/ },
+  { name: '$.xgafv query key', req: () => ({ method: 'GET', url: URL_WRITE, query: { '$.xgafv': '1' } }), rule: /query-dollar/ },
+  { name: 'X-HTTP-Method-Override query key', req: () => ({ method: 'POST', url: URL_WRITE, query: { 'X-HTTP-Method-Override': 'DELETE' }, body: {} }), rule: /method-override/ },
+  { name: '_method query key (any case)', req: () => ({ method: 'POST', url: URL_WRITE, query: { _METHOD: 'DELETE' }, body: {} }), rule: /method-override/ },
+  { name: 'httpMethod query key', req: () => ({ method: 'POST', url: URL_WRITE, query: { HTTPMETHOD: 'DELETE' }, body: {} }), rule: /method-override/ },
+  { name: '? inside url', req: () => ({ method: 'GET', url: `${URL_WRITE}?x=1` }), rule: /query-in-url/ },
+  { name: '# inside url', req: () => ({ method: 'GET', url: `${URL_WRITE}#x` }), rule: /query-in-url/ },
+  { name: '.. path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/../../gmail/v1/users/me/messages/send' }), rule: /path-trickery/ },
+  { name: '%2e path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/%2e%2e/x' }), rule: /path-trickery/ },
+  { name: '%2E%2E mixed case', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/%2E%2E/x' }), rule: /path-trickery/ },
+  { name: '%2f path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/a%2fb' }), rule: /path-trickery/ },
+  { name: 'backslash path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files\\a' }), rule: /path-trickery/ },
+  { name: 'tab smuggled into a segment', req: () => ({ method: 'POST', url: `${GMAIL}/messages/se\tnd`, body: {} }), rule: /control-chars/ },
+  { name: 'userinfo', req: () => ({ method: 'GET', url: 'https://user:pw@www.googleapis.com/drive/v3/files/a' }), rule: /userinfo/ },
+  { name: 'userinfo host-confusion', req: () => ({ method: 'GET', url: 'https://www.googleapis.com@evil.example/drive/v3/files/a' }), rule: /userinfo/ },
+  { name: 'http (not https)', req: () => ({ method: 'GET', url: 'http://www.googleapis.com/drive/v3/files/a' }) },
+  { name: 'explicit port', req: () => ({ method: 'GET', url: 'https://www.googleapis.com:8443/drive/v3/files/a' }), rule: /port/ },
+  { name: 'unknown host', req: () => ({ method: 'GET', url: 'https://evil.example/drive/v3/files/a' }), rule: /url\/host/ },
+  { name: 'lookalike host', req: () => ({ method: 'GET', url: 'https://www.googleapis.com.evil.example/drive/v3/files/a' }), rule: /url\/host/ },
+  { name: 'trailing-dot host', req: () => ({ method: 'GET', url: 'https://www.googleapis.com./drive/v3/files/a' }), rule: /url\/host/ },
+  { name: 'oauth2 host', req: () => ({ method: 'POST', url: 'https://oauth2.googleapis.com/token', body: {} }), rule: /url\/host/ },
+  { name: 'non-string url', req: () => ({ method: 'GET', url: 42 }), rule: /url\/type/ },
+  { name: 'no matching rule (path)', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/about' }), rule: /no-matching-rule/ },
+  { name: 'no matching rule (method)', req: () => ({ method: 'PUT', url: URL_WRITE, body: {} }), rules: [], rule: /no-matching-rule/ },
+  { name: 'no matching rule (host)', req: () => ({ method: 'GET', url: 'https://docs.googleapis.com/v1/documents/x' }), rule: /no-matching-rule/ },
+  { name: 'GET with a body', req: () => ({ method: 'GET', url: URL_WRITE, body: {} }), rule: /body\/get/ },
+  { name: 'unserialisable body (cycle)', req: cyclicBody, rule: /unserialisable/ },
+
+  // Hard bans, with rules that would otherwise match everything.
+  { name: 'ban: gmail messages/send', req: () => ({ method: 'POST', url: `${GMAIL}/messages/send`, body: {} }), rules: MATCH_ALL, rule: /gmail-send/ },
+  { name: 'ban: gmail drafts/send', req: () => ({ method: 'POST', url: `${GMAIL}/drafts/send`, body: {} }), rules: MATCH_ALL, rule: /gmail-send/ },
+  { name: 'ban: upload gmail send', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/upload/gmail/v1/users/me/messages/send', body: {} }), rules: MATCH_ALL, rule: /gmail-send/ },
+  { name: 'ban: percent-encoded send segment', req: () => ({ method: 'POST', url: `${GMAIL}/messages/se%6ed`, body: {} }), rules: MATCH_ALL, rule: /gmail-send/ },
+  { name: 'ban: SEND uppercase segment', req: () => ({ method: 'POST', url: `${GMAIL}/messages/SEND`, body: {} }), rules: MATCH_ALL, rule: /gmail-send/ },
+  { name: 'ban: messages trash', req: () => ({ method: 'POST', url: `${GMAIL}/messages/abc/trash`, body: {} }), rules: MATCH_ALL, rule: /trash/ },
+  { name: 'ban: threads untrash', req: () => ({ method: 'POST', url: `${GMAIL}/threads/abc/untrash`, body: {} }), rules: MATCH_ALL, rule: /untrash/ },
+  { name: 'ban: batchDelete', req: () => ({ method: 'POST', url: `${GMAIL}/messages/batchDelete`, body: {} }), rules: MATCH_ALL, rule: /batchdelete/ },
+  { name: 'ban: messages/import', req: () => ({ method: 'POST', url: `${GMAIL}/messages/import`, body: {} }), rules: MATCH_ALL, rule: /import/ },
+  { name: 'ban: messages/insert', req: () => ({ method: 'POST', url: `${GMAIL}/messages/insert`, body: {} }), rules: MATCH_ALL, rule: /gmail-insert/ },
+  { name: 'ban: gmail settings/filters', req: () => ({ method: 'GET', url: `${GMAIL}/settings/filters` }), rules: MATCH_ALL, rule: /gmail-settings/ },
+  { name: 'ban: gmail settings/forwardingAddresses (any user)', req: () => ({ method: 'POST', url: 'https://gmail.googleapis.com/gmail/v1/users/a%40b.co/settings/forwardingAddresses', body: {} }), rules: MATCH_ALL, rule: /gmail-settings/ },
+  { name: 'ban: gmail settings/delegates deep path', req: () => ({ method: 'GET', url: `${GMAIL}/settings/delegates/x` }), rules: MATCH_ALL, rule: /gmail-settings/ },
+  { name: 'ban: drive permissions POST', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/drive/v3/files/abc/permissions', body: { x: 1 } }), rules: MATCH_ALL, rule: /permissions-write/ },
+  { name: 'ban: drive permissions PATCH', req: () => ({ method: 'PATCH', url: 'https://www.googleapis.com/drive/v3/files/abc/permissions/p1', body: {} }), rules: MATCH_ALL, rule: /permissions-write/ },
+  { name: 'ban: calendar acl GET', req: () => ({ method: 'GET', url: `${CAL}/acl` }), rules: MATCH_ALL, rule: /acl/ },
+  { name: 'ban: calendar acl write', req: () => ({ method: 'POST', url: `${CAL}/acl`, query: NONE, body: {} }), rules: MATCH_ALL, rule: /acl/ },
+  { name: 'ban: quickAdd', req: () => ({ method: 'POST', url: `${CAL}/events/quickAdd`, query: { ...NONE, text: 'x' }, body: {} }), rules: MATCH_ALL, rule: /quickadd/ },
+  { name: 'ban: custom method :send', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/gmail/v1/users/me/drafts/abc:send', body: {} }), rules: MATCH_ALL, rule: /custom-method|gmail-send/ },
+  { name: 'ban: custom method :trash', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/drive/v3/files/abc:trash', body: {} }), rules: MATCH_ALL, rule: /custom-method/ },
+  { name: 'ban: /batch path', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/batch/calendar/v3', body: {} }), rules: MATCH_ALL, rule: /batch/ },
+  { name: 'ban: drive emptyTrash', req: () => ({ method: 'POST', url: 'https://www.googleapis.com/drive/v3/files/emptyTrash', body: {} }), rules: MATCH_ALL, rule: /emptytrash/ },
+  { name: 'ban: calendar POST without sendUpdates', req: () => ({ method: 'POST', url: `${CAL}/events`, body: { summary: 's' } }), rules: MATCH_ALL, rule: /calendar-send-updates/ },
+  { name: 'ban: calendar PATCH with sendUpdates=all', req: () => ({ method: 'PATCH', url: `${CAL}/events/e1`, query: { sendUpdates: 'all' }, body: {} }), rules: MATCH_ALL, rule: /send-updates/ },
+  { name: 'ban: calendar PUT with sendUpdates=externalOnly', req: () => ({ method: 'PUT', url: `${CAL}/events/e1`, query: { sendUpdates: 'externalOnly' }, body: {} }), rules: MATCH_ALL, rule: /send-updates/ },
+  { name: 'ban: sendNotifications=true', req: () => ({ method: 'POST', url: `${CAL}/events`, query: { ...NONE, sendNotifications: true }, body: {} }), rules: MATCH_ALL, rule: /send-notifications/ },
+  { name: 'ban: transferOwnership', req: () => ({ method: 'PATCH', url: 'https://www.googleapis.com/drive/v3/files/abc', query: { transferOwnership: true }, body: {} }), rules: MATCH_ALL, rule: /transfer-ownership/ },
+
+  // Universal body checks, recursive.
+  { name: 'body: attendees at top level', req: () => ({ method: 'POST', url: URL_WRITE, body: { attendees: [] } }), rule: /attendees/ },
+  { name: 'body: nested attendees', req: () => ({ method: 'POST', url: URL_WRITE, body: { a: { b: [{ c: { attendees: [{ email: 'x@y.co' }] } }] } } }), rule: /attendees/ },
+  { name: 'body: spread attendees', req: spreadBody, rule: /attendees/ },
+  { name: 'body: Attendees key case', req: () => ({ method: 'POST', url: URL_WRITE, body: { Attendees: [] } }), rule: /attendees/ },
+  { name: 'body: addedAttendees', req: () => ({ method: 'POST', url: URL_WRITE, body: { addedAttendees: [] } }), rule: /attendees/ },
+  { name: 'body: attendeeEmails', req: () => ({ method: 'POST', url: URL_WRITE, body: { attendeeEmails: [] } }), rule: /attendees/ },
+  { name: 'body: addedAttendeeEmails', req: () => ({ method: 'POST', url: URL_WRITE, body: { x: { addedAttendeeEmails: [] } } }), rule: /attendees/ },
+  { name: 'body: removedAttendeeEmails', req: () => ({ method: 'POST', url: URL_WRITE, body: { removedAttendeeEmails: [] } }), rule: /attendees/ },
+  { name: 'body: guestPermissions', req: () => ({ method: 'POST', url: URL_WRITE, body: { guestPermissions: {} } }), rule: /attendees/ },
+  { name: 'body: attendees via toJSON', req: () => ({ method: 'POST', url: URL_WRITE, body: { toJSON: () => ({ attendees: [] }) } }), rule: /attendees/ },
+  { name: 'body: trashed true', req: () => ({ method: 'PATCH', url: URL_WRITE, body: { trashed: true } }), rule: /trashed/ },
+  { name: 'body: nested trashed true', req: () => ({ method: 'PATCH', url: URL_WRITE, body: { requests: [{ update: { trashed: true } }] } }), rule: /trashed/ },
+  { name: "body: trashed 'true'", req: () => ({ method: 'PATCH', url: URL_WRITE, body: { trashed: 'true' } }), rule: /trashed/ },
+  { name: 'body: addLabelIds TRASH', req: () => ({ method: 'POST', url: URL_WRITE, body: { addLabelIds: ['INBOX', 'TRASH'] } }), rule: /trash-label/ },
+  { name: 'body: labelIds trash lowercase', req: () => ({ method: 'POST', url: URL_WRITE, body: { labelIds: ['trash'] } }), rule: /trash-label/ },
+  { name: 'body: nested removeLabelIds TRASH', req: () => ({ method: 'POST', url: URL_WRITE, body: { m: { removeLabelIds: ['TRASH'] } } }), rule: /trash-label/ },
+  { name: 'body: responseStatus', req: () => ({ method: 'PATCH', url: URL_WRITE, body: { responseStatus: 'accepted' } }), rule: /rsvp/ },
+  { name: 'body: nested responseStatus', req: () => ({ method: 'PATCH', url: URL_WRITE, body: { x: [{ y: { responseStatus: 'declined' } }] } }), rule: /rsvp/ },
+  { name: 'body: permission shape (role + emailAddress)', req: () => ({ method: 'POST', url: URL_WRITE, body: { role: 'writer', type: 'user', emailAddress: 'a@b.co' } }), rule: /permission-shape/ },
+  { name: 'body: nested permission shape (type + domain)', req: () => ({ method: 'POST', url: URL_WRITE, body: { w: [{ type: 'domain', domain: 'b.co' }] } }), rule: /permission-shape/ },
+  { name: 'body: too deeply nested', req: deepBody, rule: /body-depth/ },
+];
+
+describe('GoogleHttp guardrails: rejections never reach fetch', () => {
+  it.each(REJECTIONS.map((r) => [r.name, r] as const))('%s', async (_n, r) => {
+    const { http, calls } = setup([res(200), res(200)], { rules: r.rules ?? TEST_RULES });
+    const err = await http.json(r.req() as Req).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err, 'expected a rejection').toBeInstanceOf(GuardrailError);
+    if (r.rule) expect((err as GuardrailError).rule).toMatch(r.rule);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('does not even fetch an access token for a rejected request', async () => {
+    let tokenCalls = 0;
+    const http = createGoogleHttp({
+      getAccessToken: async () => {
+        tokenCalls++;
+        return TOKEN;
+      },
+      fetchImpl: (() => {
+        throw new Error('should not fetch');
+      }) as unknown as typeof fetch,
+      rules: TEST_RULES,
+    });
+    await expect(http.json({ method: 'GET', url: 'https://evil.example/x' })).rejects.toBeInstanceOf(GuardrailError);
+    expect(tokenCalls).toBe(0);
+  });
+
+  it('denies everything with the default (empty) rule set', async () => {
+    expect(ENDPOINT_RULES).toEqual([]);
+    const calls: unknown[] = [];
+    const http = createGoogleHttp({
+      getAccessToken: async () => TOKEN,
+      fetchImpl: (async (...a: unknown[]) => {
+        calls.push(a);
+        return res(200);
+      }) as unknown as typeof fetch,
+    });
+    await expect(http.json(get)).rejects.toBeInstanceOf(GuardrailError);
+    await expect(http.json({ method: 'GET', url: URL_WRITE })).rejects.toMatchObject({ rule: 'no-matching-rule' });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('error messages carry the rule and never the body, query values or token', async () => {
+    const { http } = setup([]);
+    const err = (await http
+      .json({ method: 'POST', url: URL_WRITE, query: { q: QUERY_MARKER }, body: { attendees: [BODY_MARKER] } })
+      .catch((e: unknown) => e)) as GuardrailError;
+    expect(err.rule).toBe('hard-ban/attendees');
+    for (const m of [TOKEN, QUERY_MARKER, BODY_MARKER]) expect(err.message).not.toContain(m);
+  });
+});
+
+describe('GoogleHttp guardrails: allowed requests', () => {
+  it('lets a matching GET through, building the URL from the parsed parts', async () => {
+    const { http, calls } = setup([res(200, { ok: 1 })]);
+    await http.json({ method: 'GET', url: URL_WRITE, query: { fields: 'id,name' } });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe(`${URL_WRITE}?fields=id%2Cname`);
+  });
+
+  it('allows SPAM in addLabelIds (only TRASH is blocked)', async () => {
+    const { http, calls } = setup([res(200, {})]);
+    await http.json({ method: 'POST', url: URL_WRITE, body: { addLabelIds: ['SPAM'], removeLabelIds: ['INBOX'] } });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('allows a Calendar write with sendUpdates=none', async () => {
+    const { http, calls } = setup([res(200, {})]);
+    await http.json({ method: 'POST', url: URL_OK, query: { sendUpdates: 'none' }, body: { summary: 's' } });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('allows percent-encoded ids such as calendar ids containing @', async () => {
+    const rules: EndpointRule[] = [
+      { id: 'cal-get', product: 'calendar', method: 'GET', host: HOST, path: /^\/calendar\/v3\/calendars\/[^/]+\/events$/ },
+    ];
+    const { http, calls } = setup([res(200, {})], { rules });
+    await http.json({ method: 'GET', url: 'https://www.googleapis.com/calendar/v3/calendars/a%40b.co/events' });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('enforces a rule allowedQuery, requiredQuery and checkBody', async () => {
+    const rules: EndpointRule[] = [
+      {
+        id: 'strict',
+        product: 'drive',
+        method: 'POST',
+        host: HOST,
+        path: /^\/drive\/v3\/files$/,
+        allowedQuery: ['fields'],
+        requiredQuery: { supportsAllDrives: 'true' },
+        checkBody: (b) => ((b as { name?: unknown })?.name === 'bad' ? 'name is bad' : null),
+      },
+    ];
+    const url = 'https://www.googleapis.com/drive/v3/files';
+    const ok = setup([res(200, {})], { rules });
+    await ok.http.json({ method: 'POST', url, query: { supportsAllDrives: true, fields: 'id' }, body: { name: 'fine' } });
+    expect(ok.calls).toHaveLength(1);
+
+    const cases: [Req, RegExp][] = [
+      [{ method: 'POST', url, query: { supportsAllDrives: true, extra: 1 }, body: {} }, /not allowed/],
+      [{ method: 'POST', url, query: { fields: 'id' }, body: {} }, /must be "true"/],
+      [{ method: 'POST', url, query: { supportsAllDrives: 'false' }, body: {} }, /must be "true"/],
+      [{ method: 'POST', url, query: { supportsAllDrives: true }, body: { name: 'bad' } }, /name is bad/],
+    ];
+    for (const [req, why] of cases) {
+      const s = setup([res(200)], { rules });
+      await expect(s.http.json(req)).rejects.toMatchObject({ rule: 'strict', message: expect.stringMatching(why) });
+      expect(s.calls).toHaveLength(0);
+    }
+  });
+
+  it('snapshots inputs once: a getter-based method cannot change after the check', async () => {
+    let reads = 0;
+    const req = {
+      get method() {
+        reads++;
+        return 'GET' as const;
+      },
+      url: URL_WRITE,
+    };
+    const { http, calls } = setup([res(200, {})]);
+    await http.json(req);
+    expect(reads).toBe(1);
+    expect(calls[0]!.init.method).toBe('GET');
+  });
+
+  it('sends exactly the body that was checked (serialised once)', async () => {
+    let n = 0;
+    const body = { toJSON: () => (n++ === 0 ? { ok: 1 } : { attendees: [] }) };
+    const { http, calls } = setup([res(200, {})]);
+    await http.json({ method: 'POST', url: URL_WRITE, body });
+    expect(n).toBe(1);
+    expect(calls[0]!.init.body).toBe('{"ok":1}');
   });
 });
 

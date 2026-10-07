@@ -1,17 +1,10 @@
 import type { GoogleHttp } from '@/core/contracts/adapter';
 import type { Logger } from '@/core/contracts/tool';
-import { ProviderError } from '@/core/errors';
+import { GuardrailError, ProviderError } from '@/core/errors';
+import { ENDPOINT_RULES } from './endpoints';
+import { checkRequest, type EndpointRule } from './endpoints/policy';
 import { mapAuthError } from './errors';
 
-const ALLOWED_METHODS = ['GET', 'POST', 'PATCH', 'PUT'];
-const ALLOWED_PREFIXES = [
-  'https://www.googleapis.com/',
-  'https://gmail.googleapis.com/',
-  'https://docs.googleapis.com/',
-  'https://sheets.googleapis.com/',
-  'https://slides.googleapis.com/',
-  'https://oauth2.googleapis.com/',
-];
 const MAX_RETRIES = 3;
 const BASE_MS = 500;
 const MAX_DELAY_MS = 8000;
@@ -24,6 +17,8 @@ export interface GoogleHttpOptions {
   sleep?: (ms: number) => Promise<void>;
   random?: () => number;
   log?: Logger;
+  /** Endpoint allowlist. Defaults to ENDPOINT_RULES; a request matching no rule is rejected. */
+  rules?: EndpointRule[];
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -47,6 +42,7 @@ export function createGoogleHttp(opts: GoogleHttpOptions): GoogleHttp {
   const doFetch = opts.fetchImpl ?? ((...a: Parameters<typeof fetch>) => globalThis.fetch(...a));
   const sleep = opts.sleep ?? defaultSleep;
   const random = opts.random ?? Math.random;
+  const rules = opts.rules ?? ENDPOINT_RULES;
 
   return {
     async json<T>(req: {
@@ -55,19 +51,44 @@ export function createGoogleHttp(opts: GoogleHttpOptions): GoogleHttp {
       query?: Record<string, string | number | boolean | undefined>;
       body?: unknown;
     }): Promise<T> {
-      if (!ALLOWED_METHODS.includes(req.method)) {
-        throw new Error('GoogleHttp: HTTP method not allowed');
+      // Snapshot every input exactly once; only these locals are used from here on (getters could lie twice).
+      const { method, url, query: rawQuery, body: rawBody } = req;
+      const block = (rule: string, reason: string): never => {
+        throw new GuardrailError(rule, `GoogleHttp blocked the request: ${reason}`);
+      };
+
+      const query: Record<string, string> = {};
+      if (rawQuery !== undefined && rawQuery !== null) {
+        if (typeof rawQuery !== 'object' || Array.isArray(rawQuery)) block('query/type', 'query must be a plain object');
+        for (const [k, v] of Object.entries(rawQuery)) {
+          if (v === undefined) continue;
+          if (typeof v !== 'string' && typeof v !== 'number' && typeof v !== 'boolean') {
+            block('query/value', `query value for "${k}" must be a string, number or boolean`);
+          }
+          query[k] = String(v);
+        }
       }
-      if (typeof req.url !== 'string' || !ALLOWED_PREFIXES.some((p) => req.url.startsWith(p))) {
-        throw new Error('GoogleHttp: URL host not allowed');
+
+      // Serialise once: the checked body is exactly the body that is sent.
+      let bodyJson: string | undefined;
+      let body: unknown;
+      if (rawBody !== undefined) {
+        try {
+          bodyJson = JSON.stringify(rawBody);
+        } catch {
+          return block('body/unserialisable', 'request body is not JSON-serialisable');
+        }
+        if (bodyJson === undefined) return block('body/unserialisable', 'request body is not JSON-serialisable');
+        body = JSON.parse(bodyJson) as unknown;
       }
-      const params = new URLSearchParams();
-      for (const [k, v] of Object.entries(req.query ?? {})) {
-        if (v !== undefined) params.append(k, String(v));
-      }
-      const qs = params.toString();
-      const fullUrl = qs ? `${req.url}${req.url.includes('?') ? '&' : '?'}${qs}` : req.url;
-      const path = new URL(req.url).pathname;
+
+      const verdict = checkRequest(rules, { method, url, query, body });
+      if (!verdict.ok) return block(verdict.rule, verdict.reason);
+
+      const parsed = new URL(url);
+      const qs = new URLSearchParams(query).toString();
+      const fullUrl = `${parsed.origin}${parsed.pathname}${qs ? `?${qs}` : ''}`;
+      const path = parsed.pathname;
       const started = Date.now();
       let attempts = 0;
       let status: number | undefined;
@@ -76,7 +97,7 @@ export function createGoogleHttp(opts: GoogleHttpOptions): GoogleHttp {
         opts.log?.info({
           msg: 'google_http',
           outcome,
-          method: req.method,
+          method,
           path,
           status,
           durationMs: Date.now() - started,
@@ -106,15 +127,11 @@ export function createGoogleHttp(opts: GoogleHttpOptions): GoogleHttp {
         const timeoutSignal = AbortSignal.timeout(timeoutMs);
         const signal = opts.signal ? AbortSignal.any([opts.signal, timeoutSignal]) : timeoutSignal;
         const headers: Record<string, string> = { authorization: `Bearer ${token}`, accept: 'application/json' };
-        let body: string | undefined;
-        if (req.body !== undefined) {
-          headers['content-type'] = 'application/json';
-          body = JSON.stringify(req.body);
-        }
+        if (bodyJson !== undefined) headers['content-type'] = 'application/json';
 
         let res: Response;
         try {
-          res = await doFetch(fullUrl, { method: req.method, headers, body, signal });
+          res = await doFetch(fullUrl, { method, headers, body: bodyJson, signal, redirect: 'error' });
         } catch {
           status = undefined;
           if (signal.aborted) return fail(new ProviderError('timeout', 'Google request timed out'));
@@ -151,7 +168,7 @@ export function createGoogleHttp(opts: GoogleHttpOptions): GoogleHttp {
           (res.status === 403 && reasons.some((r) => r === 'rateLimitExceeded' || r === 'userRateLimitExceeded'));
         const serverError = res.status >= 500;
 
-        if (serverError && !rateLimited && req.method !== 'GET' && req.method !== 'PUT') {
+        if (serverError && !rateLimited && method !== 'GET' && method !== 'PUT') {
           return fail(
             new ProviderError(
               'upstream_error',

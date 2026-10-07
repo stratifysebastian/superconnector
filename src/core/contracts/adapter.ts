@@ -1,11 +1,16 @@
 import type { Account } from './account';
 
-/** Everything an adapter needs to make one call for one account. */
+/**
+ * Everything an adapter needs to make one call for one account. Adapters never hold an access token:
+ * `http` is bound to the account's token and attaches it itself.
+ */
 export interface AdapterContext {
   account: Account;
-  /** Returns a fresh access token. Throws GoogleAuthError('invalid_grant') → account marked needs_reconnect. */
-  getAccessToken(): Promise<string>;
-  /** fetch wrapper: auth header, 429 backoff with jitter (max 3 retries), timeout, structured log. */
+  /**
+   * The only way to reach Google. Deny by default: every request is checked against the endpoint rules
+   * (src/google/endpoints) before anything is fetched, then sent with auth, 429 backoff with jitter
+   * (max 3 retries), timeout and a structured log.
+   */
   http: GoogleHttp;
   signal: AbortSignal;
 }
