@@ -24,7 +24,7 @@ export function RenameForm({ accountId, label }: { accountId: string; label: str
   return (
     <form action={action} className={styles.rename}>
       <input type="hidden" name="accountId" value={accountId} />
-      <label htmlFor={inputId} className={styles.lbl}>Label</label>
+      <label htmlFor={inputId} className={styles.lbl}>Label<span className={styles.srOnly}>{` for ${label}`}</span></label>
       <div className={styles.row}>
         <input
           id={inputId}
@@ -34,12 +34,12 @@ export function RenameForm({ accountId, label }: { accountId: string; label: str
           maxLength={32}
           pattern="[a-z0-9][a-z0-9\-]{0,31}"
           title="Lowercase letters, digits and hyphens, starting with a letter or digit"
-          autoComplete="off"
+          autoComplete="off" spellCheck={false}
           aria-describedby={`${inputId}-msg`}
           aria-invalid={state.status === 'error' || undefined}
           className={styles.input}
         />
-        <button type="submit" className={styles.btn} disabled={pending}>Save label</button>
+        <button type="submit" className={styles.btn} disabled={pending} aria-label={`Save label for ${label}`}>Save label</button>
       </div>
       <Message id={`${inputId}-msg`} state={state} />
     </form>
@@ -60,15 +60,15 @@ export function OrgClientForm({
       {id ? <input type="hidden" name="id" value={id} /> : null}
       <label htmlFor={`${p}-label`} className={styles.lbl}>Label</label>
       <input id={`${p}-label`} name="label" defaultValue={defaults.label} required maxLength={32}
-        pattern="[a-z0-9][a-z0-9\-]{0,31}" autoComplete="off" className={styles.input} />
+        pattern="[a-z0-9][a-z0-9\-]{0,31}" autoComplete="off" spellCheck={false} className={styles.input} />
       <label htmlFor={`${p}-domain`} className={styles.lbl}>Workspace domain</label>
       <input id={`${p}-domain`} name="workspaceDomain" defaultValue={defaults.workspaceDomain} required
-        placeholder="example.com" autoComplete="off" className={styles.input} />
+        placeholder="example.com…" autoComplete="off" spellCheck={false} className={styles.input} />
       <label htmlFor={`${p}-cid`} className={styles.lbl}>Client ID</label>
-      <input id={`${p}-cid`} name="clientId" defaultValue={defaults.clientId} required autoComplete="off"
+      <input id={`${p}-cid`} name="clientId" defaultValue={defaults.clientId} required autoComplete="off" spellCheck={false}
         className={`${styles.input} ${styles.mono}`} />
       <label htmlFor={`${p}-secret`} className={styles.lbl}>Client secret</label>
-      <input id={`${p}-secret`} name="clientSecret" type="password" autoComplete="off"
+      <input id={`${p}-secret`} name="clientSecret" type="password" autoComplete="off" spellCheck={false}
         required={!id} aria-describedby={`${p}-secret-help`} className={`${styles.input} ${styles.mono}`} />
       <p id={`${p}-secret-help`} className={styles.muted}>
         {id ? 'Leave blank to keep the stored secret. It is never displayed.' : 'Stored encrypted. It is never displayed again.'}

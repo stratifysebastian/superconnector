@@ -192,6 +192,10 @@ describe('page rendering', () => {
     expect(html).toContain('Signed in as admin@stratify.example');
     expect(html).toContain('/api/auth/signout');
     expect(html).toContain('aria-label="Move prime up"');
+    expect(html).toContain('aria-label="Reconnect prime"');
+    expect(html).toContain('aria-label="Connect an account for prime"');
+    expect(html).toContain('aria-label="Save label for prime"');
+    expect(html).toContain('for prime</span>');
     expect(html).toContain('type="password"');
     expect(html).toContain('fake-client-id-prime'); // client ID is fine to show
     expect(html).toContain('scope="col"');

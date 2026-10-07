@@ -2,7 +2,7 @@
   --bg: #ffffff; --fg: #1a1c20; --muted: #4f545c; --card: #f5f6f8; --line: #c9cdd4;
   --link: #0b57d0; --on-link: #ffffff; --focus: #0b57d0;
   --ok-bg: #dff3e6; --ok-fg: #0b4d21; --warn-bg: #fde6d2; --warn-fg: #7a3300; --err-bg: #fbdcdc; --err-fg: #8a1111;
-  max-width: 68rem; margin: 0 auto; padding: 1rem; background: var(--bg); color: var(--fg);
+  max-width: 68rem; margin: 0 auto; padding: 1rem; color: var(--fg);
   font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; min-height: 100vh;
 }
 @media (prefers-color-scheme: dark) {
@@ -25,7 +25,7 @@
 
 .btn, .btnPrimary {
   display: inline-block; font: inherit; padding: 0.45rem 0.8rem; border-radius: 6px; cursor: pointer;
-  min-height: 2.5rem; text-decoration: none; text-align: center; box-sizing: border-box;
+  min-height: 2.75rem; text-decoration: none; text-align: center; box-sizing: border-box;
 }
 .btn { background: transparent; color: var(--link); border: 1px solid var(--link); }
 .page a.btnPrimary, .btnPrimary { background: var(--link); color: var(--on-link); border: 1px solid var(--link); font-weight: 600; }
@@ -42,7 +42,7 @@
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 .table thead th { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; }
-.num { font-weight: 600; }
+.num { font-weight: 600; font-variant-numeric: tabular-nums; }
 .badgeOk, .badgeWarn { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; }
 .badgeOk { background: var(--ok-bg); color: var(--ok-fg); }
 .badgeWarn { background: var(--warn-bg); color: var(--warn-fg); }
@@ -54,7 +54,7 @@
 
 .lbl { display: block; font-weight: 600; font-size: 0.9rem; margin: 0.6rem 0 0.2rem; }
 .input {
-  display: block; width: 100%; box-sizing: border-box; font: inherit; padding: 0.45rem 0.6rem; min-height: 2.5rem;
+  display: block; width: 100%; box-sizing: border-box; font: inherit; padding: 0.45rem 0.6rem; min-height: 2.75rem;
   background: var(--bg); color: var(--fg); border: 1px solid var(--muted); border-radius: 6px;
 }
 .row { display: flex; gap: 0.4rem; align-items: stretch; }
@@ -83,3 +83,7 @@
   .table td[data-label]::before { content: attr(data-label) ': '; color: var(--muted); font-weight: 600; }
   .num::before { content: 'Priority '; color: var(--muted); }
 }
+
+.btn:hover:not(:disabled) { background: color-mix(in srgb, var(--link) 14%, transparent); }
+.page a.btnPrimary:hover, .btnPrimary:hover:not(:disabled) { background: color-mix(in srgb, var(--link) 82%, var(--fg)); }
+.page a:not(.btn):not(.btnPrimary):hover { text-decoration-thickness: 2px; }
