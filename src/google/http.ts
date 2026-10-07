@@ -151,6 +151,16 @@ export function createGoogleHttp(opts: GoogleHttpOptions): GoogleHttp {
           (res.status === 403 && reasons.some((r) => r === 'rateLimitExceeded' || r === 'userRateLimitExceeded'));
         const serverError = res.status >= 500;
 
+        if (serverError && !rateLimited && req.method !== 'GET' && req.method !== 'PUT') {
+          return fail(
+            new ProviderError(
+              'upstream_error',
+              'Google returned a server error; the change may or may not have been applied — check before retrying',
+              res.status,
+            ),
+          );
+        }
+
         if (rateLimited || serverError) {
           if (retries >= MAX_RETRIES) {
             return rateLimited

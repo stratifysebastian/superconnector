@@ -143,6 +143,25 @@ describe('createGoogleHttp', () => {
     expect(s5.calls).toHaveLength(4);
   });
 
+  it('does not retry 5xx for POST or PATCH, but does for GET and PUT', async () => {
+    for (const method of ['POST', 'PATCH'] as const) {
+      const s = setup([res(500), res(200)]);
+      const err = await kindOf(s.http.json({ method, url: URL_OK, body: {} }));
+      expect(err.kind).toBe('upstream_error');
+      expect(err.message).toContain('may or may not have been applied');
+      expect(s.calls).toHaveLength(1);
+    }
+    const g = setup([res(500), res(500), res(500), res(500)]);
+    expect((await kindOf(g.http.json(get))).kind).toBe('upstream_error');
+    expect(g.calls).toHaveLength(4);
+    const p = setup([res(503), res(200, { ok: 1 })]);
+    await p.http.json({ method: 'PUT', url: URL_OK, body: {} });
+    expect(p.calls).toHaveLength(2);
+    const r = setup([res(429), res(200, {})]);
+    await r.http.json({ method: 'POST', url: URL_OK, body: {} });
+    expect(r.calls).toHaveLength(2);
+  });
+
   it('produces timeout when the request hangs', async () => {
     const fetchImpl = ((_u: string, init: RequestInit) =>
       new Promise((_r, reject) => {
