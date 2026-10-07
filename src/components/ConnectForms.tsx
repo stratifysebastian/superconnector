@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { renameAccountForm, saveOrgClientForm, type FormState } from '@/app/connect/form-actions';
+import { renameAccountForm, revokeAllForm, saveOrgClientForm, type FormState } from '@/app/connect/form-actions';
 import styles from './connect.module.css';
 
 const idle: FormState = { status: 'idle' };
@@ -75,6 +75,20 @@ export function OrgClientForm({
       </p>
       <button type="submit" className={styles.btnPrimary} disabled={pending}>{id ? 'Save changes' : 'Add org client'}</button>
       <Message id={`${p}-msg`} state={state} />
+    </form>
+  );
+}
+
+export function RevokeAllForm() {
+  const [state, action, pending] = useActionState(revokeAllForm, idle);
+  return (
+    <form action={action} className={styles.form}>
+      <label htmlFor="revoke-confirm" className={styles.check}>
+        <input id="revoke-confirm" name="confirm" type="checkbox" required className={styles.checkbox} />
+        <span>I understand Claude will need to reconnect</span>
+      </label>
+      <button type="submit" className={styles.btnDanger} disabled={pending}>Revoke all Claude access</button>
+      <Message id="revoke-msg" state={state} />
     </form>
   );
 }

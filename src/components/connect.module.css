@@ -87,3 +87,12 @@
 .btn:hover:not(:disabled) { background: color-mix(in srgb, var(--link) 14%, transparent); }
 .page a.btnPrimary:hover, .btnPrimary:hover:not(:disabled) { background: color-mix(in srgb, var(--link) 82%, var(--fg)); }
 .page a:not(.btn):not(.btnPrimary):hover { text-decoration-thickness: 2px; }
+
+.check { display: flex; gap: 0.6rem; align-items: center; min-height: 2.75rem; cursor: pointer; }
+.checkbox { width: 1.5rem; height: 1.5rem; flex: none; accent-color: var(--err-fg); cursor: pointer; }
+.btnDanger {
+  display: inline-block; font: inherit; padding: 0.45rem 0.8rem; border-radius: 6px; cursor: pointer; min-height: 2.75rem;
+  box-sizing: border-box; font-weight: 600; background: transparent; color: var(--err-fg); border: 2px solid var(--err-fg);
+}
+.btnDanger:hover:not(:disabled) { background: var(--err-bg); }
+.btnDanger:disabled { cursor: not-allowed; color: var(--muted); border-color: var(--line); }

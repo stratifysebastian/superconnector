@@ -84,3 +84,28 @@ async function markNeedsReconnect(ctx: ServerContext, id: string): Promise<void>
     // best effort
   }
 }
+
+export const CLIENT_MAX_AGE_MS = 30 * 24 * 3600 * 1000;
+
+export type CleanupSummary =
+  | { codes: number; states: number; tokens: number; clients: number }
+  | { error: 'failed' };
+
+export interface MaintenanceSummary extends HealthSummary {
+  cleanup: CleanupSummary;
+}
+
+/** Health check, then OAuth housekeeping. A cleanup failure never hides the health results. */
+export async function runDailyMaintenance(ctx: ServerContext): Promise<MaintenanceSummary> {
+  const health = await runHealthCheck(ctx);
+  let cleanup: CleanupSummary;
+  try {
+    const c = await ctx.store.oauth.purgeExpired(Date.now(), CLIENT_MAX_AGE_MS);
+    cleanup = { codes: c.codes, states: c.states, tokens: c.tokens, clients: c.clients };
+    ctx.log.info({ tool: 'cleanup', outcome: 'ok', msg: 'oauth cleanup', ...cleanup });
+  } catch {
+    cleanup = { error: 'failed' };
+    ctx.log.error({ tool: 'cleanup', outcome: 'error', msg: 'oauth cleanup failed' });
+  }
+  return { ...health, cleanup };
+}

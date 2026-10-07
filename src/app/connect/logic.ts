@@ -9,11 +9,13 @@ export interface Session {
 }
 export type Result = { ok: true } | { ok: false; error: string };
 
+export type RevokeResult = { ok: true; count: number } | { ok: false; error: string };
+
 export const LABEL_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
 const DOMAIN_PATTERN = /^(?=.{3,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
 
-const UNAUTHORISED: Result = { ok: false, error: 'Unauthorised: sign in again.' };
-const fail = (error: string): Result => ({ ok: false, error });
+const UNAUTHORISED = { ok: false as const, error: 'Unauthorised: sign in again.' };
+const fail = (error: string) => ({ ok: false as const, error });
 
 export function isValidLabel(s: string): boolean {
   return LABEL_PATTERN.test(s);
@@ -61,6 +63,33 @@ export async function renameAccount(
     return fail('Could not rename the account.');
   }
   return { ok: true };
+}
+
+/** Kill switch: revokes every token issued to MCP clients. Requires the explicit confirmation. */
+export async function revokeAllAccess(
+  ctx: ServerContext,
+  session: Session | null,
+  input: { confirmed: boolean },
+): Promise<RevokeResult> {
+  if (!session) return UNAUTHORISED;
+  if (!input.confirmed) return fail('Tick the confirmation box to revoke all Claude access.');
+  let count: number;
+  try {
+    count = await ctx.store.oauth.revokeAllTokens();
+  } catch {
+    try {
+      await ctx.store.audit.write({ tool: 'revoke_all', account: 'all', outcome: 'error' });
+    } catch {
+      // best effort
+    }
+    return fail('Could not revoke tokens.');
+  }
+  try {
+    await ctx.store.audit.write({ tool: 'revoke_all', account: 'all', outcome: 'ok', detail: `revoked ${count}` });
+  } catch {
+    // the revoke already happened; do not report failure
+  }
+  return { ok: true, count };
 }
 
 export interface OrgClientInput {

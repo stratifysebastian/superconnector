@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getAdminSession } from '@/auth/session';
 import { getServerContext, type ServerContext } from '@/server/context';
 import * as logic from './logic';
-import type { OrgClientInput, Result } from './logic';
+import type { OrgClientInput, Result, RevokeResult } from './logic';
 
 async function run(fn: (ctx: ServerContext, s: logic.Session | null) => Promise<Result>): Promise<Result> {
   const session = await getAdminSession();
@@ -24,4 +24,12 @@ export async function renameAccount(input: { accountId: string; label: string })
 
 export async function saveOrgClient(input: OrgClientInput): Promise<Result> {
   return run((ctx, s) => logic.saveOrgClient(ctx, s, input));
+}
+
+export async function revokeAllAccess(input: { confirmed: boolean }): Promise<RevokeResult> {
+  const session = await getAdminSession();
+  if (!session) return { ok: false, error: 'Unauthorised: sign in again.' };
+  const result = await logic.revokeAllAccess(await getServerContext(), session, input);
+  if (result.ok) revalidatePath('/connect');
+  return result;
 }
