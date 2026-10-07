@@ -29,7 +29,9 @@ export interface Store {
   };
   oauth: {
     createClient(c: { redirectUris: string[]; clientName?: string }): Promise<{ clientId: string }>;
-    getClient(clientId: string): Promise<{ clientId: string; redirectUris: string[] } | null>;
+    /** Null for unknown or malformed ids (never throws on a bad id). */
+    getClient(clientId: string): Promise<{ clientId: string; redirectUris: string[]; clientName?: string } | null>;
+    countClients(): Promise<number>;
     saveCode(c: {
       codeHash: string;
       clientId: string;
@@ -64,6 +66,13 @@ export interface Store {
     revokeFamily(familyId: string): Promise<void>;
     /** Compare-and-set: revokes one token if it is not already revoked. Returns true only for the caller that flipped it (refresh rotation is race-safe). */
     revokeToken(tokenHash: string): Promise<boolean>;
+    /** Kill switch: revokes every issued access and refresh token. Returns how many were newly revoked. */
+    revokeAllTokens(): Promise<number>;
+    /**
+     * Housekeeping: deletes expired codes, states and tokens (revoked-but-unexpired refresh tokens are kept
+     * for reuse detection), and clients older than `clientMaxAgeMs` that have no tokens left.
+     */
+    purgeExpired(now: number, clientMaxAgeMs: number): Promise<{ codes: number; states: number; tokens: number; clients: number }>;
     saveState(stateHash: string, data: { orgClientId: string; accountId?: string; expiresAt: number }): Promise<void>;
     consumeState(stateHash: string): Promise<{ orgClientId: string; accountId?: string; expiresAt: number } | null>;
   };

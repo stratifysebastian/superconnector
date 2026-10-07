@@ -59,7 +59,7 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
   const orgs = new Map<string, OrgRow>();
   const accounts = new Map<string, Account>();
   const tokens = new Map<string, TokenRow>();
-  const clients = new Map<string, { clientId: string; redirectUris: string[]; clientName?: string }>();
+  const registrations = new Map<string, { clientId: string; redirectUris: string[]; clientName?: string; createdAt: number }>();
   const codes = new Map<string, CodeRow>();
   const oauthTokens = new Map<string, OAuthTokenRow>();
   const states = new Map<string, StateRow>();
@@ -180,15 +180,19 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
     oauth: {
       async createClient(c) {
         const clientId = randomUUID();
-        clients.set(clientId, { clientId, redirectUris: [...c.redirectUris], clientName: c.clientName });
+        registrations.set(clientId, { clientId, redirectUris: [...c.redirectUris], clientName: c.clientName, createdAt: Date.now() });
         return { clientId };
       },
       async getClient(clientId) {
-        const c = clients.get(clientId);
-        return c ? { clientId: c.clientId, redirectUris: [...c.redirectUris] } : null;
+        const c = registrations.get(clientId);
+        if (!c) return null;
+        return { clientId: c.clientId, redirectUris: [...c.redirectUris], ...(c.clientName ? { clientName: c.clientName } : {}) };
+      },
+      async countClients() {
+        return registrations.size;
       },
       async saveCode(c) {
-        if (!clients.has(c.clientId)) throw new Error('Unknown OAuth client');
+        if (!registrations.has(c.clientId)) throw new Error('Unknown OAuth client');
         const { codeHash, ...row } = c;
         codes.set(codeHash, row);
       },
@@ -199,7 +203,7 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         return r.expiresAt > Date.now() ? r : null;
       },
       async saveToken(t) {
-        if (!clients.has(t.clientId)) throw new Error('Unknown OAuth client');
+        if (!registrations.has(t.clientId)) throw new Error('Unknown OAuth client');
         const { tokenHash, ...row } = t;
         oauthTokens.set(tokenHash, { ...row, revoked: false });
       },
@@ -215,6 +219,26 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         if (!r || r.revoked) return false;
         r.revoked = true;
         return true;
+      },
+      async revokeAllTokens() {
+        let n = 0;
+        for (const r of oauthTokens.values()) if (!r.revoked) { r.revoked = true; n++; }
+        return n;
+      },
+      async purgeExpired(now, clientMaxAgeMs) {
+        const out = { codes: 0, states: 0, tokens: 0, registrations: 0 };
+        for (const [k, r] of codes) if (r.expiresAt <= now) { codes.delete(k); out.codes++; }
+        for (const [k, r] of states) if (r.expiresAt <= now) { states.delete(k); out.states++; }
+        for (const [k, r] of oauthTokens) if (r.expiresAt <= now) { oauthTokens.delete(k); out.tokens++; }
+        const inUse = new Set([...oauthTokens.values()].map((r) => r.clientId));
+        for (const [k, c] of registrations) {
+          if (c.createdAt <= now - clientMaxAgeMs && !inUse.has(k)) {
+            registrations.delete(k);
+            for (const [ck, cr] of codes) if (cr.clientId === k) codes.delete(ck);
+            out.registrations++;
+          }
+        }
+        return out;
       },
       async saveState(stateHash, data) {
         if (!orgs.has(data.orgClientId)) throw new Error('Unknown org client');

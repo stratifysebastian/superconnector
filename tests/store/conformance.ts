@@ -216,7 +216,7 @@ export function runStoreConformance(name: string, makeStore: () => StoreHarness)
 
       it('creates and finds clients', async () => {
         const { clientId } = await s.oauth.createClient({ redirectUris: ['https://app.test/cb'], clientName: 'n' });
-        expect(await s.oauth.getClient(clientId)).toEqual({ clientId, redirectUris: ['https://app.test/cb'] });
+        expect(await s.oauth.getClient(clientId)).toEqual({ clientId, redirectUris: ['https://app.test/cb'], clientName: 'n' });
         expect(await s.oauth.getClient('00000000-0000-4000-8000-000000000000')).toBeNull();
       });
 
@@ -297,6 +297,40 @@ export function runStoreConformance(name: string, makeStore: () => StoreHarness)
         expect((await s.oauth.findToken('h-a1'))?.revoked).toBe(true);
         expect((await s.oauth.findToken('h-a2'))?.revoked).toBe(true);
         expect((await s.oauth.findToken('h-b1'))?.revoked).toBe(false);
+      });
+
+      it('getClient returns clientName and null for malformed ids; countClients counts', async () => {
+        const before = await s.oauth.countClients();
+        const { clientId } = await s.oauth.createClient({ redirectUris: ['https://app.test/cb'], clientName: 'Claude' });
+        expect((await s.oauth.getClient(clientId))?.clientName).toBe('Claude');
+        expect(await s.oauth.getClient('not-a-uuid')).toBeNull();
+        expect(await s.oauth.countClients()).toBe(before + 1);
+      });
+
+      it('revokeAllTokens revokes every live token and reports the count', async () => {
+        const { clientId } = await s.oauth.createClient({ redirectUris: ['https://app.test/cb'] });
+        await s.oauth.saveToken({ tokenHash: 'h-k1', kind: 'access', clientId, subject: 'u', expiresAt: future(), familyId: 'fam-k1' });
+        await s.oauth.saveToken({ tokenHash: 'h-k2', kind: 'refresh', clientId, subject: 'u', expiresAt: future(), familyId: 'fam-k2' });
+        expect(await s.oauth.revokeAllTokens()).toBeGreaterThanOrEqual(2);
+        expect((await s.oauth.findToken('h-k1'))?.revoked).toBe(true);
+        expect((await s.oauth.findToken('h-k2'))?.revoked).toBe(true);
+        expect(await s.oauth.revokeAllTokens()).toBe(0);
+      });
+
+      it('purgeExpired deletes expired rows and unused old clients only', async () => {
+        const now = Date.now();
+        const { clientId: used } = await s.oauth.createClient({ redirectUris: ['https://app.test/cb'] });
+        const { clientId: idle } = await s.oauth.createClient({ redirectUris: ['https://app.test/cb'] });
+        await s.oauth.saveToken({ tokenHash: 'h-p-live', kind: 'refresh', clientId: used, subject: 'u', expiresAt: now + 60_000, familyId: 'fam-p' });
+        await s.oauth.saveToken({ tokenHash: 'h-p-old', kind: 'access', clientId: used, subject: 'u', expiresAt: now - 1, familyId: 'fam-p' });
+        await s.oauth.saveCode({ codeHash: 'c-p-old', clientId: used, redirectUri: 'https://app.test/cb', codeChallenge: 'x', subject: 'u', expiresAt: now - 1 });
+        const r = await s.oauth.purgeExpired(now + 1, 0);
+        expect(r.tokens).toBeGreaterThanOrEqual(1);
+        expect(r.codes).toBeGreaterThanOrEqual(1);
+        expect(await s.oauth.findToken('h-p-old')).toBeNull();
+        expect(await s.oauth.findToken('h-p-live')).not.toBeNull();
+        expect(await s.oauth.getClient(used)).not.toBeNull();
+        expect(await s.oauth.getClient(idle)).toBeNull();
       });
 
       it('revokeToken is compare-and-set: only one concurrent caller wins', async () => {

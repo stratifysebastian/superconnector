@@ -5,6 +5,8 @@ import type { OrgClient, Store } from '../core/contracts/store';
 import { accountFromRow, accountToInsertRow, isoToMs, msToIso, type AccountRow } from './mapping';
 import { assertLabel, assertSameIdSet, isStratify, truncateDetail, uniqueLabel } from './shared';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Throws a plain error (message only, never row data) if the PostgREST call failed. */
 function ok<T>(res: { data: T | null; error: { message: string } | null }, what: string): T {
   if (res.error) throw new Error(`Store ${what} failed: ${res.error.message}`);
@@ -197,11 +199,19 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
         return { clientId: r.id };
       },
       async getClient(clientId) {
+        // oauth_clients.id is a uuid: a malformed id would make Postgres throw, so treat it as unknown.
+        if (!UUID_RE.test(clientId)) return null;
         const r = ok(
-          await db.from('oauth_clients').select('id,redirect_uris').eq('id', clientId).maybeSingle(),
+          await db.from('oauth_clients').select('id,redirect_uris,client_name').eq('id', clientId).maybeSingle(),
           'oauth.getClient',
-        ) as { id: string; redirect_uris: string[] } | null;
-        return r ? { clientId: r.id, redirectUris: r.redirect_uris } : null;
+        ) as { id: string; redirect_uris: string[]; client_name: string | null } | null;
+        if (!r) return null;
+        return { clientId: r.id, redirectUris: r.redirect_uris, ...(r.client_name ? { clientName: r.client_name } : {}) };
+      },
+      async countClients() {
+        const res = await db.from('oauth_clients').select('id', { count: 'exact', head: true });
+        if (res.error) throw new Error('Store error in oauth.countClients');
+        return res.count ?? 0;
       },
       async saveCode(c) {
         ok(
@@ -283,6 +293,38 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
           'oauth.revokeToken',
         );
         return Array.isArray(rows) && rows.length === 1;
+      },
+      async revokeAllTokens() {
+        const rows = ok(
+          await db.from('oauth_tokens').update({ revoked: true }).eq('revoked', false).select('id'),
+          'oauth.revokeAllTokens',
+        );
+        return Array.isArray(rows) ? rows.length : 0;
+      },
+      async purgeExpired(now, clientMaxAgeMs) {
+        const nowIso = msToIso(now);
+        const del = async (table: string) => {
+          const rows = ok(await db.from(table).delete().lte('expires_at', nowIso).select('id'), `oauth.purge.${table}`);
+          return Array.isArray(rows) ? rows.length : 0;
+        };
+        const out = { codes: await del('oauth_codes'), states: await del('oauth_state'), tokens: await del('oauth_tokens'), clients: 0 };
+        const old = ok(
+          await db.from('oauth_clients').select('id').lte('created_at', msToIso(now - clientMaxAgeMs)),
+          'oauth.purge.clients',
+        ) as { id: string }[] | null;
+        if (old && old.length) {
+          const used = ok(
+            await db.from('oauth_tokens').select('client_id').in('client_id', old.map((c) => c.id)),
+            'oauth.purge.used',
+          ) as { client_id: string }[] | null;
+          const usedSet = new Set((used ?? []).map((u) => u.client_id));
+          const stale = old.map((c) => c.id).filter((id) => !usedSet.has(id));
+          if (stale.length) {
+            const rows = ok(await db.from('oauth_clients').delete().in('id', stale).select('id'), 'oauth.purge.clientsDelete');
+            out.clients = Array.isArray(rows) ? rows.length : 0;
+          }
+        }
+        return out;
       },
       async saveState(stateHash, data) {
         ok(
