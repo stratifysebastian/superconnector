@@ -56,6 +56,8 @@ export function createTokenManager(deps: TokenManagerDeps): TokenManager {
           client_id: org.clientId,
           client_secret: org.clientSecret,
         }).toString(),
+        signal: AbortSignal.timeout(10_000),
+        redirect: 'error',
       });
     } catch {
       log?.error({ msg: 'token refresh network error', account: account.label, outcome: 'error' });

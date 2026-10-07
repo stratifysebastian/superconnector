@@ -16,7 +16,7 @@ export const GOOGLE_CLIENT_ID = 'fake-admin-client-id.apps.example.test';
 export function testEnv(over: Record<string, string | undefined> = {}): Env {
   return parseEnv({
     GOOGLE_MODE: 'live',
-    STORE: 'memory',
+    STORE: 'supabase', // live requires it; makeCtx injects a memory store
     ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'),
     SESSION_SECRET,
     CURSOR_SECRET: 'test-cursor-secret-0123456789abcdef0123',
@@ -26,7 +26,7 @@ export function testEnv(over: Record<string, string | undefined> = {}): Env {
     SUPABASE_URL: 'https://fake.supabase.example.test',
     SUPABASE_SERVICE_ROLE_KEY: 'fake-service-role',
     PUBLIC_BASE_URL: BASE,
-    CRON_SECRET: 'fake-cron',
+    CRON_SECRET: 'fake-cron-secret-0123456789abcdef0123',
     ...over,
   });
 }

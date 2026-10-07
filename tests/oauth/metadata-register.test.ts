@@ -16,6 +16,7 @@ describe('metadata', () => {
       code_challenge_methods_supported: ['S256'],
       token_endpoint_auth_methods_supported: ['none'],
       scopes_supported: ['mcp'],
+      authorization_response_iss_parameter_supported: true,
     });
   });
 
@@ -89,5 +90,18 @@ describe('dynamic client registration', () => {
     expect((await handleRegister(ctx, post('{not json'))).status).toBe(400);
     const big = await handleRegister(ctx, post({ redirect_uris: ['https://claude.ai/cb'], client_name: 'x'.repeat(11_000) }));
     expect(big.status).toBe(413);
+  });
+});
+
+describe('client registration cap', () => {
+  it('refuses with 400 invalid_client_metadata at 200 clients, accepts at 199', async () => {
+    const { ctx, store } = await makeCtx();
+    for (let i = 0; i < 199; i++) await store.oauth.createClient({ redirectUris: ['https://claude.ai/cb'] });
+    expect((await handleRegister(ctx, post({ redirect_uris: ['https://claude.ai/cb'] }))).status).toBe(201);
+    expect(await store.oauth.countClients()).toBe(200);
+    const res = await handleRegister(ctx, post({ redirect_uris: ['https://claude.ai/cb'] }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'invalid_client_metadata', error_description: 'Client registration limit reached' });
+    expect(await store.oauth.countClients()).toBe(200);
   });
 });

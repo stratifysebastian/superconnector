@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 const base64Key32 = z.string().refine(
@@ -5,6 +6,17 @@ const base64Key32 = z.string().refine(
   { message: 'must be base64 that decodes to exactly 32 bytes' },
 );
 const secret32 = z.string().min(32, { message: 'must be at least 32 characters' });
+const httpsOrigin = z.string().refine(
+  (v) => {
+    try {
+      const u = new URL(v);
+      return u.protocol === 'https:' && v === u.origin;
+    } catch {
+      return false;
+    }
+  },
+  { message: 'must be an https origin with no path, query or trailing slash' },
+);
 const nonEmpty = z.string().min(1, { message: 'is required' });
 
 const emailList = z
@@ -45,7 +57,7 @@ function buildSchema(live: boolean) {
   const req = <T extends z.ZodTypeAny>(s: T) => (live ? s : s.optional());
   return z.object({
     GOOGLE_MODE: mode,
-    STORE: store,
+    STORE: live ? z.literal('supabase', { message: 'must be supabase in live mode' }) : store,
     ENCRYPTION_KEY: req(base64Key32),
     SESSION_SECRET: req(secret32),
     CURSOR_SECRET: req(secret32),
@@ -54,17 +66,26 @@ function buildSchema(live: boolean) {
     ADMIN_GOOGLE_CLIENT_SECRET: req(nonEmpty),
     SUPABASE_URL: req(z.string().url()),
     SUPABASE_SERVICE_ROLE_KEY: req(nonEmpty),
-    PUBLIC_BASE_URL: req(z.string().url()),
-    CRON_SECRET: req(nonEmpty),
+    PUBLIC_BASE_URL: live ? httpsOrigin : z.string().url().optional(),
+    CRON_SECRET: live ? secret32 : nonEmpty.optional(),
   });
 }
 
 export function parseEnv(source: Record<string, string | undefined>): Env {
-  const modeResult = mode.safeParse(raw(source, 'GOOGLE_MODE') ?? 'mock');
+  const rawMode = raw(source, 'GOOGLE_MODE');
+  const deployed = raw(source, 'VERCEL_ENV') !== undefined || raw(source, 'NODE_ENV') === 'production';
+  // Fail closed: a deployed or production-built process must choose its mode explicitly.
+  if (rawMode === undefined && deployed) {
+    throw new Error('Invalid environment: GOOGLE_MODE must be set explicitly when VERCEL_ENV is set or NODE_ENV is production');
+  }
+  const modeResult = mode.safeParse(rawMode ?? 'mock');
   if (!modeResult.success) {
     throw new Error('Invalid environment: GOOGLE_MODE must be "mock" or "live"');
   }
   const googleMode = modeResult.data;
+  if (googleMode === 'mock' && raw(source, 'VERCEL_ENV') === 'production') {
+    throw new Error('Invalid environment: GOOGLE_MODE=mock is not allowed when VERCEL_ENV is production');
+  }
   const live = googleMode === 'live';
   const keys = [
     'ENCRYPTION_KEY',
@@ -97,8 +118,21 @@ let cached: Env | undefined;
 
 /** Lazy: reads process.env on first call, never at import time. */
 export function getEnv(): Env {
-  cached ??= parseEnv(process.env);
+  cached ??= withMockSecrets(parseEnv(process.env));
   return cached;
+}
+
+/**
+ * Mock mode may run without secrets. Instead of a constant (which would be public in the repo),
+ * fill the gaps with random per-call values. Live mode never gets here with a gap.
+ */
+export function withMockSecrets(env: Env): Env {
+  if (env.GOOGLE_MODE !== 'mock') return env;
+  return {
+    ...env,
+    SESSION_SECRET: env.SESSION_SECRET ?? randomBytes(32).toString('base64url'),
+    CURSOR_SECRET: env.CURSOR_SECRET ?? randomBytes(32).toString('base64url'),
+  };
 }
 
 /** For tests. */

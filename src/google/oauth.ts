@@ -4,14 +4,12 @@ import { createHash } from 'node:crypto';
 import { decodeJwt } from 'jose';
 import type { OrgClient, Store } from '@/core/contracts/store';
 import { ALL_SCOPES } from '@/core/products';
+import { deriveKeyString } from '@/auth/keys';
 import { hashToken, hmacSign, randomToken } from '@/lib/crypto';
 
 export const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 export const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 export const STATE_TTL_MS = 10 * 60 * 1000;
-
-/** Used only when SESSION_SECRET is unset (mock mode). Live env validation requires SESSION_SECRET. */
-const MOCK_PKCE_SECRET = 'mock-pkce-secret-not-for-production-use';
 
 export type OAuthOrgClient = Pick<OrgClient, 'clientId' | 'workspaceDomain'>;
 
@@ -27,8 +25,9 @@ export class GoogleOAuthError extends Error {
 }
 
 /** PKCE verifier derived from the state, so nothing needs storing. */
-export function derivePkceVerifier(state: string, sessionSecret?: string): string {
-  return hmacSign(sessionSecret ?? MOCK_PKCE_SECRET, `google-pkce:${state}`);
+export function derivePkceVerifier(state: string, sessionSecret: string | undefined): string {
+  if (!sessionSecret) throw new Error('A session secret is required to derive the PKCE verifier');
+  return hmacSign(deriveKeyString(sessionSecret, 'google-pkce'), `google-pkce:${state}`);
 }
 
 export function pkceChallenge(verifier: string): string {
@@ -67,7 +66,7 @@ export async function startGoogleAuth(p: {
   accountId?: string;
   loginHint?: string;
   redirectUri: string;
-  sessionSecret?: string;
+  sessionSecret: string;
   now?: () => number;
 }): Promise<string> {
   const state = randomToken();
@@ -115,6 +114,8 @@ export async function exchangeCode(p: {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
+      signal: AbortSignal.timeout(10_000),
+      redirect: 'error',
     });
   } catch {
     throw new GoogleOAuthError('Could not reach Google token endpoint', 'exchange_failed');

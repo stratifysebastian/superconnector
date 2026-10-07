@@ -153,3 +153,60 @@ describe('POST /authorize', () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe('RFC 9207 iss parameter', () => {
+  it('is on every redirect: validation error, deny and approve', async () => {
+    const s = await setup();
+    const bad = await handleAuthorizeGet(s.ctx, get(`/authorize?${authorizeQuery(s.client.clientId, s.challenge, { response_type: 'token' })}`, s.cookie));
+    expect(new URL(bad.headers.get('location') as string).searchParams.get('iss')).toBe(BASE);
+    for (const decision of ['deny', 'approve']) {
+      const page = await handleAuthorizeGet(s.ctx, get(`/authorize?${authorizeQuery(s.client.clientId, s.challenge)}`, s.cookie));
+      const f = hiddenFields(await page.text());
+      f.set('decision', decision);
+      const res = await handleAuthorizePost(s.ctx, form('/authorize', f, s.cookie));
+      const loc = new URL(res.headers.get('location') as string);
+      expect(loc.searchParams.get('iss'), decision).toBe(BASE);
+      expect(loc.searchParams.get('state')).toBe('st-123');
+    }
+  });
+
+  it('is on a POST validation error redirect too', async () => {
+    const s = await setup();
+    const page = await handleAuthorizeGet(s.ctx, get(`/authorize?${authorizeQuery(s.client.clientId, s.challenge)}`, s.cookie));
+    const f = hiddenFields(await page.text());
+    f.set('response_type', 'token');
+    const res = await handleAuthorizePost(s.ctx, form('/authorize', f, s.cookie));
+    expect(new URL(res.headers.get('location') as string).searchParams.get('iss')).toBe(BASE);
+  });
+});
+
+describe('consent page client identity', () => {
+  async function page(redirectUri: string, clientName?: string) {
+    const m = await makeCtx();
+    const client = await m.ctx.store.oauth.createClient({ redirectUris: [redirectUri], ...(clientName ? { clientName } : {}) });
+    const { challenge } = pkce();
+    const res = await handleAuthorizeGet(m.ctx, get(`/authorize?${authorizeQuery(client.clientId, challenge, { redirect_uri: redirectUri })}`, await sessionCookie()));
+    expect(res.status).toBe(200);
+    return res.text();
+  }
+
+  it('shows the full redirect URI, not just the host', async () => {
+    const html = await page('https://claude.ai/some/other/path?x=1&y=2', 'Claude');
+    expect(html).toContain('https://claude.ai/some/other/path?x=1&amp;y=2');
+  });
+
+  it('labels the name unverified unless the URI is exactly a known Claude callback', async () => {
+    for (const uri of ['https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback']) {
+      expect(await page(uri, 'Claude')).not.toContain('self-declared, unverified');
+    }
+    for (const uri of ['https://claude.ai/other', 'http://localhost:6274/cb', 'https://claude.com/api/mcp/auth_callback2']) {
+      expect(await page(uri, 'Claude')).toContain('Claude (self-declared, unverified)');
+    }
+  });
+
+  it('escapes a hostile client name', async () => {
+    const html = await page('http://localhost:6274/cb', '<script>alert(1)</script>');
+    expect(html).not.toContain('<script>alert');
+    expect(html).toContain('&lt;script&gt;');
+  });
+});

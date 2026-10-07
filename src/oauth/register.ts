@@ -4,6 +4,7 @@ import { readLimitedText } from './common';
 const MAX_BODY = 10 * 1024;
 const ALLOWED_HTTPS_ORIGINS = new Set(['https://claude.ai', 'https://claude.com']);
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);
+export const MAX_CLIENTS = 200;
 const GRANTS = ['authorization_code', 'refresh_token'];
 
 function err(status: number, error: string, description: string): Response {
@@ -65,6 +66,10 @@ export async function handleRegister(ctx: ServerContext, req: Request): Promise<
   if (b.client_name !== undefined) {
     if (typeof b.client_name !== 'string') return err(400, 'invalid_client_metadata', 'client_name must be a string');
     clientName = b.client_name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 100) || undefined;
+  }
+
+  if ((await ctx.store.oauth.countClients()) >= MAX_CLIENTS) {
+    return err(400, 'invalid_client_metadata', 'Client registration limit reached');
   }
 
   const { clientId } = await ctx.store.oauth.createClient({ redirectUris, clientName });

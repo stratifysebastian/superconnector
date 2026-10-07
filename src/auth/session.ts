@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { getEnv, type Env } from '@/lib/env';
+import { getServerContext } from '@/server/context';
 import { parseCookies } from './cookies';
 import { SESSION_COOKIE, verifySessionToken } from './session-token';
 
@@ -12,7 +13,7 @@ export interface AdminSession {
 export async function getAdminSession(): Promise<AdminSession | null> {
   try {
     const jar = await cookies();
-    return await verifySessionToken(jar.get(SESSION_COOKIE)?.value, getEnv());
+    return await verifySessionToken(jar.get(SESSION_COOKIE)?.value, (await getServerContext()).env);
   } catch {
     return null;
   }

@@ -14,7 +14,7 @@ const liveEnv = (): Record<string, string> => ({
   SUPABASE_URL: 'https://example.supabase.test',
   SUPABASE_SERVICE_ROLE_KEY: 'test-secret-service-role',
   PUBLIC_BASE_URL: 'https://mcp.example.test',
-  CRON_SECRET: 'test-secret-cron',
+  CRON_SECRET: 'test-secret-cron-cccccccccccccccccccc',
 });
 
 afterEach(() => {
@@ -77,6 +77,59 @@ describe('env', () => {
       expect(getEnv()).toBe(a);
       resetEnvCache();
       expect(getEnv()).not.toBe(a);
+    } finally {
+      if (prev === undefined) delete process.env.GOOGLE_MODE;
+      else process.env.GOOGLE_MODE = prev;
+    }
+  });
+});
+
+describe('env hardening', () => {
+  it('VERCEL_ENV=preview with no GOOGLE_MODE throws (fail closed)', () => {
+    expect(() => parseEnv({ VERCEL_ENV: 'preview' })).toThrow(/GOOGLE_MODE/);
+  });
+
+  it('NODE_ENV=production with no GOOGLE_MODE throws; explicit mock is fine outside Vercel production', () => {
+    expect(() => parseEnv({ NODE_ENV: 'production' })).toThrow(/GOOGLE_MODE/);
+    expect(parseEnv({ NODE_ENV: 'production', GOOGLE_MODE: 'mock' }).GOOGLE_MODE).toBe('mock');
+    expect(parseEnv({ VERCEL_ENV: 'preview', GOOGLE_MODE: 'mock' }).GOOGLE_MODE).toBe('mock');
+  });
+
+  it('VERCEL_ENV=production with mock throws, with live passes', () => {
+    expect(() => parseEnv({ VERCEL_ENV: 'production', GOOGLE_MODE: 'mock' })).toThrow(/production/);
+    expect(parseEnv({ ...liveEnv(), VERCEL_ENV: 'production' }).GOOGLE_MODE).toBe('live');
+  });
+
+  it('a short CRON_SECRET throws in live and never echoes the value', () => {
+    const e = { ...liveEnv(), CRON_SECRET: 'short-cron-value' };
+    expect(() => parseEnv(e)).toThrow(/CRON_SECRET/);
+    expect(() => parseEnv(e)).not.toThrow(/short-cron-value/);
+  });
+
+  it('PUBLIC_BASE_URL must be a bare https origin in live', () => {
+    for (const bad of [
+      'https://mcp.example.test/app',
+      'https://mcp.example.test/',
+      'https://mcp.example.test?x=1',
+      'http://mcp.example.test',
+    ]) {
+      expect(() => parseEnv({ ...liveEnv(), PUBLIC_BASE_URL: bad })).toThrow(/PUBLIC_BASE_URL/);
+    }
+  });
+
+  it('STORE must be supabase in live', () => {
+    expect(() => parseEnv({ ...liveEnv(), STORE: 'memory' })).toThrow(/STORE/);
+    expect(parseEnv({ ...liveEnv(), STORE: 'supabase' }).STORE).toBe('supabase');
+  });
+
+  it('getEnv fills missing mock secrets with random values, stable within the process', () => {
+    const prev = process.env.GOOGLE_MODE;
+    process.env.GOOGLE_MODE = 'mock';
+    try {
+      const a = getEnv();
+      expect(a.SESSION_SECRET).toBeTruthy();
+      expect(a.SESSION_SECRET).not.toBe(a.CURSOR_SECRET);
+      expect(getEnv().SESSION_SECRET).toBe(a.SESSION_SECRET);
     } finally {
       if (prev === undefined) delete process.env.GOOGLE_MODE;
       else process.env.GOOGLE_MODE = prev;
