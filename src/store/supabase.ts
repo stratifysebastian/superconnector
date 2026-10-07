@@ -271,6 +271,19 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
       async revokeFamily(familyId) {
         ok(await db.from('oauth_tokens').update({ revoked: true }).eq('family_id', familyId), 'oauth.revokeFamily');
       },
+      async revokeToken(tokenHash) {
+        // Conditional update: only the caller that flips revoked false -> true gets a row back.
+        const rows = ok(
+          await db
+            .from('oauth_tokens')
+            .update({ revoked: true })
+            .eq('token_hash', tokenHash)
+            .eq('revoked', false)
+            .select('id'),
+          'oauth.revokeToken',
+        );
+        return Array.isArray(rows) && rows.length === 1;
+      },
       async saveState(stateHash, data) {
         ok(
           await db.from('oauth_state').insert({

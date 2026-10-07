@@ -62,6 +62,8 @@ export interface Store {
       revoked: boolean;
     } | null>;
     revokeFamily(familyId: string): Promise<void>;
+    /** Compare-and-set: revokes one token if it is not already revoked. Returns true only for the caller that flipped it (refresh rotation is race-safe). */
+    revokeToken(tokenHash: string): Promise<boolean>;
     saveState(stateHash: string, data: { orgClientId: string; accountId?: string; expiresAt: number }): Promise<void>;
     consumeState(stateHash: string): Promise<{ orgClientId: string; accountId?: string; expiresAt: number } | null>;
   };

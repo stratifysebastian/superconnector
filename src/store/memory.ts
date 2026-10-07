@@ -210,6 +210,12 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
       async revokeFamily(familyId) {
         for (const r of oauthTokens.values()) if (r.familyId === familyId) r.revoked = true;
       },
+      async revokeToken(tokenHash) {
+        const r = oauthTokens.get(tokenHash);
+        if (!r || r.revoked) return false;
+        r.revoked = true;
+        return true;
+      },
       async saveState(stateHash, data) {
         if (!orgs.has(data.orgClientId)) throw new Error('Unknown org client');
         if (data.accountId !== undefined && !accounts.has(data.accountId)) throw new Error('Unknown account');

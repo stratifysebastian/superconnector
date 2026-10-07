@@ -298,6 +298,18 @@ export function runStoreConformance(name: string, makeStore: () => StoreHarness)
         expect((await s.oauth.findToken('h-a2'))?.revoked).toBe(true);
         expect((await s.oauth.findToken('h-b1'))?.revoked).toBe(false);
       });
+
+      it('revokeToken is compare-and-set: only one concurrent caller wins', async () => {
+        const { clientId } = await s.oauth.createClient({ redirectUris: ['https://app.test/cb'] });
+        await s.oauth.saveToken({ tokenHash: 'h-r1', kind: 'refresh', clientId, subject: 'u', expiresAt: future(), familyId: 'fam-r' });
+        await s.oauth.saveToken({ tokenHash: 'h-r2', kind: 'refresh', clientId, subject: 'u', expiresAt: future(), familyId: 'fam-r' });
+        const results = await Promise.all([s.oauth.revokeToken('h-r1'), s.oauth.revokeToken('h-r1')]);
+        expect(results.filter(Boolean)).toHaveLength(1);
+        expect((await s.oauth.findToken('h-r1'))?.revoked).toBe(true);
+        expect((await s.oauth.findToken('h-r2'))?.revoked).toBe(false);
+        expect(await s.oauth.revokeToken('h-r1')).toBe(false);
+        expect(await s.oauth.revokeToken('unknown')).toBe(false);
+      });
     });
 
     describe('audit', () => {
