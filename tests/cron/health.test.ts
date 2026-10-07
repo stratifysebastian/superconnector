@@ -138,3 +138,21 @@ describe('GET /api/cron/health handler', () => {
     expect(res.status).toBe(503);
   });
 });
+
+describe('runHealthCheck refresh behaviour', () => {
+  it('force-refreshes every active account so the refresh token is exercised', async () => {
+    const calls: Array<{ label: string; force?: boolean }> = [];
+    const tokens: TokenManager = {
+      async getAccessToken(a, opts) {
+        calls.push({ label: a.label, force: opts?.forceRefresh });
+        return 'fake-access-token';
+      },
+    };
+    const { ctx } = await setup(tokens);
+    await runHealthCheck(ctx);
+    expect(calls).toEqual([
+      { label: 'stratify', force: true },
+      { label: 'prime', force: true },
+    ]);
+  });
+});

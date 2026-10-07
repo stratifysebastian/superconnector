@@ -18,11 +18,8 @@ export interface HealthSummary {
   results: HealthResult[];
 }
 
-export async function runHealthCheck(
-  ctx: ServerContext,
-  opts: { force?: boolean } = {},
-): Promise<HealthSummary> {
-  void opts; // Reserved: TokenManager has no force-refresh option yet.
+/** Force-refreshes every active account's access token so a dead refresh token is caught daily. */
+export async function runHealthCheck(ctx: ServerContext): Promise<HealthSummary> {
   const accounts = await ctx.store.accounts.list();
   const results: HealthResult[] = [];
 
@@ -41,7 +38,7 @@ export async function runHealthCheck(
     const started = Date.now();
     let result: HealthResult;
     try {
-      await ctx.tokens.getAccessToken(account);
+      await ctx.tokens.getAccessToken(account, { forceRefresh: true });
       result = { label: account.label, status: 'ok' };
     } catch (e) {
       if (e instanceof ProviderError) {
