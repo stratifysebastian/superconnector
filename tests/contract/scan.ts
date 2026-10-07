@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
-import { ALLOWLIST, BANNED_PATTERNS } from './excluded';
+import { ALLOWED_LITERALS, ALLOWLIST, BANNED_PATTERNS, type BannedPattern } from './excluded';
 
 export interface Violation {
   file: string;
@@ -9,7 +9,7 @@ export interface Violation {
   text: string;
 }
 
-const EXTENSIONS = ['.ts', '.tsx', '.js', '.mjs'];
+const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts'];
 const SKIP_DIRS = new Set(['node_modules', '.next', '.claude']);
 
 function walk(dir: string, out: string[]): void {
@@ -21,9 +21,15 @@ function walk(dir: string, out: string[]): void {
   }
 }
 
-/** Undo trivial string splitting so `'/messages/' + 'send'` and `${'send'}` match like the plain literal. */
+const JOIN_OF_LITERALS = /\[((?:\s*(['"`])[^'"`\n]*\2\s*,?)+)\s*\]\s*\.\s*join\(\s*(['"`])([^'"`\n]*)\3\s*\)/g;
+
+/** Undo trivial string building so `'/messages/' + 'send'`, `${'send'}` and `['a','b'].join('/')` match like the plain literal. */
 export function normalise(src: string): string {
   return src
+    .replace(JOIN_OF_LITERALS, (_m, items: string, _q: string, _q2: string, sep: string) => {
+      const parts = [...items.matchAll(/(['"`])([^'"`\n]*)\1/g)].map((x) => x[2] ?? '');
+      return `'${parts.join(sep)}'`;
+    })
     .replace(/\$\{\s*(['"`])([^'"`]*)\1\s*\}/g, '$2')
     .replace(/(['"`])\s*\+\s*(['"`])/g, '')
     .replace(/(['"`])\s*\.concat\(\s*(['"`])/g, '');
@@ -35,13 +41,34 @@ function lineOf(text: string, index: number): number {
   return line;
 }
 
-function scanText(file: string, content: string): Violation[] {
+function applies(p: BannedPattern, file: string): boolean {
+  if (p.onlyFiles) return p.onlyFiles.includes(file);
+  if ((ALLOWLIST[p.id] ?? []).includes(file)) return false;
+  if (p.onlyUnder && !p.onlyUnder.some((d) => file.startsWith(d))) return false;
+  if (p.skipUnder?.some((d) => file.startsWith(d))) return false;
+  if (p.skipFiles?.includes(file)) return false;
+  return true;
+}
+
+/** Remove the exact literals a file may contain for this pattern; anything else in the file still matches. */
+function stripAllowed(patternId: string, file: string, content: string): string {
+  let out = content;
+  for (const lit of ALLOWED_LITERALS[patternId]?.[file] ?? []) {
+    // An allowed string must be the whole literal: `.../token` is allowed, `.../tokeninfo` or `.../token/x` is not.
+    const re =
+      typeof lit === 'string' ? new RegExp(`${lit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w/.%-])`, 'g') : lit;
+    out = out.replace(re, "''");
+  }
+  return out;
+}
+
+function scanText(file: string, source: string): Violation[] {
   const found: Violation[] = [];
-  const lines = content.split(/\r?\n/);
-  const norm = normalise(content);
   for (const p of BANNED_PATTERNS) {
-    const skip = p.onlyFiles ? !p.onlyFiles.includes(file) : (ALLOWLIST[p.id] ?? []).includes(file);
-    if (skip) continue;
+    if (!applies(p, file)) continue;
+    const content = stripAllowed(p.id, file, source);
+    const lines = content.split(/\r?\n/);
+    const norm = normalise(content);
     const seen = new Set<string>();
     // Pass 1: line by line on the raw source.
     const lineRe = new RegExp(p.regex.source, p.regex.flags.replace('g', ''));
