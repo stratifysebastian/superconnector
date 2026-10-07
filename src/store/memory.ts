@@ -91,6 +91,9 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
       },
       async upsert(c) {
         const id = c.id ?? randomUUID();
+        if ([...orgs.values()].some((o) => o.id !== id && o.label === c.label)) {
+          throw new Error('Org client label already in use');
+        }
         orgs.set(id, {
           id,
           label: c.label,
@@ -108,11 +111,13 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
       async upsertOnConnect(a) {
         const existing = [...accounts.values()].find((x) => x.provider === a.provider && x.email === a.email);
         if (existing) {
-          existing.grantedScopes = [...a.grantedScopes];
+          if (!orgs.has(a.orgClientId)) throw new Error('Unknown org client');
+        existing.grantedScopes = [...a.grantedScopes];
           existing.orgClientId = a.orgClientId;
           existing.status = 'active';
           return copy(existing);
         }
+        if (!orgs.has(a.orgClientId)) throw new Error('Unknown org client');
         const label = uniqueLabel(a.label, new Set([...accounts.values()].map((x) => x.label)));
         let priority = 0;
         if (isStratify(a.label)) {
@@ -183,6 +188,7 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         return c ? { clientId: c.clientId, redirectUris: [...c.redirectUris] } : null;
       },
       async saveCode(c) {
+        if (!clients.has(c.clientId)) throw new Error('Unknown OAuth client');
         const { codeHash, ...row } = c;
         codes.set(codeHash, row);
       },
@@ -193,6 +199,7 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         return r.expiresAt > Date.now() ? r : null;
       },
       async saveToken(t) {
+        if (!clients.has(t.clientId)) throw new Error('Unknown OAuth client');
         const { tokenHash, ...row } = t;
         oauthTokens.set(tokenHash, { ...row, revoked: false });
       },
@@ -204,6 +211,8 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         for (const r of oauthTokens.values()) if (r.familyId === familyId) r.revoked = true;
       },
       async saveState(stateHash, data) {
+        if (!orgs.has(data.orgClientId)) throw new Error('Unknown org client');
+        if (data.accountId !== undefined && !accounts.has(data.accountId)) throw new Error('Unknown account');
         states.set(stateHash, { ...data });
       },
       async consumeState(stateHash) {

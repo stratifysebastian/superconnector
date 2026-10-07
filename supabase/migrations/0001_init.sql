@@ -13,7 +13,7 @@
 
 create table google_org_clients (
   id uuid primary key default gen_random_uuid(),
-  label text not null,
+  label text not null unique,
   client_id text not null,
   client_secret_enc text not null,
   workspace_domain text not null,

@@ -57,6 +57,12 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
       },
       async upsert(c) {
         const id = c.id ?? randomUUID();
+        const clash = ok(
+          await db.from('google_org_clients').select('id').eq('label', c.label).neq('id', id).limit(1),
+          'orgClients.upsert',
+        ) as { id: string }[];
+        if (clash.length > 0) throw new Error('Org client label already in use');
+        // The unique constraint remains the backstop for concurrent writes.
         ok(
           await db.from('google_org_clients').upsert({
             id,

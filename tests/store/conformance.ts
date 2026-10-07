@@ -57,6 +57,43 @@ export function runStoreConformance(name: string, makeStore: () => StoreHarness)
       });
     });
 
+    describe('foreign keys and uniqueness', () => {
+      const missing = '00000000-0000-4000-8000-000000000000';
+      const soon = () => Date.now() + 60_000;
+
+      it('org client labels are unique', async () => {
+        const base = { clientId: 'c', clientSecret: 's', workspaceDomain: 'd' };
+        await expect(s.orgClients.upsert({ ...base, label: 'prime' })).rejects.toThrow();
+        const other = await s.orgClients.upsert({ ...base, label: 'other' });
+        await expect(s.orgClients.upsert({ ...base, id: other, label: 'prime' })).rejects.toThrow();
+        // same id, same label: update in place
+        await s.orgClients.upsert({ ...base, id: org, label: 'prime', clientId: 'changed' });
+        expect(await s.orgClients.list()).toHaveLength(2);
+        expect((await s.orgClients.get(org))?.clientId).toBe('changed');
+      });
+
+      it('rejects unknown oauth client ids', async () => {
+        await expect(
+          s.oauth.saveCode({ codeHash: 'h1', clientId: missing, redirectUri: 'r', codeChallenge: 'c', subject: 'u', expiresAt: soon() }),
+        ).rejects.toThrow();
+        await expect(
+          s.oauth.saveToken({ tokenHash: 'h2', kind: 'access', clientId: missing, subject: 'u', expiresAt: soon(), familyId: 'f' }),
+        ).rejects.toThrow();
+      });
+
+      it('rejects unknown org clients in saveState and upsertOnConnect', async () => {
+        await expect(s.oauth.saveState('h3', { orgClientId: missing, expiresAt: soon() })).rejects.toThrow();
+        await expect(
+          s.accounts.upsertOnConnect({ provider: 'google', email: 'n@x.test', label: 'n', orgClientId: missing, grantedScopes: [] }),
+        ).rejects.toThrow();
+        await connect('prime', 'a@x.test');
+        await expect(
+          s.accounts.upsertOnConnect({ provider: 'google', email: 'a@x.test', label: 'prime', orgClientId: missing, grantedScopes: [] }),
+        ).rejects.toThrow();
+        expect(await s.accounts.list()).toHaveLength(1);
+      });
+    });
+
     describe('accounts', () => {
       it('appends in connection order and lists by priority', async () => {
         const a = await connect('prime', 'a@x.test');
