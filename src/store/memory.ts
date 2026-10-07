@@ -226,7 +226,7 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         return n;
       },
       async purgeExpired(now, clientMaxAgeMs) {
-        const out = { codes: 0, states: 0, tokens: 0, registrations: 0 };
+        const out = { codes: 0, states: 0, tokens: 0, clients: 0 };
         for (const [k, r] of codes) if (r.expiresAt <= now) { codes.delete(k); out.codes++; }
         for (const [k, r] of states) if (r.expiresAt <= now) { states.delete(k); out.states++; }
         for (const [k, r] of oauthTokens) if (r.expiresAt <= now) { oauthTokens.delete(k); out.tokens++; }
@@ -235,7 +235,7 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
           if (c.createdAt <= now - clientMaxAgeMs && !inUse.has(k)) {
             registrations.delete(k);
             for (const [ck, cr] of codes) if (cr.clientId === k) codes.delete(ck);
-            out.registrations++;
+            out.clients++;
           }
         }
         return out;
