@@ -13,6 +13,8 @@ interface Seed {
 }
 
 const VIOLATIONS: Seed[] = [
+  { name: 'rules injected into createGoogleHttp', id: 'rules-injection', code: 'const http = createGoogleHttp({ getAccessToken, rules: MY_RULES });' },
+  { name: 'rules shorthand injected', id: 'rules-injection', code: 'createGoogleHttp({\n  getAccessToken: async () => t,\n  rules,\n});' },
   // Gmail
   { name: 'plain messages/send', id: 'gmail-send', code: "await http.post('/gmail/v1/users/me/messages/send', body);" },
   { name: 'template literal messages/send', id: 'gmail-send', code: 'const url = `${base}/messages/send`;' },

@@ -200,6 +200,12 @@ export const BANNED_PATTERNS: readonly BannedPattern[] = [
   { id: 'drive-transfer-ownership', description: 'Drive transferOwnership', regex: /\btransferOwnership\b/ },
 
   // ---- Generic
+  {
+    id: 'rules-injection',
+    description: 'a `rules` option passed to createGoogleHttp under src/ (only tests may inject endpoint rules)',
+    regex: /\bcreateGoogleHttp\s*\([\s\S]{0,800}?\brules\b\s*[:,}]/,
+    onlyUnder: ['src/'],
+  },
   { id: 'delete-verb', description: "the string 'DELETE' / \"DELETE\" / `DELETE`", regex: /(['"`])DELETE\1/ },
   { id: 'delete-method', description: 'method: DELETE in any case (may span lines)', regex: /\bmethod["'`]?\s*[:=]\s*['"`]delete['"`]/i },
   {
