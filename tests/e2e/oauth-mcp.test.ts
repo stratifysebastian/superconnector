@@ -2,7 +2,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { createSessionToken, SESSION_COOKIE } from '@/auth/session-token';
 import { createCipher } from '@/lib/crypto';
 import { parseEnv, type Env } from '@/lib/env';
@@ -14,15 +14,6 @@ import { handleToken } from '@/oauth/token';
 import { createServerContext, type ServerContext } from '@/server/context';
 import { createMemoryStore } from '@/store/memory';
 import { assertNoExcludedTools } from '../contract/excluded';
-
-// handleMcpRequest's default verifier (verifyBearer) reads the process-wide getServerContext() singleton
-// rather than deps.ctx (see the it.fails test at the bottom). To keep real bearer verification without
-// injecting `verify`, point that singleton at the context under test.
-const singleton = vi.hoisted(() => ({ current: undefined as unknown }));
-vi.mock('@/server/context', async (orig) => ({
-  ...(await orig<typeof import('@/server/context')>()),
-  getServerContext: async () => singleton.current,
-}));
 
 const BASE = 'https://mcp.e2e.example.test';
 const ADMIN = 'admin@e2e.example.test';
@@ -45,9 +36,7 @@ const quiet = { info: () => undefined, warn: () => undefined, error: () => undef
 async function makeCtx(adminEmails = ADMIN): Promise<ServerContext> {
   const env = mockEnv(adminEmails);
   const store = createMemoryStore(createCipher(Buffer.alloc(32, 5).toString('base64')));
-  const ctx = await createServerContext({ env, store, log: quiet });
-  singleton.current = ctx;
-  return ctx;
+  return createServerContext({ env, store, log: quiet });
 }
 
 interface Tokens {
@@ -250,7 +239,6 @@ describe('OAuth 2.1 + MCP end to end (mock mode)', () => {
       log: quiet,
       seedMock: false,
     });
-    singleton.current = reduced;
     expect((await rawMcp(reduced, { Authorization: `Bearer ${s.tokens.access_token}` })).status).toBe(401);
   });
 
@@ -263,11 +251,7 @@ describe('OAuth 2.1 + MCP end to end (mock mode)', () => {
     expect(accounts[1]).toMatchObject({ label: 'prime', status: 'needs_reconnect', reconnectUrl: `${BASE}/connect` });
   });
 
-  // TODO(bug): handleMcpRequest(req, { ctx }) verifies the bearer via verifyBearer(), which calls the global
-  // getServerContext() instead of deps.ctx. With an explicit ctx whose store holds the token, but a different
-  // process singleton, a valid token is rejected. Fix: default verify to verifyBearerWithContext(ctx, req).
-  it.fails('verifies the bearer against deps.ctx, not the process singleton', async () => {
-    singleton.current = await makeCtx('other-admin@e2e.example.test'); // unrelated singleton
+  it('verifies the bearer against deps.ctx, not a process-wide singleton', async () => {
     const res = await rawMcp(ctx, { Authorization: `Bearer ${s.tokens.access_token}` });
     expect(res.status).toBe(200);
   });

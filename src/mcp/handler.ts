@@ -1,5 +1,5 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { verifyBearer } from '@/oauth/bearer';
+import { verifyBearer, verifyBearerWithContext } from '@/oauth/bearer';
 import { getServerContext, type ServerContext } from '@/server/context';
 import { buildServer, type AnyToolDef } from './registry';
 
@@ -20,7 +20,7 @@ export function methodNotAllowed(): Response {
 export async function handleMcpRequest(req: Request, deps: McpDeps = {}): Promise<Response> {
   if (req.method !== 'POST') return methodNotAllowed();
   const ctx = deps.ctx ?? (await getServerContext());
-  const identity = await (deps.verify ?? verifyBearer)(req);
+  const identity = await (deps.verify ?? ((r: Request) => verifyBearerWithContext(ctx, r)))(req);
   if (!identity) {
     return json(
       401,
