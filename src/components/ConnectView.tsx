@@ -1,6 +1,6 @@
 import type { AccountView, ConnectData, Flash, OrgClientView } from '@/app/connect/logic';
 import { moveAccountForm } from '@/app/connect/form-actions';
-import { OrgClientForm, RenameForm } from './ConnectForms';
+import { OrgClientForm, RenameForm, RevokeAllForm } from './ConnectForms';
 import styles from './connect.module.css';
 
 const enc = encodeURIComponent;
@@ -129,6 +129,15 @@ export function ConnectView({ data, flash }: { data: ConnectData; flash: Flash[]
       <section aria-labelledby="add-h">
         <h2 id="add-h">Add an org client</h2>
         <OrgClientForm defaults={{ label: '', workspaceDomain: '', clientId: '' }} />
+      </section>
+
+      <section aria-labelledby="access-h">
+        <h2 id="access-h">Claude access</h2>
+        <p className={styles.muted}>
+          Revokes every token issued to Claude (and any other MCP client). Claude will need to reconnect the connector. Your Google accounts stay connected.
+        </p>
+        <RevokeAllForm />
+        <p className={styles.muted}>To also sign out every browser session, rotate SESSION_SECRET in Vercel (see the runbook).</p>
       </section>
     </main>
   );

@@ -19,7 +19,8 @@ vi.mock('next/navigation', () => ({
   },
 }));
 
-import { renameAccount, reorderAccounts, saveOrgClient } from '@/app/connect/actions';
+import { renameAccount, reorderAccounts, revokeAllAccess, saveOrgClient } from '@/app/connect/actions';
+import { revokeAllForm } from '@/app/connect/form-actions';
 import { parseFlash } from '@/app/connect/logic';
 import ConnectPage from '@/app/connect/page';
 
@@ -222,5 +223,58 @@ describe('page rendering', () => {
     expect(html).not.toContain('alert(1)');
     expect(html).not.toContain('<img>');
     expect(html).toContain('Something went wrong while connecting');
+  });
+});
+
+describe('revokeAllAccess', () => {
+  async function seed() {
+    const { clientId } = await ctx.store.oauth.createClient({ redirectUris: ['https://app.test/cb'] });
+    const exp = Date.now() + 3_600_000;
+    for (const [h, kind, fam] of [
+      ['fake-a1', 'access', 'fam-1'], ['fake-r1', 'refresh', 'fam-1'],
+      ['fake-a2', 'access', 'fam-2'], ['fake-r2', 'refresh', 'fam-2'],
+    ] as const) {
+      await ctx.store.oauth.saveToken({ tokenHash: h, kind, clientId, subject: 'u', expiresAt: exp, familyId: fam });
+    }
+  }
+  const allRevoked = async () =>
+    Promise.all(['fake-a1', 'fake-r1', 'fake-a2', 'fake-r2'].map(async (h) => (await ctx.store.oauth.findToken(h))!.revoked));
+  const auditRows = async () => (ctx.store as unknown as { _dump(): { audit: Array<Record<string, unknown>> } })._dump().audit;
+
+  it('rejects without a session and revokes nothing', async () => {
+    await seed();
+    state.session = null;
+    expect(await revokeAllAccess({ confirmed: true })).toEqual({ ok: false, error: expect.stringMatching(/unauthorised/i) });
+    expect(await allRevoked()).toEqual([false, false, false, false]);
+    expect(await auditRows()).toEqual([]);
+  });
+
+  it('rejects without the confirmation', async () => {
+    await seed();
+    const r = await revokeAllAccess({ confirmed: false });
+    expect(r.ok).toBe(false);
+    const f = new FormData();
+    expect(await revokeAllForm({ status: 'idle' }, f)).toMatchObject({ status: 'error' });
+    expect(await allRevoked()).toEqual([false, false, false, false]);
+  });
+
+  it('revokes every token family and writes the audit entry', async () => {
+    await seed();
+    const f = new FormData();
+    f.set('confirm', 'on');
+    const out = await revokeAllForm({ status: 'idle' }, f);
+    expect(out).toEqual({ status: 'ok', message: 'Revoked 4 tokens' });
+    expect(await allRevoked()).toEqual([true, true, true, true]);
+    expect(await auditRows()).toEqual([
+      expect.objectContaining({ tool: 'revoke_all', account: 'all', outcome: 'ok', detail: 'revoked 4' }),
+    ]);
+  });
+
+  it('renders the section, checkbox label and button', async () => {
+    const html = renderToString(await ConnectPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain('Claude access');
+    expect(html).toContain('I understand Claude will need to reconnect');
+    expect(html).toContain('Revoke all Claude access');
+    expect(html).toContain('rotate SESSION_SECRET in Vercel');
   });
 });

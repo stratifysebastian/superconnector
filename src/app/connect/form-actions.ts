@@ -1,6 +1,6 @@
 'use server';
 // FormData adapters for the page's forms. They only call the plain actions.
-import { renameAccount, reorderAccounts, saveOrgClient } from './actions';
+import { renameAccount, revokeAllAccess, reorderAccounts, saveOrgClient } from './actions';
 
 export interface FormState {
   status: 'idle' | 'ok' | 'error';
@@ -33,4 +33,11 @@ export async function saveOrgClientForm(_prev: FormState, data: FormData): Promi
   });
   // Never return the submitted secret.
   return r.ok ? { status: 'ok', message: 'Org client saved.' } : { status: 'error', message: r.error };
+}
+
+export async function revokeAllForm(_prev: FormState, data: FormData): Promise<FormState> {
+  const r = await revokeAllAccess({ confirmed: data.get('confirm') === 'on' });
+  return r.ok
+    ? { status: 'ok', message: `Revoked ${r.count} ${r.count === 1 ? 'token' : 'tokens'}` }
+    : { status: 'error', message: r.error };
 }

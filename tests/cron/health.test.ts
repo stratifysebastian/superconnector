@@ -4,7 +4,7 @@ import type { Account } from '@/core/contracts/account';
 import type { LogEvent } from '@/core/contracts/tool';
 import { ProviderError } from '@/core/errors';
 import { handleHealthRequest } from '@/cron/handler';
-import { runHealthCheck } from '@/cron/health';
+import { runDailyMaintenance, runHealthCheck } from '@/cron/health';
 import type { TokenManager } from '@/google/token-manager';
 import { createCipher } from '@/lib/crypto';
 import { parseEnv } from '@/lib/env';
@@ -154,5 +154,39 @@ describe('runHealthCheck refresh behaviour', () => {
       { label: 'stratify', force: true },
       { label: 'prime', force: true },
     ]);
+  });
+});
+
+describe('daily maintenance cleanup', () => {
+  it('adds purge counts to the summary and logs one line', async () => {
+    const { ctx, store, logs } = await setup(healthy, SECRET);
+    const { clientId } = await store.oauth.createClient({ redirectUris: ['https://app.test/cb'] });
+    await store.oauth.saveToken({ tokenHash: 'fake-old', kind: 'access', clientId, subject: 'u', expiresAt: Date.now() - 1000, familyId: 'f' });
+    const res = await handleHealthRequest(
+      new Request('http://localhost/api/cron/health', { headers: { authorization: `Bearer ${SECRET}` } }),
+      ctx,
+    );
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.cleanup).toEqual({ codes: 0, states: 0, tokens: 1, clients: 0 });
+    expect(logs.filter((l) => l.tool === 'cleanup')).toHaveLength(1);
+    expect(await store.oauth.findToken('fake-old')).toBeNull();
+  });
+
+  it('a purge failure still returns 200 with health results and cleanup.error', async () => {
+    const { ctx, store } = await setup(healthy, SECRET);
+    store.oauth.purgeExpired = async () => {
+      throw new Error('db down fake-secret-detail');
+    };
+    const res = await handleHealthRequest(
+      new Request('http://localhost/api/cron/health', { headers: { authorization: `Bearer ${SECRET}` } }),
+      ctx,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results.map((r: { status: string }) => r.status)).toEqual(['ok', 'ok']);
+    expect(body.cleanup).toEqual({ error: 'failed' });
+    expect(JSON.stringify(body)).not.toContain('fake-secret-detail');
+    expect((await runDailyMaintenance(ctx)).cleanup).toEqual({ error: 'failed' });
   });
 });
