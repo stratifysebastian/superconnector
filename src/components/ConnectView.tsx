@@ -24,7 +24,7 @@ function AccountRow({ a, last }: { a: AccountView; last: boolean }) {
       </td>
       <td data-label="Actions">
         <div className={styles.actions}>
-          <a href={reconnect} className={needs ? styles.btnPrimary : styles.btn}>Reconnect</a>
+          <a href={reconnect} aria-label={`Reconnect ${a.label}`} className={needs ? styles.btnPrimary : styles.btn}>Reconnect</a>
           <form action={moveAccountForm} className={styles.inline}>
             <input type="hidden" name="accountId" value={a.id} />
             <input type="hidden" name="direction" value="up" />
@@ -54,7 +54,7 @@ function OrgCard({ o }: { o: OrgClientView }) {
         <dt>Client secret</dt>
         <dd>Stored encrypted (never shown)</dd>
       </dl>
-      <a href={`/api/google/connect?org=${enc(o.id)}`} className={styles.btnPrimary}>Connect an account</a>
+      <a href={`/api/google/connect?org=${enc(o.id)}`} aria-label={`Connect an account for ${o.label}`} className={styles.btnPrimary}>Connect an account</a>
       <details className={styles.details}>
         <summary>{`Edit ${o.label}`}</summary>
         <OrgClientForm id={o.id} defaults={{ label: o.label, workspaceDomain: o.workspaceDomain, clientId: o.clientId }} />
