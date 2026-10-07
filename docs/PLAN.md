@@ -6,7 +6,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 
 | Phase | Status |
 | --- | --- |
-| 0 Foundation | ⬜ plan awaiting approval |
+| 0 Foundation | 🟦 plan approved 2026-10-07; building |
 | 1 Calendar | ⬜ |
 | 2 Gmail | ⬜ |
 | 3 Drive | ⬜ |
@@ -263,10 +263,10 @@ Each phase follows the same pattern:
 7. Stop for live verification.
 
 Known items to raise when each phase starts (not decided here):
-- **Phase 1:** the built-in `search_events` is semantic search on the primary calendar; the Calendar API only offers keyword `q`. **Deviation to confirm.**
+- **Phase 1:** the built-in `search_events` is semantic search on the primary calendar; the Calendar API only offers keyword `q`. **Accepted deviation** (Seb, 2026-10-07).
 - **Phase 1:** the built-in uses `notificationLevel`. We force `NONE` / `sendUpdates=none` and reject `attendees`, `attendeeEmails`, `addedAttendees`, `addedAttendeeEmails`, `removedAttendeeEmails` and `guestPermissions`.
-- **Phase 1:** open question on updates to events with other guests.
-- **Phase 2:** the built-in `apply_sensitive_*_label` takes `TRASH` or `SPAM`. The spec includes "apply sensitive labels" but excludes trash. **Needs Seb's call.** Label tools must also refuse adding the `TRASH` label and removing it (untrash).
+- **Phase 1:** events with other guests: blocked; the tool tells Seb what change is needed (see §7).
+- **Phase 2:** the built-in `apply_sensitive_*_label` takes `TRASH` or `SPAM`. The spec includes "apply sensitive labels" but excludes trash. Seb: "fine" (2026-10-07). Read as: include the tools, SPAM allowed, TRASH still blocked per the spec's exclusion; confirm at Phase 2 start. Label tools must also refuse adding the `TRASH` label and removing it (untrash).
 - **Phase 2:** open question on `create_filter`.
 - **Phases 1–3:** return shapes. Input schemas are visible to me but output shapes are not. Ask Seb before guessing; one option is to call a read-only built-in tool once with his permission and record the shape.
 - **Phases 4–6:** the Docs, Sheets and Slides built-in connectors aren't connected in this session, so I can't see their schemas. Seb will need to connect them or paste the tool list before those phases.
@@ -281,12 +281,17 @@ Known items to raise when each phase starts (not decided here):
 6. No secrets in the repo, including test fixtures (use obviously fake values).
 7. Every write is logged to `audit_log` (tool, account, target id, outcome) and never fans out.
 
-## 7. Open questions (from the spec), and when they get asked
+## 7. Decisions on design calls
+
+- ADR-6 separate admin sign-in client: **approved** (Seb, 2026-10-07).
+- ADR-8 OAuth tables added to the data model: **approved** (Seb, 2026-10-07).
+
+## 8. Open questions (from the spec), and when they get asked
 
 | Question | Ask at | Answer |
 | --- | --- | --- |
 | Scopes: phase by phase, or all six products up front? | Phase 0 (connect flow) | **All six up front** (Seb, 2026-10-07). Connect requests every scope in the spec's scope table; tools still ship phase by phase. |
 | Server domain: subdomain or default Vercel URL? | Phase 0 (redirect URIs, OAuth metadata) | **`mcp.stratifysoftware.com`** (Seb, 2026-10-07). Needs a DNS CNAME to Vercel; `PUBLIC_BASE_URL=https://mcp.stratifysoftware.com`. |
 | Repo | — | `stratifysebastian/superconnector` |
-| Calendar updates on events with other guests | Phase 1 | _pending_ |
+| Calendar updates on events with other guests | Phase 1 | **Block** (Seb, 2026-10-07). `update_event` never changes an event with other guests; it returns a plain-language result telling Seb what change is needed so he can make it himself. |
 | Gmail `create_filter` | Phase 2 | _pending_ |
