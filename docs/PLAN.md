@@ -252,6 +252,19 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 | ✅ **H3** Kill switch and cleanup (from A1) | M2 "Revoke all Claude access" on /connect with confirmation and audit entry; M3 daily `purgeExpired` in the cron | `src/cron/**`, `src/app/connect/**`, `src/components/**`, their tests | Revoke and cleanup tests |
 | ✅ **T0.12** Docs | `README.md`, `docs/RUNBOOK.md` (env vars, deploy, rotating `ENCRYPTION_KEY`, reconnecting an account, reading logs), `docs/GOOGLE_CLOUD_SETUP.md` (the spec's 7 per-org steps, expanded with exact console clicks and the redirect URI) | those three files | Docs review (`engineering:documentation`) |
 
+**Deploy status (2026-10-07):**
+- Branch `main` created from the spec commit; Phase 0 is in PR stratifysebastian/superconnector#1 (production deploys from `main`).
+- Vercel project `superconnector` (team sebastian-4409's projects, `prj_YWIR9dwMIDkYukJwGuQYxid7WG0a`) is linked to the repo. Domain `mcp.stratifysoftware.com` is added and verified, but the DNS CNAME is still pending.
+- Env vars set:
+  - Production: `GOOGLE_MODE=live`, `STORE=supabase`, `PUBLIC_BASE_URL`, `ENCRYPTION_KEY`, `SESSION_SECRET`, `CURSOR_SECRET` and `CRON_SECRET` (all four secrets marked sensitive).
+  - Preview: `GOOGLE_MODE=mock`, with no admin allowlist.
+- Pending:
+  - The Supabase project. MCP `create_project` timed out twice and created nothing.
+  - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+  - `ADMIN_EMAILS`, `ADMIN_GOOGLE_CLIENT_ID` and `ADMIN_GOOGLE_CLIENT_SECRET`.
+  - Merging the PR.
+  - The Vercel firewall rate limit on `/register` and `/token` (Seb approved it).
+
 **Deploy step (Phase 0 live):** needs Seb's OK at each point. Create or choose the Supabase project and apply the migration via the Supabase MCP; create the Vercel project and set env vars via the Vercel MCP; preview deploy; `engineering:deploy-checklist`; then production only with explicit approval.
 
 **Env vars (names only; values go into Vercel, never the repo):** `GOOGLE_MODE`, `ENCRYPTION_KEY`, `SESSION_SECRET`, `CURSOR_SECRET`, `ADMIN_EMAILS`, `ADMIN_GOOGLE_CLIENT_ID`, `ADMIN_GOOGLE_CLIENT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PUBLIC_BASE_URL`, `CRON_SECRET`.
