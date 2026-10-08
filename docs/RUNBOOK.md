@@ -18,7 +18,7 @@ Validation lives in `src/lib/env.ts`. In live mode a missing or malformed variab
 | `ADMIN_GOOGLE_CLIENT_ID` | Yes | Client ID of the admin sign-in client. | From Google Cloud; see `docs/GOOGLE_CLOUD_SETUP.md`. |
 | `ADMIN_GOOGLE_CLIENT_SECRET` | Yes | Its client secret. | Same. |
 | `SUPABASE_URL` | Yes | Valid URL of the Supabase project. | Supabase dashboard → Project settings → API. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key. Server only. | Same. |
+| `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`) | Yes | Supabase server key: the legacy service role key, or the newer `sb_secret_...` secret key (the Vercel Supabase integration sets `SUPABASE_SECRET_KEY`). Server only. | Same. |
 | `PUBLIC_BASE_URL` | Yes | An https origin with no path, query or trailing slash: `https://mcp.stratifysoftware.com`. | Fixed value. |
 
 In mock mode all of these are optional. Missing `SESSION_SECRET` and `CURSOR_SECRET` get random per-process values, and a throwaway encryption key is used with the in-memory store.

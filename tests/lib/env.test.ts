@@ -136,3 +136,29 @@ describe('env hardening', () => {
     }
   });
 });
+
+describe('Supabase server key aliases', () => {
+  const base = {
+    GOOGLE_MODE: 'live',
+    ENCRYPTION_KEY: Buffer.alloc(32, 1).toString('base64'),
+    SESSION_SECRET: 'test-secret-session-0123456789abcdef0123',
+    CURSOR_SECRET: 'test-secret-cursor-0123456789abcdef01234',
+    ADMIN_EMAILS: 'admin@example.test',
+    ADMIN_GOOGLE_CLIENT_ID: 'test-admin-client-id',
+    ADMIN_GOOGLE_CLIENT_SECRET: 'test-admin-client-secret',
+    SUPABASE_URL: 'https://example.supabase.co',
+    PUBLIC_BASE_URL: 'https://mcp.example.test',
+    CRON_SECRET: 'test-secret-cron-0123456789abcdef012345',
+  };
+  it('accepts SUPABASE_SECRET_KEY when SUPABASE_SERVICE_ROLE_KEY is absent', () => {
+    expect(parseEnv({ ...base, SUPABASE_SECRET_KEY: 'test-secret-sb' }).SUPABASE_SERVICE_ROLE_KEY).toBe('test-secret-sb');
+  });
+  it('prefers SUPABASE_SERVICE_ROLE_KEY when both are set', () => {
+    const env = parseEnv({ ...base, SUPABASE_SERVICE_ROLE_KEY: 'test-secret-legacy', SUPABASE_SECRET_KEY: 'test-secret-sb' });
+    expect(env.SUPABASE_SERVICE_ROLE_KEY).toBe('test-secret-legacy');
+  });
+  it('still fails in live mode when neither is set, naming the variable', () => {
+    expect(() => parseEnv(base)).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
+  });
+});
+

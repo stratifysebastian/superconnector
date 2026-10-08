@@ -104,6 +104,9 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
     STORE: raw(source, 'STORE') ?? (live ? 'supabase' : 'memory'),
   };
   for (const k of keys) input[k] = raw(source, k);
+  // Supabase's newer API keys name the server key SUPABASE_SECRET_KEY (sb_secret_...); the Vercel
+  // Supabase integration sets that name. Accept it when the legacy service-role name is absent.
+  input.SUPABASE_SERVICE_ROLE_KEY ??= raw(source, 'SUPABASE_SECRET_KEY');
 
   const result = buildSchema(live).safeParse(input);
   if (!result.success) {
