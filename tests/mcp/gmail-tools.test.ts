@@ -5,6 +5,7 @@ import type { ToolContext } from '@/core/contracts/tool';
 import { createFanOutEngine } from '@/core/fanout';
 import { GuardrailError, ProviderError } from '@/core/errors';
 import { getToolDefs, type AnyToolDef } from '@/mcp/registry';
+import { gmailTools } from '@/mcp/tools/gmail';
 import { assertNoExcludedTools } from '../contract/excluded';
 import { ENABLED_TOOL_NAMES } from '../contract/enabled';
 
@@ -73,7 +74,8 @@ describe('registry', () => {
   it('registers exactly the enabled names (21 Gmail) and no excluded tool', () => {
     const names = getToolDefs('http://x').map((d) => d.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(names.filter((n) => !['list_accounts', 'list_calendars', 'list_events', 'search_events', 'get_event', 'suggest_time', 'create_event', 'update_event'].includes(n))).toHaveLength(21);
+    expect(gmailTools()).toHaveLength(21);
+    expect(names).toEqual(expect.arrayContaining(gmailTools().map((t) => t.name)));
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 });
