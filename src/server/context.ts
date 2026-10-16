@@ -8,9 +8,11 @@ import type { Store } from '@/core/contracts/store';
 import type { Logger } from '@/core/contracts/tool';
 import { createFanOutEngine } from '@/core/fanout';
 import { createLiveCalendarAdapter } from '@/google/calendar';
+import { createLiveDriveAdapter } from '@/google/drive';
 import { createLiveGmailAdapter } from '@/google/gmail';
 import { createGoogleHttp } from '@/google/http';
 import { createMockCalendarAdapter } from '@/google/mock/calendar';
+import { createMockDriveAdapter } from '@/google/mock/drive';
 import { createMockGmailAdapter } from '@/google/mock/gmail';
 import { mockAccessToken } from '@/google/mock/token';
 import { seedMockAccounts } from '@/google/mock/seed';
@@ -76,6 +78,7 @@ export async function createServerContext(opts: CreateServerContextOptions = {})
   const adapters: AdapterFactory = {
     calendar: mock ? createMockCalendarAdapter : createLiveCalendarAdapter,
     gmail: mock ? createMockGmailAdapter : createLiveGmailAdapter,
+    drive: mock ? createMockDriveAdapter : createLiveDriveAdapter,
   };
 
   const adapterContext = (account: Account, signal: AbortSignal = new AbortController().signal): AdapterContext => ({

@@ -12,9 +12,13 @@ export interface EndpointRule {
   /** Required. An empty array means no query keys are allowed. */
   allowedQuery: string[];
   requiredQuery?: Record<string, string>;
-  /** Returns a violation reason, or null if the body is fine. */
+  /** Returns a violation reason, or null if the body is fine. For uploads this is the metadata part. */
   checkBody?: (body: unknown) => string | null;
+  /** Which GoogleHttp method may use this rule. Default 'json'; media rules must opt in. */
+  transport?: Transport;
 }
+
+export type Transport = 'json' | 'upload' | 'download';
 
 /** Already-snapshotted request. `query` values are strings; `body` is plain parsed JSON (or undefined). */
 export interface PolicyRequest {
@@ -22,6 +26,7 @@ export interface PolicyRequest {
   url: unknown;
   query?: Record<string, string>;
   body?: unknown;
+  transport?: Transport;
 }
 
 export type PolicyResult = { ok: true } | { ok: false; reason: string; rule: string };
@@ -101,8 +106,11 @@ export function checkRequest(rules: readonly EndpointRule[], req: PolicyRequest)
     if (bad) return deny('policy/bad-rule', `programming error in endpoint rule "${String(r?.id)}": ${bad}`);
   }
 
-  const rule = rules.find((r) => r.method === method && r.host === parsed.hostname && r.path.test(pathname));
-  if (!rule) return deny('no-matching-rule', `${method} ${parsed.hostname}${pathname} matches no endpoint rule`);
+  const transport = req.transport ?? 'json';
+  const rule = rules.find(
+    (r) => r.method === method && r.host === parsed.hostname && (r.transport ?? 'json') === transport && r.path.test(pathname),
+  );
+  if (!rule) return deny('no-matching-rule', `${method} ${parsed.hostname}${pathname} (${transport}) matches no endpoint rule`);
 
   const allowed = new Set([...rule.allowedQuery, ...Object.keys(rule.requiredQuery ?? {})]);
   for (const k of Object.keys(query)) {

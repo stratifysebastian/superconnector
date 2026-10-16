@@ -1,0 +1,38 @@
+{
+  "_source": "Built-in claude.ai Google Drive connector. Input schemas are taken from its tool definitions. Output shapes were observed 2026-10-16 with read-only calls (Seb approved). Field names and structure only; values below are type placeholders.",
+  "_notes": [
+    "Outputs are a flattened File shape, not raw Drive v3 resources: title (not name), owner (email string, not owners[]), parentId (first parent, not parents[]), fileSize (string; also present on Google-native files), viewUrl (= webViewLink), resourceUri.",
+    "resourceUri format: googledrive://file/<fileId>.",
+    "contentSnippet is present unless excludeContentSnippets is set. Drive v3 has no snippets; ours come from the start of a plain-text export of Google-native files (see PLAN §4d).",
+    "fileExtension is present for non-native files only.",
+    "Empty results are returned as {}.",
+    "Our tools add: account and accountEmail on every item; de-duplicated files also carry accounts[] and sources[]; plus top-level accountErrors[] and nextCursor, which replaces nextPageToken."
+  ],
+  "File": {
+    "id": "string",
+    "title": "string",
+    "mimeType": "string",
+    "fileExtension": "string? (non-native files)",
+    "fileSize": "string (bytes)",
+    "createdTime": "RFC3339",
+    "modifiedTime": "RFC3339",
+    "viewedByMeTime": "RFC3339?",
+    "owner": "email string",
+    "parentId": "string",
+    "canAddChildren": "boolean",
+    "viewUrl": "url",
+    "resourceUri": "googledrive://file/<id>",
+    "contentSnippet": "string? (unless excludeContentSnippets)"
+  },
+  "search_files": { "files": ["<File>"], "nextPageToken": "string?" },
+  "list_recent_files": { "files": ["<File>"], "nextPageToken": "string?" },
+  "get_file_metadata": "<File>",
+  "get_file_permissions": {
+    "permissions": [{ "displayName": "string", "emailAddress": "string", "role": "owner|writer|commenter|reader", "type": "user|group|domain|anyone" }]
+  },
+  "read_file_content": { "fileContent": "string", "title": "string", "viewUrl": "url" },
+  "download_file_content": { "content": "base64 string", "id": "string", "mimeType": "string (the exported type for native files, e.g. text/plain)", "title": "string" },
+  "create_file": "File (from the tool description; not observed, since creating is a write)",
+  "copy_file": "File (from the tool description; not observed)",
+  "update_file": "File (assumed; not observed)"
+}

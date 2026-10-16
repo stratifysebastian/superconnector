@@ -4,6 +4,7 @@ import type { z } from 'zod';
 import type { ToolContext, ToolDef } from '@/core/contracts/tool';
 import { AccountSelectionError, GuardrailError, ProviderError } from '@/core/errors';
 import { calendarTools } from './tools/calendar';
+import { driveTools } from './tools/drive';
 import { gmailTools } from './tools/gmail';
 import { createListAccountsTool } from './tools/list_accounts';
 
@@ -12,7 +13,7 @@ export type AnyToolDef = ToolDef<z.ZodObject<any>>;
 
 /** Every enabled tool. Excluded tools are never listed here. */
 export function getToolDefs(baseUrl: string): AnyToolDef[] {
-  return [createListAccountsTool(baseUrl), ...calendarTools(), ...gmailTools()];
+  return [createListAccountsTool(baseUrl), ...calendarTools(), ...gmailTools(), ...driveTools()];
 }
 
 function errorResult(message: string): CallToolResult {
@@ -40,9 +41,16 @@ export function buildServer(ctx: ToolContext, opts: BuildServerOptions): McpServ
         try {
           const result = await def.handler(args as never, ctx);
           done('ok');
+          // A handler may return `mcpImage` ({data: base64, mimeType}); it becomes an image block, not JSON text.
+          const { mcpImage, ...json } = result as { mcpImage?: { data: string; mimeType: string } } & Record<string, unknown>;
+          // Only png/jpeg, valid base64, at most 2,000,000 characters; anything else is dropped and the text result stays.
+          const okImage = mcpImage && /^image\/(png|jpeg)$/.test(mcpImage.mimeType) && mcpImage.data.length <= 2_000_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(mcpImage.data);
           return {
-            content: [{ type: 'text', text: JSON.stringify(result) }],
-            structuredContent: result as Record<string, unknown>,
+            content: [
+              { type: 'text', text: JSON.stringify(json) },
+              ...(okImage ? [{ type: 'image' as const, data: mcpImage.data, mimeType: mcpImage.mimeType }] : []),
+            ],
+            structuredContent: json,
           };
         } catch (e) {
           if (e instanceof AccountSelectionError || e instanceof GuardrailError) {

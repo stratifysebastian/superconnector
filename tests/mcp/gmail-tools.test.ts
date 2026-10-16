@@ -5,6 +5,7 @@ import type { ToolContext } from '@/core/contracts/tool';
 import { createFanOutEngine } from '@/core/fanout';
 import { GuardrailError, ProviderError } from '@/core/errors';
 import { getToolDefs, type AnyToolDef } from '@/mcp/registry';
+import { gmailTools } from '@/mcp/tools/gmail';
 import { assertNoExcludedTools } from '../contract/excluded';
 import { ENABLED_TOOL_NAMES } from '../contract/enabled';
 
@@ -73,7 +74,8 @@ describe('registry', () => {
   it('registers exactly the enabled names (21 Gmail) and no excluded tool', () => {
     const names = getToolDefs('http://x').map((d) => d.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(names.filter((n) => !['list_accounts', 'list_calendars', 'list_events', 'search_events', 'get_event', 'suggest_time', 'create_event', 'update_event'].includes(n))).toHaveLength(21);
+    expect(gmailTools()).toHaveLength(21);
+    expect(names).toEqual(expect.arrayContaining(gmailTools().map((t) => t.name)));
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 });
@@ -154,6 +156,12 @@ describe('writes', () => {
   it('update_draft defaults to the draft\'s account', async () => {
     expect(await call('update_draft', { draftId: 'r-5', subject: 'private' })).toMatchObject({ id: 'r-5', account: 'prime' });
     expect(fakes.prime!.updateDraft).toHaveBeenCalledWith({ draftId: 'r-5', subject: 'private' });
+  });
+
+  it('does not silently use a lower-priority account when a higher one errored', async () => {
+    (fakes.stratify!.getMessage as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new ProviderError('rate_limited', 'slow'));
+    await expect(call('label_message', { messageId: 'pm', labelIds: ['STARRED'] })).rejects.toThrow(/Which one: stratify or prime\?/);
+    expect(fakes.prime!.modifyMessage).not.toHaveBeenCalled();
   });
 
   it('label tools find the holder account and call modify', async () => {

@@ -58,7 +58,9 @@ export function writeAccount(
   find: (a: Account) => Promise<unknown | null>,
 ): Promise<Account> {
   return ctx.fanout.resolveWriteAccount(selector, async () => {
-    const { item } = await ctx.fanout.lookup(undefined, find as (a: Account) => Promise<object | null>);
+    const { item, accountErrors } = await ctx.fanout.lookup(undefined, find as (a: Account) => Promise<object | null>);
+    // An account that errored might hold the item; do not silently act on a lower-priority hit. null asks "Which one: ...?".
+    if (accountErrors.length) return null;
     const label = (item as { account?: string } | null)?.account;
     return label ? ((await ctx.store.accounts.list()).find((a) => a.label === label) ?? null) : null;
   });

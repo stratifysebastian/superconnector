@@ -83,10 +83,10 @@ const call = (name: string, args: Record<string, unknown> = {}) => {
 };
 
 describe('registry', () => {
-  it('registers exactly the 29 enabled names and no excluded tool', () => {
+  it('registers exactly the 38 enabled names and no excluded tool', () => {
     const names = getToolDefs('http://x').map((d) => d.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(ENABLED_TOOL_NAMES).toHaveLength(29);
+    expect(ENABLED_TOOL_NAMES).toHaveLength(38);
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 });
@@ -339,6 +339,11 @@ describe('update_event', () => {
     expect(fakes.prime!.patchEvent).toHaveBeenCalled();
     expect(fakes.stratify!.patchEvent).not.toHaveBeenCalled();
     expect(audit[0]).toMatchObject({ account: 'prime', outcome: 'ok' });
+  });
+  it('asks which account when an account errored while looking for the event', async () => {
+    (fakes.stratify!.getEvent as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new ProviderError('rate_limited', 'slow'));
+    await expect(call('update_event', { eventId: 'solo', location: 'Cafe' })).rejects.toThrow(/Which one: stratify or prime\?/);
+    expect(fakes.prime!.patchEvent).not.toHaveBeenCalled();
   });
   it('asks which account when the event is nowhere', async () => {
     await expect(call('update_event', { eventId: 'nope', summary: 'x' })).rejects.toThrow(/Which one/);

@@ -1,0 +1,288 @@
+{
+  "files": [
+    {
+      "id": "p-fld-projects",
+      "title": "Projects",
+      "mimeType": "application/vnd.google-apps.folder",
+      "createdTime": "2026-08-02T09:00:00Z",
+      "modifiedTime": "2026-10-01T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "modifiedByMeTime": "2026-10-01T10:00:00Z"
+    },
+    {
+      "id": "p-fld-private",
+      "title": "Private",
+      "mimeType": "application/vnd.google-apps.folder",
+      "createdTime": "2026-08-03T09:00:00Z",
+      "modifiedTime": "2026-10-02T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "modifiedByMeTime": "2026-10-02T10:00:00Z"
+    },
+    {
+      "id": "p-fld-shared",
+      "title": "Shared with partner",
+      "mimeType": "application/vnd.google-apps.folder",
+      "createdTime": "2026-08-04T09:00:00Z",
+      "modifiedTime": "2026-10-03T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "modifiedByMeTime": "2026-10-03T10:00:00Z"
+    },
+    {
+      "id": "p-doc-notes",
+      "title": "Meeting notes",
+      "mimeType": "application/vnd.google-apps.document",
+      "createdTime": "2026-08-17T09:00:00Z",
+      "modifiedTime": "2026-10-16T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "FAKE meeting notes for prime. Discuss the roadmap and budget.",
+      "viewedByMeTime": "2026-10-16T12:00:00Z",
+      "modifiedByMeTime": "2026-10-16T10:00:00Z"
+    },
+    {
+      "id": "p-sheet-budget",
+      "title": "Budget",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "createdTime": "2026-08-16T09:00:00Z",
+      "modifiedTime": "2026-10-15T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "item,amount\nrent,1000\ntools,250\n",
+      "starred": true,
+      "modifiedByMeTime": "2026-10-15T10:00:00Z"
+    },
+    {
+      "id": "p-slides-deck",
+      "title": "Pitch deck",
+      "mimeType": "application/vnd.google-apps.presentation",
+      "createdTime": "2026-08-15T09:00:00Z",
+      "modifiedTime": "2026-10-14T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "Slide 1: FAKE pitch. Slide 2: market.",
+      "modifiedByMeTime": "2026-10-14T10:00:00Z"
+    },
+    {
+      "id": "p-pdf-fake",
+      "title": "Fake report.pdf",
+      "mimeType": "application/pdf",
+      "createdTime": "2026-08-14T09:00:00Z",
+      "modifiedTime": "2026-10-13T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "contentBase64": "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAzMDAgMjAwXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQgL0YxIDE4IFRmIDIwIDEwMCBUZCAoRkFLRSBQREYgVEVYVCkgVGogRVQKZW5kc3RyZWFtCmVuZG9iago1IDAgb2JqCjw8IC9UeXBlIC9Gb250IC9TdWJ0eXBlIC9UeXBlMSAvQmFzZUZvbnQgL0hlbHZldGljYSA+PgplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAowMDAwMDAwMjQxIDAwMDAwIG4gCjAwMDAwMDAzMzUgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA2IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgo0MDUKJSVFT0YK",
+      "modifiedByMeTime": "2026-10-13T10:00:00Z"
+    },
+    {
+      "id": "p-png-fake",
+      "title": "Logo.png",
+      "mimeType": "image/png",
+      "createdTime": "2026-08-13T09:00:00Z",
+      "modifiedTime": "2026-10-12T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "contentBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "modifiedByMeTime": "2026-10-12T10:00:00Z"
+    },
+    {
+      "id": "p-docx-stub",
+      "title": "Contract.docx",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "createdTime": "2026-08-12T09:00:00Z",
+      "modifiedTime": "2026-10-11T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "contentBase64": "RkFLRSBET0NYIEJZVEVT",
+      "modifiedByMeTime": "2026-10-11T10:00:00Z"
+    },
+    {
+      "id": "p-doc-private",
+      "title": "Private diary",
+      "mimeType": "application/vnd.google-apps.document",
+      "createdTime": "2026-08-11T09:00:00Z",
+      "modifiedTime": "2026-10-10T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-private",
+      "text": "FAKE private diary entry.",
+      "modifiedByMeTime": "2026-10-10T10:00:00Z"
+    },
+    {
+      "id": "p-doc-shared",
+      "title": "Partner plan",
+      "mimeType": "application/vnd.google-apps.document",
+      "createdTime": "2026-08-10T09:00:00Z",
+      "modifiedTime": "2026-10-09T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-shared",
+      "text": "FAKE plan shared with partner.",
+      "modifiedByMeTime": "2026-10-09T10:00:00Z"
+    },
+    {
+      "id": "p-misc-01",
+      "title": "Misc file 1",
+      "mimeType": "text/plain",
+      "createdTime": "2026-08-03T09:00:00Z",
+      "modifiedTime": "2026-10-02T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "FAKE misc content 1",
+      "modifiedByMeTime": "2026-10-02T10:00:00Z"
+    },
+    {
+      "id": "p-misc-02",
+      "title": "Misc file 2",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "createdTime": "2026-08-04T09:00:00Z",
+      "modifiedTime": "2026-10-03T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "text": "FAKE misc content 2",
+      "modifiedByMeTime": "2026-10-03T10:00:00Z"
+    },
+    {
+      "id": "p-misc-03",
+      "title": "Misc file 3",
+      "mimeType": "application/vnd.google-apps.document",
+      "createdTime": "2026-08-05T09:00:00Z",
+      "modifiedTime": "2026-10-04T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "FAKE misc content 3",
+      "modifiedByMeTime": "2026-10-04T10:00:00Z"
+    },
+    {
+      "id": "p-misc-04",
+      "title": "Misc file 4 invoice",
+      "mimeType": "text/plain",
+      "createdTime": "2026-08-06T09:00:00Z",
+      "modifiedTime": "2026-10-05T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "text": "FAKE misc content 4 invoice",
+      "modifiedByMeTime": "2026-10-05T10:00:00Z"
+    },
+    {
+      "id": "p-misc-05",
+      "title": "Misc file 5",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "createdTime": "2026-08-07T09:00:00Z",
+      "modifiedTime": "2026-10-06T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "FAKE misc content 5",
+      "modifiedByMeTime": "2026-10-06T10:00:00Z"
+    },
+    {
+      "id": "p-misc-06",
+      "title": "Misc file 6",
+      "mimeType": "application/vnd.google-apps.document",
+      "createdTime": "2026-08-08T09:00:00Z",
+      "modifiedTime": "2026-10-07T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "text": "FAKE misc content 6",
+      "modifiedByMeTime": "2026-10-07T10:00:00Z"
+    },
+    {
+      "id": "p-misc-07",
+      "title": "Misc file 7",
+      "mimeType": "text/plain",
+      "createdTime": "2026-08-09T09:00:00Z",
+      "modifiedTime": "2026-10-08T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "FAKE misc content 7",
+      "modifiedByMeTime": "2026-10-08T10:00:00Z"
+    },
+    {
+      "id": "p-misc-08",
+      "title": "Misc file 8 invoice",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "createdTime": "2026-08-10T09:00:00Z",
+      "modifiedTime": "2026-10-09T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "text": "FAKE misc content 8 invoice",
+      "modifiedByMeTime": "2026-10-09T10:00:00Z"
+    },
+    {
+      "id": "p-misc-09",
+      "title": "Misc file 9",
+      "mimeType": "application/vnd.google-apps.document",
+      "createdTime": "2026-08-02T09:00:00Z",
+      "modifiedTime": "2026-10-01T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "FAKE misc content 9",
+      "modifiedByMeTime": "2026-10-01T10:00:00Z"
+    },
+    {
+      "id": "p-misc-10",
+      "title": "Misc file 10",
+      "mimeType": "text/plain",
+      "createdTime": "2026-08-03T09:00:00Z",
+      "modifiedTime": "2026-10-02T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "text": "FAKE misc content 10",
+      "modifiedByMeTime": "2026-10-02T10:00:00Z"
+    },
+    {
+      "id": "p-misc-11",
+      "title": "Misc file 11",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "createdTime": "2026-08-04T09:00:00Z",
+      "modifiedTime": "2026-10-03T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "FAKE misc content 11",
+      "modifiedByMeTime": "2026-10-03T10:00:00Z"
+    },
+    {
+      "id": "p-misc-12",
+      "title": "Misc file 12 invoice",
+      "mimeType": "application/vnd.google-apps.document",
+      "createdTime": "2026-08-05T09:00:00Z",
+      "modifiedTime": "2026-10-04T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "text": "FAKE misc content 12 invoice",
+      "modifiedByMeTime": "2026-10-04T10:00:00Z"
+    },
+    {
+      "id": "p-misc-13",
+      "title": "Misc file 13",
+      "mimeType": "text/plain",
+      "createdTime": "2026-08-06T09:00:00Z",
+      "modifiedTime": "2026-10-05T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "p-fld-projects",
+      "text": "FAKE misc content 13",
+      "modifiedByMeTime": "2026-10-05T10:00:00Z"
+    },
+    {
+      "id": "p-misc-14",
+      "title": "Misc file 14",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "createdTime": "2026-08-07T09:00:00Z",
+      "modifiedTime": "2026-10-06T10:00:00Z",
+      "owner": "seb@prime.example",
+      "parentId": "root",
+      "text": "FAKE misc content 14",
+      "modifiedByMeTime": "2026-10-06T10:00:00Z"
+    },
+    {
+      "id": "shared-roadmap-doc",
+      "title": "Shared roadmap",
+      "mimeType": "application/vnd.google-apps.document",
+      "createdTime": "2026-08-17T09:00:00Z",
+      "modifiedTime": "2026-10-16T10:00:00Z",
+      "owner": "seb@stratify.example",
+      "text": "FAKE shared roadmap visible to both accounts.",
+      "sharedWithMeTime": "2026-10-16T08:00:00Z"
+    }
+  ]
+}

@@ -199,8 +199,8 @@ describe('createGoogleHttp', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('has no escape hatch beyond json()', () => {
-    expect(Object.keys(setup([]).http)).toEqual(['json']);
+  it('has no escape hatch beyond json(), upload() and download()', () => {
+    expect(Object.keys(setup([]).http)).toEqual(['json', 'upload', 'download']);
   });
 
   it('error messages never leak token, query or body', async () => {
@@ -467,8 +467,8 @@ describe('GoogleHttp guardrails: rejections never reach fetch', () => {
   });
 
   it('denies everything not covered by the default rule set', async () => {
-    // Calendar and Gmail rules only; these test URLs match none of them.
-    expect(ENDPOINT_RULES.every((r) => r.product === 'calendar' || r.product === 'gmail')).toBe(true);
+    // Calendar, Gmail and Drive rules only; these test URLs match none of them.
+    expect(ENDPOINT_RULES.every((r) => ['calendar', 'gmail', 'drive'].includes(r.product))).toBe(true);
     const calls: unknown[] = [];
     const http = createGoogleHttp({
       getAccessToken: async () => TOKEN,
@@ -477,9 +477,9 @@ describe('GoogleHttp guardrails: rejections never reach fetch', () => {
         return res(200);
       }) as unknown as typeof fetch,
     });
-    await expect(http.json({ method: 'GET', url: URL_WRITE })).rejects.toMatchObject({ rule: 'no-matching-rule' });
+    await expect(http.json({ method: 'GET', url: 'https://docs.googleapis.com/v1/documents/abc' })).rejects.toMatchObject({ rule: 'no-matching-rule' });
     await expect(
-      http.json({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files' }),
+      http.json({ method: 'PATCH', url: 'https://www.googleapis.com/drive/v3/files/abc/revisions/1', body: {} }),
     ).rejects.toMatchObject({ rule: 'no-matching-rule' });
     expect(calls).toHaveLength(0);
   });
@@ -642,5 +642,54 @@ describe('errors helpers', () => {
     expect(isInvalidGrant({ error: 'invalid_client' })).toBe(false);
     expect(isInvalidGrant(null)).toBe(false);
     expect(isInvalidGrant('nope')).toBe(false);
+  });
+});
+
+describe('GoogleHttp media transports', () => {
+  const UP = 'https://www.googleapis.com/upload/drive/v3/files';
+  const DL = 'https://www.googleapis.com/drive/v3/files/abc';
+  const MEDIA_RULES: EndpointRule[] = [
+    {
+      id: 't.upload', product: 'drive', method: 'POST', host: 'www.googleapis.com', path: /^\/upload\/drive\/v3\/files$/,
+      allowedQuery: ['uploadType'], requiredQuery: { uploadType: 'multipart' }, transport: 'upload',
+      checkBody: (b) => (Object.keys(b as object).every((k) => k === 'name') ? null : 'only name'),
+    },
+    { id: 't.download', product: 'drive', method: 'GET', host: 'www.googleapis.com', path: /^\/drive\/v3\/files\/[^/]+$/, allowedQuery: ['alt'], requiredQuery: { alt: 'media' }, transport: 'download' },
+  ];
+  const media = (responses: Response[]) => setup(responses, { rules: MEDIA_RULES });
+  const bytes = (n: number) => new Uint8Array(n).fill(65);
+
+  it('uploads one multipart/related body whose metadata part is the checked JSON', async () => {
+    const { http, calls } = media([res(200, { id: 'f1' })]);
+    const out = await http.upload<{ id: string }>({ url: UP, query: { uploadType: 'multipart' }, metadata: { name: 'a.txt' }, content: bytes(3), contentType: 'text/plain' });
+    expect(out.id).toBe('f1');
+    const type = (calls[0]!.init.headers as Record<string, string>)['content-type']!;
+    const boundary = /boundary=(\S+)$/.exec(type)![1]!;
+    const body = new TextDecoder().decode(calls[0]!.init.body as Uint8Array);
+    expect(body).toBe(`--${boundary}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n{"name":"a.txt"}\r\n--${boundary}\r\ncontent-type: text/plain\r\n\r\nAAA\r\n--${boundary}--\r\n`);
+  });
+
+  it('checks upload metadata, content type and transport before fetching', async () => {
+    const { http, calls } = media([]);
+    const up = (over: Record<string, unknown>) => http.upload({ url: UP, query: { uploadType: 'multipart' }, metadata: { name: 'a' }, content: bytes(1), contentType: 'text/plain', ...over } as never);
+    await expect(up({ metadata: { name: 'a', writersCanShare: true } })).rejects.toMatchObject({ rule: 't.upload' });
+    await expect(up({ contentType: 'text/plain\r\nx-evil: 1' })).rejects.toMatchObject({ rule: 'upload/content-type' });
+    await expect(up({ query: { uploadType: 'resumable' } })).rejects.toBeInstanceOf(GuardrailError);
+    // json() can't use an upload rule, and download() can't use a json path.
+    await expect(http.json({ method: 'POST', url: UP, query: { uploadType: 'multipart' }, body: { name: 'a' } })).rejects.toMatchObject({ rule: 'no-matching-rule' });
+    await expect(http.json({ method: 'GET', url: DL, query: { alt: 'media' } })).rejects.toMatchObject({ rule: 'no-matching-rule' });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('downloads bytes and stops past maxBytes', async () => {
+    const ok = new Response(bytes(5), { status: 200, headers: { 'content-type': 'image/png' } });
+    const { http } = media([ok]);
+    const r = await http.download({ url: DL, query: { alt: 'media' }, maxBytes: 10 });
+    expect(r).toEqual({ bytes: bytes(5), contentType: 'image/png' });
+
+    const declared = new Response(bytes(20), { status: 200, headers: { 'content-length': '20' } });
+    await expect(media([declared]).http.download({ url: DL, query: { alt: 'media' }, maxBytes: 10 })).rejects.toBeInstanceOf(ProviderError);
+    const undeclared = new Response(new ReadableStream({ start(c) { c.enqueue(bytes(8)); c.enqueue(bytes(8)); c.close(); } }), { status: 200 });
+    await expect(media([undeclared]).http.download({ url: DL, query: { alt: 'media' }, maxBytes: 10 })).rejects.toThrow(/larger than/);
   });
 });

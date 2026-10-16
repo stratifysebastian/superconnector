@@ -169,9 +169,11 @@ export const updateEventTool: ToolDef<typeof updateEventInput> = {
     const calendarId = input.calendarId ?? 'primary';
     let found: GEvent | null | undefined;
     const account = await ctx.fanout.resolveWriteAccount(input.account, async () => {
-      const { item } = await ctx.fanout.lookup(undefined, (a) =>
+      const { item, accountErrors } = await ctx.fanout.lookup(undefined, (a) =>
         ctx.adapters.calendar(ctx.adapterContext(a)).getEvent({ calendarId, eventId: input.eventId }),
       );
+      // An account that errored might hold the event; do not silently act on a lower-priority hit. null asks "Which one: ...?".
+      if (accountErrors.length) return null;
       found = item;
       return item ? ((await ctx.store.accounts.list()).find((a) => a.label === item.account) ?? null) : null;
     });

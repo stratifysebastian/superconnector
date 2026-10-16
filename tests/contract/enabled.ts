@@ -33,4 +33,13 @@ export const ENABLED_TOOL_NAMES: readonly string[] = [
   'mark_thread_spam',
   'unmark_message_spam',
   'unmark_thread_spam',
+  'search_files',
+  'list_recent_files',
+  'get_file_metadata',
+  'get_file_permissions',
+  'read_file_content',
+  'download_file_content',
+  'create_file',
+  'copy_file',
+  'update_file',
 ];

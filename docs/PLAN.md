@@ -8,8 +8,8 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | --- | --- |
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
-| 2 Gmail | 🟨 built and audited 2026-10-16 (21 tools, 792 tests); awaiting Seb's live verification |
-| 3 Drive | ⬜ |
+| 2 Gmail | ✅ live-verified 2026-10-16 (PR #4): search across both accounts, reply draft in the right PR1ME thread, label create/rename/apply/remove, trash and send refused |
+| 3 Drive | 🟨 built and audited 2026-10-16 (9 tools, 920 tests); awaiting Seb's live verification |
 | 4 Docs | ⬜ |
 | 5 Sheets | ⬜ |
 | 6 Slides | ⬜ |
@@ -324,7 +324,7 @@ Done when (spec): the morning brief shows events from both accounts, with shared
 
 Orchestrator contract (done): `src/core/contracts/calendar.ts` (`CalendarAdapter`, `GEvent`, `EventWriteBody` with no attendee or notification fields), `AdapterFactory.calendar` narrowed, `ToolContext.adapterContext(account)` wired to a guarded `GoogleHttp` per account.
 
-## 4c. Phase 2 — Gmail (approved 2026-10-16; building)
+## 4c. Phase 2 — Gmail (✅ live-verified 2026-10-16)
 
 **Tools (21):**
 - Reads: `search_threads`, `get_thread`, `get_message`, `list_drafts`, `get_draft` and `list_labels`.
@@ -370,6 +370,61 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 3. Create and rename a test label, and label then unlabel a message.
 4. Ask to trash a message. It must be refused.
 5. Ask to send the draft. Nothing should send it.
+
+## 4d. Phase 3 — Drive (approved 2026-10-16; building)
+
+**Tools (9).** The built-in Drive connector minus `share_file` and `trash_file`. Each takes the built-in input schema (captured 2026-10-16) plus `account`.
+- **Reads:** `search_files`, `list_recent_files`, `get_file_metadata`, `get_file_permissions`, `read_file_content` and `download_file_content`.
+- **Writes:** `create_file`, `copy_file` and `update_file` (title, description and parent folder only, as in the built-in).
+
+**Accounts:**
+
+| Tool | Accounts | Behaviour |
+| --- | --- | --- |
+| `search_files`, `list_recent_files` | fan-out | Merged newest first by `modifiedTime`. A file visible to both accounts (same file id) appears once, with `accounts` and `sources`. |
+| `get_file_metadata`, `get_file_permissions`, `read_file_content`, `download_file_content` | lookup | Tries accounts in priority order. |
+| `create_file` | one account | An account is required. |
+| `copy_file`, `update_file` | one account | Defaults to the account that can see the file. |
+
+**Query translation.** `search_files` takes the built-in's query syntax (`title`, `fullText`, `mimeType`, `parentId`, `owner`, `sharedWithMe`, `starred`, plus times) and translates it into Drive v3 `q`, for example `name contains`, `'id' in parents` and `'x' in owners`. Anything outside that grammar is refused, never passed through.
+
+**Binary content.** `GoogleHttp` only does JSON, so it gains two narrow methods behind the same endpoint policy.
+- **`upload`:** multipart/related to `upload/drive/v3/files` with `uploadType=multipart`. The metadata part is body-checked like any other JSON body.
+- **`download`:** `files/{id}?alt=media`, and `files/{id}/export` for Google-native files.
+- **Size cap:** Vercel limits a function's request and response to about 4.5 MB, so uploads are capped at 3 MB raw, and reads and downloads at 1.5 MB, because results are sent twice (A5). Bigger files get a plain error with the file's Drive link.
+
+**Decisions (Seb, 2026-10-16):**
+- `read_file_content` exports Google-native files as text and parses PDFs with `unpdf` (one new dependency). Images come back as MCP image content. Office files return a plain message pointing to `download_file_content`.
+- `create_file`, `copy_file` and `update_file` refuse a destination folder that is shared with anyone other than the account owner. My Drive root is fine.
+- Output shapes were observed read-only and are recorded in `docs/builtin-tools/drive.json`.
+
+**Snippets (revised at build time).** The Drive API has no content snippets. `excludeContentSnippets` and `snippetVerbosity` are accepted. Only `get_file_metadata` returns a `contentSnippet`: the start of a Google-native file's plain-text export, cut to the verbosity limit. `search_files` and `list_recent_files` return none, because one export per result would be too slow for a function call.
+
+**Ordering.** Drive can't sort `fullText` searches; they come back in relevance order. Those merged results are listed account by account, in priority order, which keeps paging exact. All other searches merge newest first by `modifiedTime`. `list_recent_files` merges on the same time field Drive sorted by.
+
+**Guardrails:**
+- No `permissions` writes, ever: the GET of a file's permissions is the only permissions rule.
+- No trash, delete, `emptyTrash`, `transferOwnership` or `changes/watch`.
+- The update body is whitelisted to `name`, `description` and `addParents`/`removeParents`. `writersCanShare`, `copyRequiresWriterPermission`, `trashed` and `permissions` can never be set, nor can any other key.
+- The copy body is limited to `name` and `parents`.
+- `supportsAllDrives` is allowed on reads only. Writes into shared drives are refused.
+- Logs and audit entries never contain file content, names or queries.
+
+**Tasks:** D0 (orchestrator) does the `GoogleHttp` upload and download plus the `DriveAdapter` contract. Then:
+
+| Task | Scope |
+| --- | --- |
+| ✅ D1 | Fixtures and mock. |
+| ✅ D2 | Live adapter and endpoint rules. |
+| ✅ D3 | Tool handlers. |
+| ✅ D4 | End-to-end tests. |
+| ✅ A5 | Fresh audit, with OAuth/token re-check of the new transport. **Done 2026-10-16.** No permission writes, trash or delete. The query translator can't emit arbitrary Drive queries. The transport is sound: no header or boundary injection, the byte cap holds, no token in logs, no duplicate creates. Fixed: **(high)** `copy_file` with `parentId: ""` skipped the shared-folder check. **(medium)** `isSharedFolder` now fails closed (empty list, shared drive or non-folder all count as shared), and `supportsAllDrives` is removed from writes. **(medium)** PDFs are capped at 1 MB and 100 pages, with page-by-page extraction. **(low)** A write-account lookup error now asks which account instead of silently using the other one (Drive, Gmail and Calendar). **(low)** Image results are validated. **(low)** The read/download cap is lowered to 1.5 MB, because results are sent twice (text plus structured). Known residual: pdf.js runs in-process, so a PDF bomb under 1 MB can still use a lot of memory; the upgrade is a worker with a hard timeout. |
+
+**Live verification (with Seb):**
+1. Search with no account: files from both accounts, newest first, and a file shared between them shown once.
+2. Read a Google Doc and a PDF.
+3. Create a text file on Stratify, rename it and move it to another of your folders.
+4. Ask to share it, or to trash it. Both must be refused.
 
 ## 5. Later phases (detailed per phase after the previous gate)
 
