@@ -6,7 +6,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 
 | Phase | Status |
 | --- | --- |
-| 0 Foundation | 🟦 mock-complete (639 tests); awaiting deploy approval and live verification |
+| 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in check pending |
 | 1 Calendar | ⬜ |
 | 2 Gmail | ⬜ |
 | 3 Drive | ⬜ |
@@ -251,6 +251,8 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 | ✅ **H2** Auth and env hardening (from A1) | M1 fail-closed mock mode + per-process random mock secrets; L6 HKDF subkeys; L7 RFC 9207 `iss`; L2 full redirect URI and unverified label on consent; M3 cap at 200 clients; L8 `CRON_SECRET` ≥ 32 and https-origin `PUBLIC_BASE_URL`; L1 security headers; L9 `Sec-Fetch-Site` on connect; L10 timeouts | `src/lib/env.ts`, `src/auth/**`, `src/oauth/**`, `src/google/oauth.ts`, `src/google/token-manager.ts`, `src/server/context.ts`, `next.config.ts`, connect route, their tests | One test per fix |
 | ✅ **H3** Kill switch and cleanup (from A1) | M2 "Revoke all Claude access" on /connect with confirmation and audit entry; M3 daily `purgeExpired` in the cron | `src/cron/**`, `src/app/connect/**`, `src/components/**`, their tests | Revoke and cleanup tests |
 | ✅ **T0.12** Docs | `README.md`, `docs/RUNBOOK.md` (env vars, deploy, rotating `ENCRYPTION_KEY`, reconnecting an account, reading logs), `docs/GOOGLE_CLOUD_SETUP.md` (the spec's 7 per-org steps, expanded with exact console clicks and the redirect URI) | those three files | Docs review (`engineering:documentation`) |
+
+**Live (2026-10-16):** production on `main` at https://mcp.stratifysoftware.com. Fixes found during live bring-up: accept `SUPABASE_SECRET_KEY`; migration applied to Supabase project `znsqkaxfvawciwppgzve` (ca-central-1, Vercel-integration org); `Referrer-Policy: same-origin` (no-referrer made browsers send `Origin: null`, breaking consent approval). Firewall rate limit on `/register` and `/token` still to do.
 
 **Deploy status (2026-10-07):**
 - Branch `main` created from the spec commit; Phase 0 is in PR stratifysebastian/superconnector#1 (production deploys from `main`).
