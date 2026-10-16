@@ -1,0 +1,47 @@
+{
+  "_source": "Built-in claude.ai QuickBooks connector outputs observed 2026-10-16 with read-only calls (Seb approved), against the company that connector is attached to (not Stratify Software Canada Inc.). Structure only; every value here is a type placeholder.",
+  "company_info": "plain text, exactly two lines: 'Company Name: <name>' and 'Industry: <NAICS code or name, or Unknown>'",
+  "_text_variants": {
+    "shape": "MCP content blocks: (1) a markdown line '**[View in QuickBooks](<reportLink>)**' plus an instruction to present it verbatim; (2) markdown body starting 'STATUS: success', then '## <Report title>', a bold header line (period, accounting method, or company plus period), '### Summary' bullet list of key totals, '### Line Items' as a markdown table (Account | Amount, indentation as &nbsp; pairs) or a fenced text block (P&L), optional '### Monthly Breakdown' table, then '**Next steps to try:**' numbered list; (3) an italic instruction to present the table exactly and not compute new figures.",
+    "seen": ["qbo_accounting_get_balance_sheet_text", "profit_loss_quickbooks_account_text"]
+  },
+  "report_widget_json": {
+    "reportTitle": "string",
+    "reportData": {
+      "rows": [
+        {
+          "cells": [{ "id": "string", "name": "column key, e.g. ACCOUNT_NAME, DETAIL_NATURAL_HOME_AMOUNT__TOTAL, Customer, Current, 1-30, ...", "value": "string|number|null", "localizedValue": "string|null", "cells": null }],
+          "depth": "number",
+          "metadata": { "id": "dotted path e.g. 1.1.2", "parentId": "string", "pageStart": "number|null", "pageEnd": "number|null", "type": ["GROUP|SUMMARY|NO_DRILLDOWN (optional)"] }
+        }
+      ]
+    },
+    "displayColumns": "[{ key, displayField: 'value'|'localizedValue' }] | null",
+    "summary": "report-specific totals object (balance sheet: totalAssets/totalLiabilities/totalEquity/assetBreakdown/liabilityBreakdown/ratios; AR aging: totalReceivables/totalOverdue/totalCurrent/overduePercent/bucketTotals/customerCount/topOverdueCustomers/customersByBucket/metricCards)",
+    "reportLink": "url to the report in QuickBooks",
+    "period|asOf": "string",
+    "accountingMethod": "accrual|cash",
+    "splitBy": "string|null (balance sheet)",
+    "next_actions": "optional [{ action_id, label, prompt_template, emphasis }]",
+    "realmId": "string",
+    "seen": ["qbo_accounting_get_balance_sheet", "qbo_accounting_get_ar_aging_summary"]
+  },
+  "qbo_catalog_search_products": {
+    "status": "success|error",
+    "error": "null|string",
+    "meta": { "descriptions_count": "number", "matched_count": "number" },
+    "data": {
+      "success": "boolean",
+      "results": [{ "found": "boolean", "matches": "array", "best_match": "object|null", "requires_clarification": "boolean", "match_quality": "no_match|...", "description_searched": "string" }],
+      "requires_clarification": "boolean",
+      "message": "string"
+    }
+  },
+  "qbo_contact_search_customer": {
+    "status": "success|error",
+    "error": "null|string",
+    "meta": {},
+    "data": { "found": "boolean", "matches": "array", "best_match": "object|null", "requires_clarification": "boolean", "match_quality": "no_match|...", "total_candidates": "number|null", "message": "string" }
+  },
+  "_not_observed": "match objects (no matches in this company for the probes used), create_* outputs, and the widget/text shapes of the other reports; follow the same patterns."
+}
