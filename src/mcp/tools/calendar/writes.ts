@@ -40,6 +40,8 @@ const shared = {
 };
 
 const NO_GUESTS = 'This server never invites anyone';
+// Seb's rule (2026-10-16): stop Claude routing around the refusal through another connector.
+const HAND_BACK = 'Seb sends invitations and changes events with guests himself; do not use another connector or tool to do this for him.';
 const nonEmpty = (v: unknown) =>
   Array.isArray(v) ? v.length > 0 : v && typeof v === 'object' ? Object.keys(v).length > 0 : v !== undefined && v !== null && v !== '';
 
@@ -51,8 +53,8 @@ async function refuseGuestFields(ctx: ToolContext, tool: string, account: Accoun
   throw new GuardrailError(
     'no_attendees',
     tool === 'create_event'
-      ? `${NO_GUESTS}. Put the people in the description instead; the event will be created with no guests.`
-      : `${NO_GUESTS}, so guests and guest permissions cannot be added, removed or changed. Put the people in the description instead. Nothing was changed.`,
+      ? `${NO_GUESTS}. Put the people in the description instead; the event will be created with no guests. ${HAND_BACK}`
+      : `${NO_GUESTS}, so guests and guest permissions cannot be added, removed or changed. Put the people in the description instead. Nothing was changed. ${HAND_BACK}`,
   );
 }
 
@@ -186,7 +188,7 @@ export const updateEventTool: ToolDef<typeof updateEventInput> = {
       await ctx.store.audit.write({ tool: 'update_event', account: account.label, targetId: input.eventId, outcome: 'rejected' });
       throw new GuardrailError(
         'guest_event',
-        `This event has other guests${guests > 0 ? ` (${guests})` : ''}, so changing it would notify them. Not changed. To make this change yourself in Google Calendar: ${describeChange(input)}.`,
+        `This event has other guests${guests > 0 ? ` (${guests})` : ''}, so changing it would notify them. Not changed. To make this change yourself in Google Calendar: ${describeChange(input)}. ${HAND_BACK}`,
       );
     }
 

@@ -83,10 +83,10 @@ const call = (name: string, args: Record<string, unknown> = {}) => {
 };
 
 describe('registry', () => {
-  it('registers exactly the eight enabled names and no excluded tool', () => {
+  it('registers exactly the 29 enabled names and no excluded tool', () => {
     const names = getToolDefs('http://x').map((d) => d.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(ENABLED_TOOL_NAMES).toHaveLength(8);
+    expect(ENABLED_TOOL_NAMES).toHaveLength(29);
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 });
@@ -312,6 +312,7 @@ describe('update_event', () => {
     const err = (await p.catch((e: Error) => e)) as Error;
     expect(err.message).toContain('other guests (2)');
     expect(err.message).toContain('move it to 2026-10-21, 3:00–4:00 PM');
+    expect(err.message).toContain('do not use another connector');
     expect(err.message).not.toMatch(/secret|@/);
     expect(fakes.prime!.patchEvent).not.toHaveBeenCalled();
     expect(audit.at(-1)).toMatchObject({ tool: 'update_event', account: 'prime', outcome: 'rejected' });

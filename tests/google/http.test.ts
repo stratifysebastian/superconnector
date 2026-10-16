@@ -318,6 +318,7 @@ const REJECTIONS: Reject[] = [
   { name: '%2e path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/%2e%2e/x' }), rule: /path-trickery/ },
   { name: '%2E%2E mixed case', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/%2E%2E/x' }), rule: /path-trickery/ },
   { name: '%2f path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/a%2fb' }), rule: /path-trickery/ },
+  { name: 'double-encoded path', req: () => ({ method: 'POST', url: 'https://gmail.googleapis.com/gmail/v1/users/me/drafts/x%253Asend' }), rule: /path-trickery/ },
   { name: 'backslash path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files\\a' }), rule: /path-trickery/ },
   { name: 'tab smuggled into a segment', req: () => ({ method: 'POST', url: `${GMAIL}/messages/se\tnd`, body: {} }), rule: /control-chars/ },
   { name: 'userinfo', req: () => ({ method: 'GET', url: 'https://user:pw@www.googleapis.com/drive/v3/files/a' }), rule: /userinfo/ },
@@ -466,8 +467,8 @@ describe('GoogleHttp guardrails: rejections never reach fetch', () => {
   });
 
   it('denies everything not covered by the default rule set', async () => {
-    // Phase 1 adds Calendar rules only; these test URLs match none of them.
-    expect(ENDPOINT_RULES.every((r) => r.product === 'calendar')).toBe(true);
+    // Calendar and Gmail rules only; these test URLs match none of them.
+    expect(ENDPOINT_RULES.every((r) => r.product === 'calendar' || r.product === 'gmail')).toBe(true);
     const calls: unknown[] = [];
     const http = createGoogleHttp({
       getAccessToken: async () => TOKEN,
@@ -478,7 +479,7 @@ describe('GoogleHttp guardrails: rejections never reach fetch', () => {
     });
     await expect(http.json({ method: 'GET', url: URL_WRITE })).rejects.toMatchObject({ rule: 'no-matching-rule' });
     await expect(
-      http.json({ method: 'POST', url: 'https://gmail.googleapis.com/gmail/v1/users/me/drafts', body: {} }),
+      http.json({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files' }),
     ).rejects.toMatchObject({ rule: 'no-matching-rule' });
     expect(calls).toHaveLength(0);
   });

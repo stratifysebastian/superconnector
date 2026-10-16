@@ -92,6 +92,10 @@ export const ALLOWED_LITERALS: Record<string, Record<string, readonly (string | 
     ],
     'src/mcp/tools/calendar/suggest_time.ts': [/\battendeeEmails: z\.array\(z\.string\(\)\)/g],
   },
+  // The Gmail mock is in-memory and never reaches Google. It names the label only to hide it from search and to
+  // refuse it, mirroring the endpoint policy. No other file is exempt.
+  'gmail-trash-label': { 'src/google/mock/gmail.ts': ["'TRASH'"] },
+  'trash-word': { 'src/google/mock/gmail.ts': [/'TRASH'|The TRASH label|\(this also blocks untrash\)/g] },
 };
 
 /**

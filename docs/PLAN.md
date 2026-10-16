@@ -6,9 +6,9 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 
 | Phase | Status |
 | --- | --- |
-| 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in check pending |
-| 1 Calendar | 🟦 approved 2026-10-16; building |
-| 2 Gmail | ⬜ |
+| 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
+| 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
+| 2 Gmail | 🟨 built and audited 2026-10-16 (21 tools, 792 tests); awaiting Seb's live verification |
 | 3 Drive | ⬜ |
 | 4 Docs | ⬜ |
 | 5 Sheets | ⬜ |
@@ -252,7 +252,7 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 | ✅ **H3** Kill switch and cleanup (from A1) | M2 "Revoke all Claude access" on /connect with confirmation and audit entry; M3 daily `purgeExpired` in the cron | `src/cron/**`, `src/app/connect/**`, `src/components/**`, their tests | Revoke and cleanup tests |
 | ✅ **T0.12** Docs | `README.md`, `docs/RUNBOOK.md` (env vars, deploy, rotating `ENCRYPTION_KEY`, reconnecting an account, reading logs), `docs/GOOGLE_CLOUD_SETUP.md` (the spec's 7 per-org steps, expanded with exact console clicks and the redirect URI) | those three files | Docs review (`engineering:documentation`) |
 
-**Live (2026-10-16):** production on `main` at https://mcp.stratifysoftware.com. Fixes found during live bring-up: accept `SUPABASE_SECRET_KEY`; migration applied to Supabase project `znsqkaxfvawciwppgzve` (ca-central-1, Vercel-integration org); `Referrer-Policy: same-origin` (no-referrer made browsers send `Origin: null`, breaking consent approval). Firewall rate limit on `/register` and `/token` still to do.
+**Live (2026-10-16):** production on `main` at https://mcp.stratifysoftware.com. Fixes found during live bring-up: accept `SUPABASE_SECRET_KEY`; migration applied to Supabase project `znsqkaxfvawciwppgzve` (ca-central-1, Vercel-integration org); `Referrer-Policy: same-origin` (no-referrer made browsers send `Origin: null`, breaking consent approval). Firewall rate limit on `/register` and `/token` still to do: the Vercel API returns 404 "Seawall Config not found" for GET, PATCH and PUT, so Seb adds it in the dashboard (custom rule: path is `/register` or `/token`, rate limit 20 per 60 s per IP, deny).
 
 **Deploy status (2026-10-07):**
 - Branch `main` created from the spec commit; Phase 0 is in PR stratifysebastian/superconnector#1 (production deploys from `main`).
@@ -279,7 +279,7 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 4. Ask Claude to call `list_accounts`. Expect both accounts, active, in the right order, with granted products.
 5. Negative check: a sign-in from a non-allowlisted Google account is refused.
 
-## 4b. Phase 1 — Calendar (approved 2026-10-16; building)
+## 4b. Phase 1 — Calendar (✅ live-verified 2026-10-16)
 
 Done when (spec): the morning brief shows events from both accounts, with shared meetings shown once carrying both tags; and `create_event` with attendees is rejected.
 
@@ -324,6 +324,53 @@ Done when (spec): the morning brief shows events from both accounts, with shared
 
 Orchestrator contract (done): `src/core/contracts/calendar.ts` (`CalendarAdapter`, `GEvent`, `EventWriteBody` with no attendee or notification fields), `AdapterFactory.calendar` narrowed, `ToolContext.adapterContext(account)` wired to a guarded `GoogleHttp` per account.
 
+## 4c. Phase 2 — Gmail (approved 2026-10-16; building)
+
+**Tools (21):**
+- Reads: `search_threads`, `get_thread`, `get_message`, `list_drafts`, `get_draft` and `list_labels`.
+- Drafts: `create_draft` (new, or a reply when `replyToMessageId` is given) and `update_draft`.
+- Labels: `create_label`, `update_label`, `label_message`, `label_thread`, `unlabel_message`, `unlabel_thread` and `update_message_labels`.
+- Spam: `apply_sensitive_message_label`, `apply_sensitive_thread_label`, `mark_message_spam`, `mark_thread_spam`, `unmark_message_spam` and `unmark_thread_spam`.
+
+Each takes the built-in input schema plus `account`. Input schemas were captured from the built-in connector on 2026-10-16. Read output shapes observed 2026-10-16 (Seb approved; `docs/builtin-tools/gmail.json`). Write outputs were not observed. Drafts return the Draft shape; label and spam tools return the modified message or thread. `includeSignature` is accepted but ignored, because signatures live in Gmail settings, which stay banned.
+
+**Excluded:** `send_message`, `reply`, `forward`, `trash_*`, `untrash_*`, `delete_draft` and `delete_label`.
+- `create_filter`: **skipped for now** (Seb, 2026-10-16). It is not in the current built-in Gmail connector. It also needs the `gmail.settings.basic` scope, which means a reconnect, and it needs the Gmail-settings hard ban loosened. It is on hold until Seb confirms.
+
+**Accounts:**
+
+| Tool | Accounts | Behaviour |
+| --- | --- | --- |
+| `search_threads`, `list_drafts` | fan-out | Merged newest first by the latest message date. Not de-duplicated: the same email in both inboxes is two separate copies, each tagged with its account. |
+| `list_labels` | fan-out | Each label tagged with its account. |
+| `get_thread`, `get_message`, `get_draft` | lookup | Tries accounts in priority order. |
+| Writes | one account | Defaults to the account that holds the message, thread or draft (found by lookup); `create_label` needs an account. Audited. |
+
+**Guardrails:**
+- Runtime endpoint rules cover only: `threads` list/get, `messages` get, `drafts` list/get/create/update, `labels` list/create/patch, and `messages`/`threads` `modify`.
+- Hard bans stay in place: `send`, `insert`, `import`, `watch`, `settings` and every DELETE.
+- Modify body check: neither `addLabelIds` nor `removeLabelIds` may contain `TRASH`, which blocks both trash and untrash. `SPAM` is allowed.
+- `apply_sensitive_*_label` with `TRASH` is refused before any call is made.
+- Drafts are only created or updated, never sent. A reply draft carries the original `threadId` plus `In-Reply-To` and `References` headers, so it sits in the right thread of the right account.
+- Logs and audit entries never contain bodies, subjects, snippets or recipients.
+
+**Tasks:**
+
+| Task | Scope |
+| --- | --- |
+| ✅ G1 | Fixtures and mock adapter. Two accounts, including the same email received by both, multiple pages, `invalid_grant`, 429 and timeout. |
+| ✅ G2 | Live adapter and endpoint rules: MIME building for drafts, and thread metadata fetches for search. The orchestrator adds the `GmailAdapter` contract first. |
+| ✅ G3 | Tool handlers. |
+| ✅ G4 | Guardrail and MCP tests (15 end-to-end cases in mock mode). |
+| ✅ A4 | Fresh-agent audit of the Gmail guardrails. **Done 2026-10-16.** No path to send, trash, delete or settings across 43 bypass attempts. No MIME header injection, and account isolation holds. Fixed: a quoted display name could steer a reply draft's `To` (medium); downstream policy blocks are now audited `rejected` and carry the hand-back text (low); double-encoded paths (`%25`) are refused (info). Not fixed (info): lookalike label ids such as zero-width + TRASH pass the policy, but Google treats them as unknown labels; attachment content has no size cap; un-spamming a whole thread moves sent messages to the inbox too. |
+
+**Live verification (with Seb):**
+1. Search with no account: mail from both accounts, newest first.
+2. Create a reply draft to a real thread on PR1ME. It should sit in that thread, unsent.
+3. Create and rename a test label, and label then unlabel a message.
+4. Ask to trash a message. It must be refused.
+5. Ask to send the draft. Nothing should send it.
+
 ## 5. Later phases (detailed per phase after the previous gate)
 
 Each phase follows the same pattern:
@@ -339,8 +386,8 @@ Known items to raise when each phase starts (not decided here):
 - **Phase 1:** the built-in `search_events` is semantic search on the primary calendar; the Calendar API only offers keyword `q`. **Accepted deviation** (Seb, 2026-10-07).
 - **Phase 1:** the built-in uses `notificationLevel`. We force `NONE` / `sendUpdates=none` and reject `attendees`, `attendeeEmails`, `addedAttendees`, `addedAttendeeEmails`, `removedAttendeeEmails` and `guestPermissions`.
 - **Phase 1:** events with other guests: blocked; the tool tells Seb what change is needed (see §7).
-- **Phase 2:** the built-in `apply_sensitive_*_label` takes `TRASH` or `SPAM`. The spec includes "apply sensitive labels" but excludes trash. Seb: "fine" (2026-10-07). Read as: include the tools, SPAM allowed, TRASH still blocked per the spec's exclusion; confirm at Phase 2 start. Label tools must also refuse adding the `TRASH` label and removing it (untrash).
-- **Phase 2:** open question on `create_filter`.
+- **Phase 2:** the built-in `apply_sensitive_*_label` takes `TRASH` or `SPAM`. The spec includes "apply sensitive labels" but excludes trash. Seb: "fine" (2026-10-07). Read as: include the tools, SPAM allowed, TRASH still blocked per the spec's exclusion; **Confirmed by Seb 2026-10-16.** Label tools must also refuse adding the `TRASH` label and removing it (untrash).
+- **Phase 2:** `create_filter` skipped for now (Seb, 2026-10-16).
 - **Phases 1–3:** return shapes. Input schemas are visible to me but output shapes are not. Ask Seb before guessing; one option is to call a read-only built-in tool once with his permission and record the shape.
 - **Phase 3 (Drive):** `GoogleHttp` only does JSON, so content upload, `alt=media` download and export need a non-JSON path designed in the same policy layer. Also decide whether to ban Drive `writersCanShare` and `copyRequiresWriterPermission` changes (they change sharing capability without touching permissions).
 - **Phases 5–6:** Sheets and Slides `batchUpdate` can delete content (`deleteSheet`, `deleteObject`, `values:batchClear`). The spec's "no trash or delete" is about files; confirm with Seb that content edits inside a file are allowed.
@@ -360,6 +407,8 @@ Known items to raise when each phase starts (not decided here):
 
 - ADR-6 separate admin sign-in client: **approved** (Seb, 2026-10-07).
 - ADR-8 OAuth tables added to the data model: **approved** (Seb, 2026-10-07).
+- Calendar: a booked room does not count as a guest, so such events stay editable (Seb, 2026-10-16).
+- Refusals to invite or to change guest events tell Claude that Seb does these himself and not to use another connector (Seb, 2026-10-16), after Claude offered the built-in connector during live testing.
 - Calendar merged order: **earliest first** (Seb, 2026-10-16). C4 found that newest-first merging over Google's ascending `startTime` pages skipped events across pages. Calendar tools negate `dateOf` and always request `orderBy=startTime`. Gmail and Drive stay newest first.
 
 ## 8. Open questions (from the spec), and when they get asked
@@ -370,4 +419,4 @@ Known items to raise when each phase starts (not decided here):
 | Server domain: subdomain or default Vercel URL? | Phase 0 (redirect URIs, OAuth metadata) | **`mcp.stratifysoftware.com`** (Seb, 2026-10-07). Needs a DNS CNAME to Vercel; `PUBLIC_BASE_URL=https://mcp.stratifysoftware.com`. |
 | Repo | — | `stratifysebastian/superconnector` |
 | Calendar updates on events with other guests | Phase 1 | **Block** (Seb, 2026-10-07). `update_event` never changes an event with other guests; it returns a plain-language result telling Seb what change is needed so he can make it himself. |
-| Gmail `create_filter` | Phase 2 | _pending_ |
+| Gmail `create_filter` | Phase 2 | First answered "include, no forward or delete"; then **skipped for now** (Seb, 2026-10-16), after learning it is not in the built-in and needs a new scope plus a reconnect. |

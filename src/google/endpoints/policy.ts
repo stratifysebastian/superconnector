@@ -35,7 +35,7 @@ export function parseGoogleUrl(url: unknown): URL | PolicyResult {
   if (typeof url !== 'string') return deny('url/type', 'url must be a string');
   if (/[\u0000- \u007f]/.test(url)) return deny('url/control-chars', 'url contains whitespace or control characters');
   if (/[?#]/.test(url)) return deny('url/query-in-url', 'url must not contain "?" or "#"; pass query separately');
-  if (/\.\.|%2e|%2f|%5c|%00|\\|\/\//i.test(url.replace(/^https:\/\//i, ''))) {
+  if (/\.\.|%2e|%2f|%5c|%00|%25|\\|\/\//i.test(url.replace(/^https:\/\//i, ''))) {
     return deny('url/path-trickery', 'url path contains "..", encoded dots/slashes, backslashes or empty segments');
   }
   let u: URL;

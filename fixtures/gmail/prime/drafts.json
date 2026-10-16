@@ -1,0 +1,39 @@
+{
+ "drafts": [
+  {
+   "id": "r-2001",
+   "messageId": "19a7c0001001",
+   "threadId": "19a7c0000001",
+   "internalDate": "1792062000000",
+   "toRecipients": [
+    "ana@vendor.example"
+   ],
+   "subject": "Re: FAKE prime Alpha kickoff",
+   "plaintextBody": "FAKE draft reply, not sent.",
+   "inReplyTo": "<alpha-3@vendor.example>"
+  },
+  {
+   "id": "r-2002",
+   "messageId": "19a7c0001002",
+   "threadId": "19a7c0001002",
+   "internalDate": "1792058400000",
+   "toRecipients": [
+    "bob@client.test"
+   ],
+   "ccRecipients": [
+    "carla@partner.example"
+   ],
+   "subject": "FAKE standalone draft",
+   "plaintextBody": "FAKE standalone draft body."
+  },
+  {
+   "id": "r-2003",
+   "messageId": "19a7c0001003",
+   "threadId": "19a7c0001003",
+   "internalDate": "1792047600000",
+   "toRecipients": [],
+   "subject": "FAKE empty-recipient draft",
+   "plaintextBody": "FAKE."
+  }
+ ]
+}
