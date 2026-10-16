@@ -1,0 +1,339 @@
+{
+  "kind": "calendar#events",
+  "summary": "seb@prime.example",
+  "timeZone": "America/Toronto",
+  "accessRole": "owner",
+  "defaultReminders": [
+    {
+      "method": "popup",
+      "minutes": 10
+    }
+  ],
+  "updated": "2026-10-02T12:00:00.000Z",
+  "items": [
+    {
+      "kind": "calendar#event",
+      "id": "prime-001",
+      "iCalUID": "prime-001@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime planning",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-001",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-19T09:30:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-19T10:30:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-002",
+      "iCalUID": "prime-002@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime finance",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-002",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-19T11:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-19T12:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-003",
+      "iCalUID": "shared-qsync-001@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Quarterly sync",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-003",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-20T14:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-20T15:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "description": "Fake shared meeting",
+      "location": "Fake Room A",
+      "attendees": [
+        {
+          "email": "seb@stratify.example",
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "seb@prime.example",
+          "responseStatus": "accepted",
+          "self": true
+        }
+      ]
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-004",
+      "iCalUID": "prime-004@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Ops review",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-004",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-20T10:30:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-20T11:30:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-005",
+      "iCalUID": "prime-005@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Vendor call",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-005",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-21T13:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-21T14:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-006",
+      "iCalUID": "prime-006@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime retro",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-006",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-21T15:30:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-21T16:30:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-007",
+      "iCalUID": "prime-007@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime kickoff",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-007",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-22T09:30:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-22T10:30:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-008",
+      "iCalUID": "prime-008@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime sync",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-008",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-22T16:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-22T17:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-009",
+      "iCalUID": "prime-009@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime standup",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-009",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-23T09:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-23T10:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-010",
+      "iCalUID": "prime-010@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime wrap",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-010",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-23T10:30:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-23T11:30:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-011",
+      "iCalUID": "prime-011@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime review",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-011",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-20T16:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-20T17:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-012",
+      "iCalUID": "prime-012@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime weekend block",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-012",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "date": "2026-10-24"
+      },
+      "end": {
+        "date": "2026-10-25"
+      },
+      "transparency": "transparent"
+    }
+  ]
+}

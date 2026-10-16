@@ -1,0 +1,67 @@
+{
+  "kind": "calendar#events",
+  "summary": "FAKE stratify team",
+  "timeZone": "America/Toronto",
+  "accessRole": "owner",
+  "defaultReminders": [
+    {
+      "method": "popup",
+      "minutes": 10
+    }
+  ],
+  "updated": "2026-10-02T12:00:00.000Z",
+  "items": [
+    {
+      "kind": "calendar#event",
+      "id": "strat-team-001",
+      "iCalUID": "strat-team-001@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Team calendar item",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-team-001",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-21T09:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-21T09:30:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-team-002",
+      "iCalUID": "strat-team-002@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Team social",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-team-002",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-23T15:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-23T16:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    }
+  ]
+}
