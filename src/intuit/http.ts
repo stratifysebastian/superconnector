@@ -14,6 +14,8 @@ import {
 const MAX_RETRIES = 3;
 const BASE_MS = 500;
 const MAX_DELAY_MS = 8000;
+/** Total time a GET may spend retrying; a retry that would end after this is not started. */
+const MAX_RETRY_WINDOW_MS = 30000;
 
 export interface IntuitHttpOptions {
   /** `force` asks for a new token (after a 401). */
@@ -24,14 +26,19 @@ export interface IntuitHttpOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
-  sleep?: (ms: number) => Promise<void>;
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   random?: () => number;
   log?: Logger;
   /** Endpoint allowlist. Defaults to INTUIT_RULES; a request matching no rule is rejected. */
   rules?: IntuitRule[];
 }
 
-const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** Resolves early when the signal aborts; the request loop then sees the abort and stops. */
+const defaultSleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((r) => {
+    const t = setTimeout(r, ms);
+    signal?.addEventListener('abort', () => (clearTimeout(t), r()), { once: true });
+  });
 
 /** Deny by default. GET and the two create POSTs only; a POST is never retried. Logs hold method, path template and status: no ids, amounts, names or emails. */
 export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
@@ -90,9 +97,14 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
       let retries = 0;
 
       for (;;) {
+        // The caller's deadline passed: send nothing more.
+        if (opts.signal?.aborted) {
+          return fail(new ProviderError('timeout', `QuickBooks request timed out.${write ? ' It was not sent; nothing was created.' : ''}`));
+        }
         attempts++;
         const timeoutSignal = AbortSignal.timeout(timeoutMs);
-        const signal = opts.signal ? AbortSignal.any([opts.signal, timeoutSignal]) : timeoutSignal;
+        // A POST in flight is never cut short by the caller's deadline (it may still be created); it has only its own timeout.
+        const signal = opts.signal && !write ? AbortSignal.any([opts.signal, timeoutSignal]) : timeoutSignal;
         let res: Response;
         try {
           res = await doFetch(url, {
@@ -118,7 +130,7 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
           try {
             data = (await res.json()) as T;
           } catch {
-            return fail(new ProviderError('upstream_error', 'QuickBooks returned an unreadable response', res.status));
+            return fail(new ProviderError('upstream_error', `QuickBooks returned an unreadable response.${write ? ' The record may have been created; check QuickBooks before trying again.' : ''}`, res.status));
           }
           log('ok');
           return data;
@@ -158,8 +170,11 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
           const ra = header === null ? NaN : Number(header);
           const delay =
             Number.isFinite(ra) && ra >= 0 ? Math.min(MAX_DELAY_MS, ra * 1000) : Math.min(MAX_DELAY_MS, BASE_MS * 2 ** retries * random());
+          if (Date.now() - started + delay > MAX_RETRY_WINDOW_MS) {
+            return fail(new ProviderError(res.status === 429 ? 'rate_limited' : 'upstream_error', 'QuickBooks is still failing; giving up retrying', res.status));
+          }
           retries++;
-          await sleep(delay);
+          await sleep(delay, opts.signal);
           continue;
         }
         fault = await readFault(res);

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { QbItem, QbItemType } from '@/core/contracts/quickbooks';
-import { GuardrailError } from '@/core/errors';
-import { companyField, FAN_OUT_NOTE, checked, perCompany, qbTool, qbWrite, writeCompany } from './common';
+import { GuardrailError, ProviderError } from '@/core/errors';
+import { companyField, FAN_OUT_NOTE, WRITE_DEADLINE_MS, checked, perCompany, qbTool, qbWrite, writeCompany } from './common';
 import { longestWord, similarity, verdict } from './match';
 import { isoDate, today } from './params';
 
@@ -30,10 +30,11 @@ export const searchProductsTool = qbTool({
   async handler(input, ctx) {
     const terms = input.descriptions.map((d) => d.trim()).filter(Boolean);
     const name = 'qbo_catalog_search_products';
-    const r = await perCompany(ctx, name, input.account, async (qb) => {
+    const r = await perCompany(ctx, name, input.account, async (qb, _a, signal) => {
       const results = [];
       // One query at a time: Intuit limits concurrent requests per company.
       for (const term of terms) {
+        if (signal.aborted) throw new ProviderError('timeout', 'QuickBooks request timed out.');
         let hits = await qb.findItems(term);
         const word = longestWord(term);
         if (hits.length === 0 && word && word !== term.toLowerCase()) hits = await qb.findItems(word);
@@ -76,7 +77,7 @@ export const createProductTool = qbTool({
   description:
     'Create a new product or service in QuickBooks Online on exactly one company (`account` is required when more than one is connected). Provide a name, type (SERVICE, INVENTORY or NON_INVENTORY), price and optional description and SKU. ' +
     'Returns the new product ID for invoice and estimate line items. If unit_price is not known, ask the user before calling. INVENTORY needs quantity_on_hand. ' +
-    'It is attached to the company\'s own income account (and inventory and cost accounts for INVENTORY). `taxable` is sent only when given; no tax code is set. A name that already exists is refused by QuickBooks.',
+    'It is attached to the company\'s own income account (and inventory and cost accounts for INVENTORY). `taxable` is sent only for a US company; for a Canadian company it is ignored with a note (tax codes are set per invoice line). No tax code is set. A name that already exists is refused by QuickBooks.',
   input: z.object({ input_data: createProductInput, account: companyField }),
   kind: 'write',
   async handler(input, ctx) {
@@ -92,17 +93,25 @@ export const createProductTool = qbTool({
       return { type, start: type === 'Inventory' ? isoDate(d.inventory_start_date ?? today(), 'inventory_start_date') : undefined };
     });
     const account = await writeCompany(ctx, input.account);
-    const item = await qbWrite(ctx, tool, account, (i: QbItem) => i.Id, () =>
-      ctx.adapters.quickbooks(ctx.quickbooksContext(account)).createItem({
+    const notes: string[] = [];
+    const item = await qbWrite(ctx, tool, account, (i: QbItem) => i.Id, async () => {
+      const qb = ctx.adapters.quickbooks(ctx.quickbooksContext(account, AbortSignal.timeout(WRITE_DEADLINE_MS)));
+      // Every company counts as Canadian unless CompanyInfo says US (or cannot be read); Canada has no item-level Taxable flag.
+      let taxable = d.taxable;
+      if (taxable !== null && (await qb.companyInfo().catch(() => undefined))?.Country !== 'US') {
+        taxable = null;
+        notes.push('taxable was ignored: in Canada, sales tax codes are set per line on invoices, not on the item.');
+      }
+      return qb.createItem({
         name: d.name.trim(),
         type: plan.type,
         unitPrice: d.unit_price,
         ...(d.description ? { description: d.description } : {}),
         ...(d.sku ? { sku: d.sku } : {}),
-        ...(d.taxable !== null ? { taxable: d.taxable } : {}),
+        ...(taxable !== null ? { taxable } : {}),
         ...(plan.type === 'Inventory' ? { quantityOnHand: d.quantity_on_hand!, inventoryStartDate: plan.start! } : {}),
-      }),
-    );
-    return { status: 'success', error: null, data: { success: true, product: productOf(item) }, account: account.label, accountEmail: account.email };
+      });
+    });
+    return { status: 'success', error: null, data: { success: true, product: productOf(item), ...(notes.length ? { notes } : {}) }, account: account.label, accountEmail: account.email };
   },
 });

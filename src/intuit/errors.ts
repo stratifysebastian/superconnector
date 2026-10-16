@@ -22,13 +22,22 @@ export interface IntuitFault {
   type?: string;
 }
 
+/** Intuit error titles that are safe to show and log. Anything else is reduced to "Intuit error" plus the code. */
+const KNOWN_TITLES = new Set([
+  'Duplicate Name Exists Error', 'Object Not Found', 'Invalid Reference Id', 'Required param missing, need to supply the required value for the API',
+  'Business Validation Error', 'Request has invalid or unsupported property', 'Invalid Number', 'Invalid Date', 'AuthenticationFailed',
+  'AuthorizationFailed', 'ApplicationAuthorizationFailed', 'ValidationFault', 'Stale Object Error', 'Unsupported Operation', 'Feature Not Supported',
+  'Permission Denied Error',
+]);
+
 /** Reads Fault.Error[0] from an error body. Only the code, the short name and the fault type survive. */
 export function parseFault(body: unknown): IntuitFault {
   const fault = (body as { Fault?: { type?: unknown; Error?: { code?: unknown; Message?: unknown }[] } } | null)?.Fault;
   const e = Array.isArray(fault?.Error) ? fault.Error[0] : undefined;
   const code = typeof e?.code === 'string' && /^\d{1,8}$/.test(e.code) ? e.code : undefined;
-  // Message is Intuit's fixed error name; some responses wrap it as "message=Name; errorCode=...".
-  const name = typeof e?.Message === 'string' ? /^(?:message=)?([A-Za-z][A-Za-z ,.-]{0,99}?)\s*(?:;|$)/.exec(e.Message)?.[1]?.trim() : undefined;
+  // Message is Intuit's fixed error title, sometimes wrapped as "message=Title; errorCode=...". Only known titles pass; free text may hold names.
+  const title = typeof e?.Message === 'string' ? e.Message.replace(/^message=/, '').split(';')[0]!.trim() : undefined;
+  const name = title === undefined ? undefined : KNOWN_TITLES.has(title) ? title : `Intuit error${code ? ` ${code}` : ''}`;
   const type = typeof fault?.type === 'string' && /^[A-Za-z]{1,40}$/.test(fault.type) ? fault.type : undefined;
   return { ...(code ? { code } : {}), ...(name ? { name } : {}), ...(type ? { type } : {}) };
 }

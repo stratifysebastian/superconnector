@@ -115,7 +115,7 @@ describe('query building and injection', () => {
 
 describe('report rules', () => {
   const rest = (n: string) => companyPath(REALM, `reports/${n}`);
-  const period = ['date_macro', 'start_date', 'end_date', 'accounting_method', 'summarize_column_by'];
+  const period = ['start_date', 'end_date', 'accounting_method', 'summarize_column_by'];
   it.each([
     ['BalanceSheet', period],
     ['ProfitAndLoss', period],
@@ -132,7 +132,7 @@ describe('report rules', () => {
     for (const bad of ['customer', 'vendor', 'columns', 'sort_order', 'query', 'minorversion', 'accounting_method2']) {
       expect(check({ path: rest(name), query: { [bad]: 'x' } }).ok).toBe(false);
     }
-    for (const other of period.concat('report_date').filter((k) => !keys.includes(k))) expect(check({ path: rest(name), query: { [other]: 'x' } }).ok).toBe(false);
+    for (const other of period.concat('report_date', 'date_macro').filter((k) => !keys.includes(k))) expect(check({ path: rest(name), query: { [other]: 'x' } }).ok).toBe(false);
   });
   it('denies a report that is not on the list and a POST to a report', () => {
     expect(check({ path: rest('GeneralLedger') }).ok).toBe(false);
@@ -243,7 +243,7 @@ describe('failures: Fault handling, plain messages, nothing retried', () => {
   it('the wrapped "message=Name; errorCode=..." form is read, a hostile one is dropped', async () => {
     expect((await run(json(fault('2010', 'message=Request has invalid or unsupported property; errorCode=2010; statusCode=400'), 400))).err.message).toContain('Request has invalid or unsupported property (error code 2010)');
     const hostile = (await run(json(fault('2010', "x'; select * from Employee <script>"), 400))).err;
-    expect(hostile.message).toBe('QuickBooks could not create the customer: the request was not accepted (error code 2010).');
+    expect(hostile.message).toBe('QuickBooks could not create the customer: Intuit error 2010 (error code 2010).');
   });
   it.each([
     ['not JSON', () => new Response('<html>Bad Request</html>', { status: 400 })],
@@ -267,7 +267,7 @@ describe('failures: Fault handling, plain messages, nothing retried', () => {
   });
   it('a query parse error on a GET is reported once, not retried', async () => {
     const { err, fetchImpl } = await run(json(fault('4000', 'Query Parser Error'), 400), 'query', 'GET');
-    expect(err.message).toBe('QuickBooks could not look up records: Query Parser Error (error code 4000).');
+    expect(err.message).toBe('QuickBooks could not look up records: Intuit error 4000 (error code 4000).');
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
   it('failureDetail is short and holds only status, code, name and tid', () => {

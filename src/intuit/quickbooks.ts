@@ -69,18 +69,24 @@ export function createLiveQuickBooksAdapter(ctx: QuickBooksAdapterContext): Quic
   };
   const refsFor = async (type: QbItemCreate['type']): Promise<AccountRefs> => {
     const pick = async (kind: Parameters<typeof accountsQuery>[0], sub: string) => {
-      const rows = await query<{ Id?: string; AccountSubType?: string }>(accountsQuery(kind), 'Account');
-      return (rows.find((a) => a.AccountSubType === sub) ?? rows[0])?.Id;
+      const rows = await query<{ Id?: string; AccountType?: string; AccountSubType?: string }>(accountsQuery(kind), 'Account');
+      const exact = rows.find((a) => a.Id && a.AccountSubType === sub);
+      // Income may fall back to another Income-type account; asset and cost accounts never fall back (a wrong GL account is irreversible).
+      return (exact ?? (kind === 'Income' ? rows.find((a) => a.Id && a.AccountType === 'Income') : undefined))?.Id;
     };
     const income = await pick('Income', type === 'Service' ? 'ServiceFeeIncome' : 'SalesOfProductIncome');
-    if (!income) throw new ProviderError('upstream_error', 'This QuickBooks company has no income account to attach the new product or service to.');
+    if (!income) throw new ProviderError('upstream_error', 'This QuickBooks company has no income account to attach the new product or service to. Add an Income account in QuickBooks, then try again.');
     if (type !== 'Inventory') return { income };
-    return { income, asset: await pick('Other Current Asset', 'Inventory'), expense: await pick('Cost of Goods Sold', 'SuppliesMaterialsCogs') };
+    const asset = await pick('Other Current Asset', 'Inventory');
+    if (!asset) throw new ProviderError('upstream_error', 'This QuickBooks company has no Inventory asset account (an Other Current Asset account with the Inventory detail type). Set one up in QuickBooks, then try again.');
+    const expense = await pick('Cost of Goods Sold', 'SuppliesMaterialsCogs');
+    if (!expense) throw new ProviderError('upstream_error', 'This QuickBooks company has no Cost of Goods Sold account with the "Supplies & materials - COS" detail type. Set one up in QuickBooks, then try again.');
+    return { income, asset, expense };
   };
   const create = async <T>(entity: 'item' | 'customer', body: Record<string, unknown>, key: string): Promise<T> => {
     const r = await ctx.http.json<Record<string, T | undefined>>({ method: 'POST', path: companyPath(need(), entity), body });
     const out = r?.[key];
-    if (!out || typeof out !== 'object') throw new ProviderError('upstream_error', 'QuickBooks returned an unreadable response for the new record');
+    if (!out || typeof out !== 'object') throw new ProviderError('upstream_error', 'QuickBooks returned an unreadable response for the new record. It may have been created; check QuickBooks before trying again.');
     return out;
   };
   return {
@@ -94,6 +100,7 @@ export function createLiveQuickBooksAdapter(ctx: QuickBooksAdapterContext): Quic
       const all: QbItem[] = [];
       // shortcut: five pages (5,000 items) is the ceiling; raise it if a company ever needs more.
       for (let start = 1, page = 0; page < 5; page++, start += PAGE) {
+        if (ctx.signal.aborted) throw new ProviderError('timeout', 'QuickBooks request timed out.');
         const rows = await query<QbItem>(itemsQuery({ ...(f?.type ? { type: f.type } : {}), start }), 'Item');
         all.push(...rows);
         if (rows.length < PAGE) break;

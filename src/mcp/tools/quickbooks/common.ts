@@ -18,21 +18,27 @@ export const FAN_OUT_NOTE =
   ' With several companies connected and no `account`, one result is returned per company, each tagged with its account; figures are never added across companies.';
 
 /** Runs one QuickBooks call for one company. A failure writes one audit_log row (code only, no names or amounts) and rethrows. */
-export async function qbCall<T>(ctx: ToolContext, tool: string, account: Account, targetId: string | undefined, fn: () => Promise<T>): Promise<T> {
+export async function qbCall<T>(ctx: ToolContext, tool: string, account: Account, targetId: string | undefined, fn: () => Promise<T>, signal?: AbortSignal): Promise<T> {
   try {
     return await fn();
   } catch (e) {
     await ctx.store.audit
-      .write({ tool, account: account.label, ...(targetId ? { targetId } : {}), outcome: e instanceof GuardrailError ? 'rejected' : 'error', detail: failureDetail(e) })
+      .write({ tool, account: account.label, ...(targetId ? { targetId } : {}), outcome: e instanceof GuardrailError ? 'rejected' : 'error', detail: signal?.aborted ? 'timeout' : failureDetail(e) })
       .catch(() => undefined);
     throw e;
   }
 }
 
+/** Per-company read budget; shorter than the fan-out's 15 s race so the work is cancelled, not abandoned. */
+export const READ_DEADLINE_MS = 12_000;
+/** One deadline for a write's lookups; checked before the POST. The POST itself is never cut short by it. */
+export const WRITE_DEADLINE_MS = 20_000;
+
 /** A write: exactly one company, audited on success (target id only) and on failure. */
 export async function qbWrite<T>(ctx: ToolContext, tool: string, account: Account, idOf: (out: T) => string | undefined, fn: () => Promise<T>): Promise<T> {
   const out = await qbCall(ctx, tool, account, undefined, fn);
-  await ctx.store.audit.write({ tool, account: account.label, targetId: idOf(out), outcome: 'ok' });
+  // The record exists; a failed audit row must not make the call look failed.
+  await ctx.store.audit.write({ tool, account: account.label, targetId: idOf(out), outcome: 'ok' }).catch(() => undefined);
   return out;
 }
 
@@ -54,15 +60,16 @@ export async function perCompany<T extends object>(
   ctx: ToolContext,
   tool: string,
   selector: string | string[] | undefined,
-  run: (qb: QuickBooksAdapter, account: Account) => Promise<T>,
+  run: (qb: QuickBooksAdapter, account: Account, signal: AbortSignal) => Promise<T>,
 ): Promise<PerCompany<T>> {
   const r = await ctx.fanout.read<T>({
     selector,
     page: { pageSize: 1000 },
     dateOf: () => 0, // one item per company; ties keep priority order
-    fetch: async (account) => ({
-      items: [await qbCall(ctx, tool, account, undefined, () => run(ctx.adapters.quickbooks(ctx.quickbooksContext(account)), account))],
-    }),
+    fetch: async (account) => {
+      const signal = AbortSignal.timeout(READ_DEADLINE_MS);
+      return { items: [await qbCall(ctx, tool, account, undefined, () => run(ctx.adapters.quickbooks(ctx.quickbooksContext(account, signal)), account, signal), signal)] };
+    },
   });
   return { items: r.items, accountErrors: r.accountErrors };
 }

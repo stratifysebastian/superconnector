@@ -478,7 +478,7 @@ There are also policy tests showing that hand-built raw MIME with a different `T
 - Seb sends the first live report himself.
 - The edits to the trigger prompts and the Drive config in `docs/MIGRATION.md` Parts 2–5 are drafted as diffs for Seb's OK after the tool is live, then applied in one pass.
 
-## 4f. QuickBooks Online (approved 2026-10-16; Q0 ✅ live 2026-10-16; Q1 next)
+## 4f. QuickBooks Online (approved 2026-10-16; Q0 ✅ live 2026-10-16; Q1 built and audited, awaiting Seb's live check)
 
 **Decisions (Seb, 2026-10-16):**
 - **Scope:** the built-in QuickBooks connector's tools that Intuit's public QuickBooks Online Accounting API supports. Payroll (27 tools), lending (6), Money onboarding (2), industry benchmarks, recommendations and health widgets (~7) use Intuit-internal services and stay with the built-in connector, which remains attached.
@@ -542,6 +542,23 @@ Reports fan out across companies, with results tagged per company (reports aren'
 - `get_settings` and `update_settings`.
 
 Writes need exactly one company. Every send and delete is audited and goes only to the company named.
+
+**Q1 built and audited (2026-10-16):** 21 tools (60 total), with output shapes recorded in `docs/builtin-tools/quickbooks-outputs.json`.
+
+Audit A8 found no critical or high issues; everything below is fixed with tests:
+- **(medium)** Inventory items used to fall back to an arbitrary account. They now need exact account sub-types and are refused plainly otherwise.
+- **(medium)** Timeouts used to leave a company's work running. They now abort it, are audited, and cap GET retries at 30 s.
+- **(low)** Intuit error titles come from an allowlist.
+- **(low)** The query shape refuses subselects and a second `from`.
+- **(low)** Clearer "may have been created" wording.
+- **(low)** A failed audit write no longer fails a successful create.
+- **(low)** No `Taxable` field on items for Canadian companies.
+- **(low)** Explicit Toronto calendar dates instead of `date_macro`. Quarter and year mean calendar periods; fiscal-year inputs are also read as calendar years (shortcut, because the fiscal start isn't known).
+
+Guesses still unverified live:
+- some report section and group names;
+- product and customer match fields;
+- Intuit error titles outside the allowlist, which are shown as "Intuit error <code>".
 
 **Additions from Intuit's app questionnaire (Seb, 2026-10-16), built in Q1:**
 - record Intuit's `intuit_tid` response header on every call;

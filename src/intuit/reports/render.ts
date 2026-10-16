@@ -144,7 +144,7 @@ export function toText(r: Rendered): string {
     const w = Math.max(10, ...t.rows.map((x) => shown(x) * 2 + (x.cells[0] ?? '').length));
     out.push('```text');
     for (const x of t.rows) {
-      const label = `${' '.repeat(shown(x) * 2)}${x.cells[0] ?? ''}`;
+      const label = `${' '.repeat(shown(x) * 2)}${(x.cells[0] ?? '').replace(/`/g, "'")}`;
       out.push(total && x.kind !== 'header' ? `${label.padEnd(w)}  ${cellText(total, x, t).padStart(14)}`.trimEnd() : label);
     }
     out.push('```');

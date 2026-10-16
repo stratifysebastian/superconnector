@@ -1,31 +1,51 @@
 import { GuardrailError } from '@/core/errors';
 import type { QbReportParams } from '@/core/contracts/quickbooks';
 
-/** The built-in's date_range macros mapped to the Reports API's date_macro values. */
-const MACROS: Record<string, string> = {
-  TODAY: 'Today',
-  THIS_WEEK: 'This Week',
-  THIS_WEEK_TO_DATE: 'This Week-to-date',
-  LAST_WEEK: 'Last Week',
-  THIS_MONTH: 'This Month',
-  THIS_MONTH_TO_DATE: 'This Month-to-date',
-  LAST_MONTH: 'Last Month',
-  THIS_QUARTER: 'This Fiscal Quarter',
-  THIS_QUARTER_TO_DATE: 'This Fiscal Quarter-to-date',
-  LAST_QUARTER: 'Last Fiscal Quarter',
-  THIS_YEAR: 'This Year',
-  THIS_YEAR_TO_DATE: 'This Year-to-date',
-  LAST_YEAR: 'Last Year',
-  LAST_YEAR_TO_DATE: 'Last Year-to-date',
-  THIS_FISCAL_YEAR: 'This Fiscal Year',
-  THIS_FISCAL_YEAR_TO_DATE: 'This Fiscal Year-to-date',
-  LAST_FISCAL_YEAR: 'Last Fiscal Year',
-  LAST_30_DAYS: 'Since 30 Days Ago',
-  THIS_30_DAYS: 'Since 30 Days Ago',
-  LAST_90_DAYS: 'Since 90 Days Ago',
-  LAST_12_MONTHS: 'Since 365 Days Ago',
-  ALL: 'All',
+type Ymd = [y: number, m: number, d: number];
+const parse = (s: string): Ymd => s.split('-').map(Number) as Ymd;
+const fmt = (y: number, m: number, d: number): string => new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
+const addDays = (s: string, n: number): string => {
+  const [y, m, d] = parse(s);
+  return fmt(y, m, d + n);
 };
+const lastDay = (y: number, m: number): string => fmt(y, m + 1, 0);
+
+/** Weeks run Monday to Sunday. */
+const monday = (s: string): string => {
+  const [y, m, d] = parse(s);
+  return addDays(s, -((new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7));
+};
+const quarterStart = (m: number): number => m - ((m - 1) % 3);
+
+/**
+ * date_range macros -> explicit calendar dates (the Reports API's own macros are never sent: some are fiscal, some
+ * undocumented). "Quarter" and "year" are calendar periods. `t` is today in the company's time zone.
+ */
+const MACROS: Record<string, (t: string) => [string, string]> = {
+  TODAY: (t) => [t, t],
+  THIS_WEEK: (t) => [monday(t), addDays(monday(t), 6)],
+  THIS_WEEK_TO_DATE: (t) => [monday(t), t],
+  LAST_WEEK: (t) => [addDays(monday(t), -7), addDays(monday(t), -1)],
+  THIS_MONTH: (t) => { const [y, m] = parse(t); return [fmt(y, m, 1), lastDay(y, m)]; },
+  THIS_MONTH_TO_DATE: (t) => { const [y, m] = parse(t); return [fmt(y, m, 1), t]; },
+  LAST_MONTH: (t) => { const [y, m] = parse(t); return [fmt(y, m - 1, 1), lastDay(y, m - 1)]; },
+  THIS_QUARTER: (t) => { const [y, m] = parse(t); const q = quarterStart(m); return [fmt(y, q, 1), lastDay(y, q + 2)]; },
+  THIS_QUARTER_TO_DATE: (t) => { const [y, m] = parse(t); return [fmt(y, quarterStart(m), 1), t]; },
+  LAST_QUARTER: (t) => { const [y, m] = parse(t); const q = quarterStart(m) - 3; return [fmt(y, q, 1), lastDay(y, q + 2)]; },
+  THIS_YEAR: (t) => { const [y] = parse(t); return [fmt(y, 1, 1), fmt(y, 12, 31)]; },
+  THIS_YEAR_TO_DATE: (t) => { const [y] = parse(t); return [fmt(y, 1, 1), t]; },
+  LAST_YEAR: (t) => { const [y] = parse(t); return [fmt(y - 1, 1, 1), fmt(y - 1, 12, 31)]; },
+  // Same month and day last year (29 February becomes 28 February).
+  LAST_YEAR_TO_DATE: (t) => { const [y, m, d] = parse(t); return [fmt(y - 1, 1, 1), fmt(y - 1, m, Math.min(d, parse(lastDay(y - 1, m))[2]))]; },
+  LAST_30_DAYS: (t) => [addDays(t, -30), t],
+  THIS_30_DAYS: (t) => [addDays(t, -30), t],
+  LAST_90_DAYS: (t) => [addDays(t, -90), t],
+  LAST_12_MONTHS: (t) => [addDays(t, -365), t],
+};
+// shortcut: fiscal-year macros are read as calendar years because the fiscal start month is not known; add it when a company needs it.
+MACROS.THIS_FISCAL_YEAR = MACROS.THIS_YEAR!;
+MACROS.THIS_FISCAL_YEAR_TO_DATE = MACROS.THIS_YEAR_TO_DATE!;
+MACROS.LAST_FISCAL_YEAR = MACROS.LAST_YEAR!;
 const SPLITS: Record<string, string> = { MONTH: 'Month', QUARTER: 'Quarter', YEAR: 'Year', WEEK: 'Week', DAY: 'Days' };
 
 export function isoDate(s: string, what: string): string {
@@ -53,10 +73,14 @@ export interface PeriodInput {
 }
 
 /**
- * Period inputs -> Reports API parameters. Start and end dates must come together (one alone is ignored, as in the
- * built-in); otherwise a date_range macro, otherwise the default.
+ * Period inputs -> Reports API parameters, always as explicit start_date/end_date. Start and end must come together; one
+ * alone is ignored (as in the built-in) and a note says so.
  */
-export function periodParams(i: PeriodInput, defaults: { macro: string; splitMacro?: string }): { params: QbReportParams; method: 'accrual' | 'cash'; split: string | null } {
+export function periodParams(
+  i: PeriodInput,
+  defaults: { macro: string; splitMacro?: string },
+  now: Date = new Date(),
+): { params: QbReportParams; method: 'accrual' | 'cash'; split: string | null; notes: string[] } {
   const method = accountingMethod(i.accounting_method);
   const split = i.split_by ? SPLITS[i.split_by.trim().toUpperCase()] : undefined;
   if (i.split_by && !split) throw new GuardrailError('split_by', 'split_by must be one of MONTH, QUARTER, YEAR, WEEK or DAY.');
@@ -64,14 +88,17 @@ export function periodParams(i: PeriodInput, defaults: { macro: string; splitMac
     accounting_method: method === 'cash' ? 'Cash' : 'Accrual',
     ...(split ? { summarize_column_by: split } : {}),
   };
+  const notes: string[] = [];
   if (i.start_date && i.end_date) {
     out.start_date = isoDate(i.start_date, 'start_date');
     out.end_date = isoDate(i.end_date, 'end_date');
   } else {
+    if (i.start_date || i.end_date) notes.push(`Only ${i.start_date ? 'start_date' : 'end_date'} was given, so it was ignored; start_date and end_date must be given together.`);
     const key = (i.date_range ?? (split ? (defaults.splitMacro ?? defaults.macro) : defaults.macro)).trim().toUpperCase();
-    const macro = MACROS[key];
-    if (!macro) throw new GuardrailError('date_range', `date_range "${i.date_range}" is not supported. Use one of ${Object.keys(MACROS).join(', ')}, or pass start_date and end_date.`);
-    out.date_macro = macro;
+    if (key === 'ALL') throw new GuardrailError('date_range', 'date_range ALL is not supported. Ask for a specific period: pass start_date and end_date, or a range such as THIS_YEAR.');
+    const range = MACROS[key];
+    if (!range) throw new GuardrailError('date_range', `date_range "${i.date_range}" is not supported. Use one of ${Object.keys(MACROS).join(', ')}, or pass start_date and end_date.`);
+    [out.start_date, out.end_date] = range(today(now));
   }
-  return { params: out, method, split: i.split_by ? i.split_by.trim().toUpperCase() : null };
+  return { params: out, method, split: i.split_by ? i.split_by.trim().toUpperCase() : null, notes };
 }

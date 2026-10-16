@@ -21,7 +21,7 @@ const int = z.number().int().nullable().optional();
 const num = z.number().nullable().optional();
 
 const MACRO_HELP =
-  'date_range is a macro such as THIS_YEAR, LAST_YEAR, THIS_QUARTER, LAST_QUARTER, THIS_MONTH, LAST_MONTH, THIS_YEAR_TO_DATE, LAST_30_DAYS; start_date and end_date (YYYY-MM-DD) must be given together and replace it.';
+  'date_range is a macro such as THIS_YEAR, LAST_YEAR, THIS_QUARTER, LAST_QUARTER, THIS_MONTH, LAST_MONTH, THIS_YEAR_TO_DATE, LAST_30_DAYS; start_date and end_date (YYYY-MM-DD) must be given together and replace it (one alone is ignored, with a note). "Quarter" and "year" mean calendar quarters and years, not fiscal ones; weeks run Monday to Sunday; LAST_12_MONTHS is the last 365 days; ALL is not supported.';
 const TEXT_NOTE =
   ' PLAIN-TEXT variant: returns markdown (STATUS, title, Summary, Line Items) instead of JSON. Use it only when you will write the narrative yourself; for a direct question use the JSON tool of the same name without `_text`.';
 const SHAPE_NOTE = ' Returns JSON: reportTitle, reportData.rows (cells, depth, metadata), displayColumns, summary, period or asOf, accountingMethod.';
@@ -88,7 +88,7 @@ const balanceSheet = defineReport({
   input: bsInput,
   plan(i) {
     const p = periodParams(i, { macro: 'THIS_MONTH', splitMacro: 'THIS_YEAR' });
-    return { report: 'BalanceSheet', params: p.params, method: p.method, opts: { splitBy: p.split } };
+    return { report: 'BalanceSheet', params: p.params, method: p.method, opts: { splitBy: p.split }, ...(p.notes.length ? { notes: p.notes } : {}) };
   },
 });
 
@@ -103,14 +103,15 @@ const periodPlan = (report: QbReportName) => (i: z.infer<typeof periodInput>): P
     { ...(i.periodStart && i.periodEnd ? { start_date: i.periodStart, end_date: i.periodEnd } : {}), split_by: 'MONTH', accounting_method: 'accrual' },
     { macro: 'THIS_YEAR_TO_DATE' },
   );
-  return { report, params: p.params, method: p.method, opts: { splitBy: 'MONTH' } };
+  const lone = i.periodStart || i.periodEnd ? [`Only ${i.periodStart ? 'periodStart' : 'periodEnd'} was given, so it was ignored; both are needed. The calendar year to date is shown.`] : [];
+  return { report, params: p.params, method: p.method, opts: { splitBy: 'MONTH' }, ...(lone.length ? { notes: lone } : {}) };
 };
 const profitLoss = defineReport({
   name: 'profit_loss_quickbooks_account',
   textName: 'profit_loss_quickbooks_account_text',
   description:
     'Profit and loss report from QuickBooks: income, cost of goods sold, expenses, net profit and margins, with a monthly breakdown. ' +
-    'periodStart and periodEnd (YYYY-MM-DD) must be given together; without them the year to date is used. Accrual basis.',
+    'periodStart and periodEnd (YYYY-MM-DD) must be given together; without them the calendar year to date is used. Accrual basis.',
   input: periodInput,
   plan: periodPlan('ProfitAndLoss'),
 });
@@ -119,7 +120,7 @@ const cashFlow = defineReport({
   textName: 'cash_flow_quickbooks_account_text',
   description:
     'Cash flow report from QuickBooks: operating, investing and financing activities, net cash increase and cash at the end of the period, with a monthly breakdown. ' +
-    'periodStart and periodEnd (YYYY-MM-DD) must be given together; without them the year to date is used. Accrual basis.',
+    'periodStart and periodEnd (YYYY-MM-DD) must be given together; without them the calendar year to date is used. Accrual basis.',
   input: periodInput,
   plan: periodPlan('CashFlow'),
 });
@@ -231,7 +232,7 @@ const customerSales = defineReport({
       params: p.params,
       method: p.method,
       opts: { topN: Math.max(1, i.top_n), ranking, splitBy: p.split },
-      ...(i.compare_to ? { notes: ['compare_to is not supported by this server yet; this is the current period only.'] } : {}),
+      ...(i.compare_to || p.notes.length ? { notes: [...p.notes, ...(i.compare_to ? ['compare_to is not supported by this server yet; this is the current period only.'] : [])] } : {}),
     };
   },
 });
@@ -265,6 +266,7 @@ const productSales = defineReport({
       report: 'ItemSales',
       params: p.params,
       method: p.method,
+      ...(p.notes.length ? { notes: p.notes } : {}),
       opts: {
         splitBy: p.split,
         transform: itemSalesFilter({ productNames: i.product_name, topN: i.top_n, bottomN: i.bottom_n, sortBy: i.sort_by, column: i.value_filter_column, op: i.value_filter_op, threshold: i.value_filter_threshold }),

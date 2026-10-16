@@ -38,7 +38,7 @@ export interface IntuitRule {
 }
 
 /** Reports API parameters. Each report lists exactly the ones its tools send. */
-const PERIOD_PARAMS = ['date_macro', 'start_date', 'end_date', 'accounting_method', 'summarize_column_by'];
+const PERIOD_PARAMS = ['start_date', 'end_date', 'accounting_method', 'summarize_column_by'];
 const AGING_PARAMS = ['report_date'];
 const REPORTS: [name: string, params: string[]][] = [
   ['BalanceSheet', PERIOD_PARAMS],
@@ -57,9 +57,12 @@ const REPORTS: [name: string, params: string[]][] = [
  * this way. The text is built by src/intuit/query.ts with escaped values; tool input never reaches it unescaped.
  */
 const QUERY_SHAPE = /^select [\w*.,() ]{1,200} from (?:Item|Customer|Account)\b[^\n\r]*$/i;
+/** Quoted literals are blanked first, so a searched word like "from" is fine; an unbalanced quote leaves the rest visible and fails closed. */
+const LITERAL = /'(?:[^'\\]|\\.)*'/g;
+const SECOND_FROM_OR_SUBSELECT = /\bfrom\b[\s\S]*\bfrom\b|\(\s*select\b/i;
 const checkQuery = (q: Record<string, string>): string | null => {
   const text = q.query;
-  if (typeof text !== 'string' || text.length > 2000 || !QUERY_SHAPE.test(text)) return 'query text is not a select on Item, Customer or Account';
+  if (typeof text !== 'string' || text.length > 2000 || !QUERY_SHAPE.test(text) || SECOND_FROM_OR_SUBSELECT.test(text.replace(LITERAL, "''"))) return 'query text is not a select on Item, Customer or Account';
   return null;
 };
 

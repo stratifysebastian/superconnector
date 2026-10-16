@@ -21,7 +21,6 @@ export type QbReportName =
 
 /** Reports API query parameters. Which ones each report may send is fixed in src/intuit/endpoints. */
 export interface QbReportParams {
-  date_macro?: string;
   start_date?: string;
   end_date?: string;
   accounting_method?: 'Accrual' | 'Cash';

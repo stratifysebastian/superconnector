@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/core/contracts/account';
 import type { QbCompanyInfo, QbItem, QuickBooksAdapter } from '@/core/contracts/quickbooks';
 import type { LogEvent, ToolContext } from '@/core/contracts/tool';
@@ -177,6 +177,11 @@ describe('report parameters sent to the Reports API', () => {
     adapterFor = () => ({ report }) as unknown as QuickBooksAdapter;
   });
   const sent = () => report.mock.calls.map((c) => c.slice(0, 2));
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-16T16:00:00Z'));
+  });
+  afterEach(() => void vi.useRealTimers());
 
   it('balance sheet: macro default, as-of date, split trend, cash', async () => {
     await call('qbo_accounting_get_balance_sheet', one);
@@ -184,10 +189,10 @@ describe('report parameters sent to the Reports API', () => {
     await call('qbo_accounting_get_balance_sheet', { ...one, split_by: 'quarter' });
     await call('qbo_accounting_get_balance_sheet', { ...one, date_range: 'LAST_QUARTER', start_date: '2026-01-01' });
     expect(sent()).toEqual([
-      ['BalanceSheet', { date_macro: 'This Month', accounting_method: 'Accrual' }],
+      ['BalanceSheet', { start_date: '2026-10-01', end_date: '2026-10-31', accounting_method: 'Accrual' }],
       ['BalanceSheet', { start_date: '2026-03-31', end_date: '2026-03-31', accounting_method: 'Cash' }],
-      ['BalanceSheet', { date_macro: 'This Year', accounting_method: 'Accrual', summarize_column_by: 'Quarter' }],
-      ['BalanceSheet', { date_macro: 'Last Fiscal Quarter', accounting_method: 'Accrual' }], // one date alone is ignored
+      ['BalanceSheet', { start_date: '2026-01-01', end_date: '2026-12-31', accounting_method: 'Accrual', summarize_column_by: 'Quarter' }],
+      ['BalanceSheet', { start_date: '2026-07-01', end_date: '2026-09-30', accounting_method: 'Accrual' }], // one date alone is ignored
     ]);
   });
   it('p&l and cash flow: both dates or year to date, always monthly', async () => {
@@ -196,8 +201,8 @@ describe('report parameters sent to the Reports API', () => {
     await call('cash_flow_quickbooks_account_text', { ...one, periodStart: '2026-01-01' });
     expect(sent()).toEqual([
       ['ProfitAndLoss', { start_date: '2026-01-01', end_date: '2026-06-30', accounting_method: 'Accrual', summarize_column_by: 'Month' }],
-      ['CashFlow', { date_macro: 'This Year-to-date', accounting_method: 'Accrual', summarize_column_by: 'Month' }],
-      ['CashFlow', { date_macro: 'This Year-to-date', accounting_method: 'Accrual', summarize_column_by: 'Month' }],
+      ['CashFlow', { start_date: '2026-01-01', end_date: '2026-10-16', accounting_method: 'Accrual', summarize_column_by: 'Month' }],
+      ['CashFlow', { start_date: '2026-01-01', end_date: '2026-10-16', accounting_method: 'Accrual', summarize_column_by: 'Month' }],
     ]);
   });
   it('aging: only report_date goes out; names and amounts are filtered here', async () => {
@@ -214,10 +219,21 @@ describe('report parameters sent to the Reports API', () => {
     await call('qbo_accounting_get_sales_by_product_summary', { ...one, start_date: '2026-02-01', end_date: '2026-02-28' });
     await call('qbo_accounting_get_sales_by_product_summary', one);
     expect(sent()).toEqual([
-      ['CustomerSales', { date_macro: 'Last Year', accounting_method: 'Cash', summarize_column_by: 'Month' }],
+      ['CustomerSales', { start_date: '2025-01-01', end_date: '2025-12-31', accounting_method: 'Cash', summarize_column_by: 'Month' }],
       ['ItemSales', { start_date: '2026-02-01', end_date: '2026-02-28', accounting_method: 'Accrual' }],
-      ['ItemSales', { date_macro: 'This Year', accounting_method: 'Accrual' }],
+      ['ItemSales', { start_date: '2026-01-01', end_date: '2026-12-31', accounting_method: 'Accrual' }],
     ]);
+  });
+  it('a lone start or end date is ignored with a note, and date_macro is never sent', async () => {
+    const r = await call('qbo_accounting_get_balance_sheet', { ...one, start_date: '2026-01-01' });
+    expect(r.reports[0].notes.join(' ')).toMatch(/start_date was given, so it was ignored/);
+    const p = await call('profit_loss_quickbooks_account', { ...one, periodEnd: '2026-06-30' });
+    expect(p.reports[0].notes.join(' ')).toMatch(/periodEnd was given, so it was ignored/);
+    expect(JSON.stringify(sent())).not.toContain('date_macro');
+  });
+  it('ALL is refused with a plain message before QuickBooks is called', async () => {
+    await expect(call('qbo_accounting_get_sales_by_product_summary', { ...one, date_range: 'ALL' })).rejects.toThrow(/ALL is not supported.*start_date and end_date/);
+    expect(report).not.toHaveBeenCalled();
   });
   it('compare_to is not supported and says so', async () => {
     const r = await call('qbo_accounting_get_sales_by_customer_summary', { ...one, compare_to: 'PREVIOUS_YEAR' });
@@ -295,7 +311,22 @@ describe('creates', () => {
     expect(r.data.product.id).toMatch(/^mock-item-/);
     expect(audit).toEqual([{ tool: 'qbo_catalog_create_product', account: 'stratify-ca', targetId: r.data.product.id, outcome: 'ok' }]);
     expect(JSON.stringify(audit)).not.toContain('Gadget');
-    expect((await call('qbo_catalog_create_product', { ...one, input_data: { name: 'Taxed', unit_price: 1, taxable: true } })).data.product.taxable).toBe(true);
+    // Canadian company (mock CompanyInfo Country is CA): taxable is ignored and the note says why.
+    const taxed = await call('qbo_catalog_create_product', { ...one, input_data: { name: 'Taxed', unit_price: 1, taxable: true } });
+    expect(taxed.data.product.taxable).toBeNull();
+    expect(taxed.data.notes[0]).toMatch(/sales tax codes are set per line on invoices/);
+  });
+  it('create_product: Taxable is sent only when CompanyInfo says US; an unreadable CompanyInfo counts as Canadian', async () => {
+    const createItem = vi.fn(async (i: { name: string }) => ({ Id: '9', Name: i.name }) as QbItem);
+    const input_data = { name: 'T', unit_price: 1, taxable: true };
+    for (const [companyInfo, taxable] of [[async () => ({ Country: 'US' }), true], [async () => ({ Country: 'CA' }), undefined], [async () => Promise.reject(new Error('x')), undefined]] as const) {
+      createItem.mockClear();
+      adapterFor = () => ({ companyInfo, createItem }) as unknown as QuickBooksAdapter;
+      const r = await call('qbo_catalog_create_product', { ...one, input_data });
+      expect(createItem.mock.calls[0]![0]).toMatchObject({ name: 'T', ...(taxable ? { taxable } : {}) });
+      expect('taxable' in createItem.mock.calls[0]![0]).toBe(taxable === true);
+      expect('notes' in r.data).toBe(taxable === undefined);
+    }
   });
   it('create_product: types, inventory rules and dates', async () => {
     const inv = await call('qbo_catalog_create_product', { ...one, input_data: { name: 'Bolt', unit_price: 2, product_type: 'inventory', quantity_on_hand: 12, inventory_start_date: '2026-01-01' } });
@@ -442,5 +473,27 @@ describe('over MCP', () => {
     expect((bad.content as { text: string }[])[0]!.text).toMatch(/accrual/);
     const names = (await client.listTools()).tools.map((t) => t.name);
     expect(names).toHaveLength(21);
+  });
+});
+
+describe('fan-out timeout cancels the work', () => {
+  it('search stops between terms when the company budget is spent, and the timeout is audited', async () => {
+    const ac = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(ac.signal);
+    const findItems = vi.fn(async () => (ac.abort(), [] as QbItem[]));
+    adapterFor = () => ({ findItems }) as unknown as QuickBooksAdapter;
+    const r = await call('qbo_catalog_search_products', { ...one, descriptions: ['one', 'two', 'three'] });
+    expect(findItems).toHaveBeenCalledTimes(1);
+    expect(r.companies).toEqual([]);
+    expect(r.accountErrors[0]).toMatchObject({ account: 'stratify-ca', kind: 'timeout' });
+    expect(audit).toEqual([{ tool: 'qbo_catalog_search_products', account: 'stratify-ca', outcome: 'error', detail: 'timeout' }]);
+    vi.restoreAllMocks();
+  });
+  it('the company signal reaches quickbooksContext', async () => {
+    const seen: (AbortSignal | undefined)[] = [];
+    ctx.quickbooksContext = ((a: Account, signal?: AbortSignal) => (seen.push(signal), { account: a })) as never;
+    await call('qbo_accounting_get_balance_sheet', one);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toBeInstanceOf(AbortSignal);
   });
 });
