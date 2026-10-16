@@ -339,8 +339,8 @@ Known items to raise when each phase starts (not decided here):
 - **Phase 1:** the built-in `search_events` is semantic search on the primary calendar; the Calendar API only offers keyword `q`. **Accepted deviation** (Seb, 2026-10-07).
 - **Phase 1:** the built-in uses `notificationLevel`. We force `NONE` / `sendUpdates=none` and reject `attendees`, `attendeeEmails`, `addedAttendees`, `addedAttendeeEmails`, `removedAttendeeEmails` and `guestPermissions`.
 - **Phase 1:** events with other guests: blocked; the tool tells Seb what change is needed (see §7).
-- **Phase 2:** the built-in `apply_sensitive_*_label` takes `TRASH` or `SPAM`. The spec includes "apply sensitive labels" but excludes trash. Seb: "fine" (2026-10-07). Read as: include the tools, SPAM allowed, TRASH still blocked per the spec's exclusion; confirm at Phase 2 start. Label tools must also refuse adding the `TRASH` label and removing it (untrash).
-- **Phase 2:** open question on `create_filter`.
+- **Phase 2:** the built-in `apply_sensitive_*_label` takes `TRASH` or `SPAM`. The spec includes "apply sensitive labels" but excludes trash. Seb: "fine" (2026-10-07). Read as: include the tools, SPAM allowed, TRASH still blocked per the spec's exclusion; **Confirmed by Seb 2026-10-16.** Label tools must also refuse adding the `TRASH` label and removing it (untrash).
+- **Phase 2:** `create_filter` included (Seb, 2026-10-16) with the `forward` and delete (`TRASH`) actions blocked.
 - **Phases 1–3:** return shapes. Input schemas are visible to me but output shapes are not. Ask Seb before guessing; one option is to call a read-only built-in tool once with his permission and record the shape.
 - **Phase 3 (Drive):** `GoogleHttp` only does JSON, so content upload, `alt=media` download and export need a non-JSON path designed in the same policy layer. Also decide whether to ban Drive `writersCanShare` and `copyRequiresWriterPermission` changes (they change sharing capability without touching permissions).
 - **Phases 5–6:** Sheets and Slides `batchUpdate` can delete content (`deleteSheet`, `deleteObject`, `values:batchClear`). The spec's "no trash or delete" is about files; confirm with Seb that content edits inside a file are allowed.
@@ -360,6 +360,8 @@ Known items to raise when each phase starts (not decided here):
 
 - ADR-6 separate admin sign-in client: **approved** (Seb, 2026-10-07).
 - ADR-8 OAuth tables added to the data model: **approved** (Seb, 2026-10-07).
+- Calendar: a booked room does not count as a guest, so such events stay editable (Seb, 2026-10-16).
+- Refusals to invite or to change guest events tell Claude that Seb does these himself and not to use another connector (Seb, 2026-10-16), after Claude offered the built-in connector during live testing.
 - Calendar merged order: **earliest first** (Seb, 2026-10-16). C4 found that newest-first merging over Google's ascending `startTime` pages skipped events across pages. Calendar tools negate `dateOf` and always request `orderBy=startTime`. Gmail and Drive stay newest first.
 
 ## 8. Open questions (from the spec), and when they get asked
@@ -370,4 +372,4 @@ Known items to raise when each phase starts (not decided here):
 | Server domain: subdomain or default Vercel URL? | Phase 0 (redirect URIs, OAuth metadata) | **`mcp.stratifysoftware.com`** (Seb, 2026-10-07). Needs a DNS CNAME to Vercel; `PUBLIC_BASE_URL=https://mcp.stratifysoftware.com`. |
 | Repo | — | `stratifysebastian/superconnector` |
 | Calendar updates on events with other guests | Phase 1 | **Block** (Seb, 2026-10-07). `update_event` never changes an event with other guests; it returns a plain-language result telling Seb what change is needed so he can make it himself. |
-| Gmail `create_filter` | Phase 2 | _pending_ |
+| Gmail `create_filter` | Phase 2 | **Include, no forward or delete actions** (Seb, 2026-10-16). |

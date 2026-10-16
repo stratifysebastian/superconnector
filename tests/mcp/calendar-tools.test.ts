@@ -312,6 +312,7 @@ describe('update_event', () => {
     const err = (await p.catch((e: Error) => e)) as Error;
     expect(err.message).toContain('other guests (2)');
     expect(err.message).toContain('move it to 2026-10-21, 3:00–4:00 PM');
+    expect(err.message).toContain('do not use another connector');
     expect(err.message).not.toMatch(/secret|@/);
     expect(fakes.prime!.patchEvent).not.toHaveBeenCalled();
     expect(audit.at(-1)).toMatchObject({ tool: 'update_event', account: 'prime', outcome: 'rejected' });
