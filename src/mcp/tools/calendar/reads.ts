@@ -53,7 +53,9 @@ async function eventsRead(
     page: { pageSize: input.pageSize ?? 25, cursor: input.pageToken },
     fetch: (account, pageToken, pageSize) =>
       ctx.adapters.calendar(ctx.adapterContext(account)).listEvents(list({ pageSize, pageToken })),
-    dateOf: startMs,
+    // Earliest first (Seb, 2026-10-16). The engine merges highest-first, so negate; each account is fetched
+    // with orderBy=startTime (ascending), which keeps paging exact.
+    dateOf: (e) => -startMs(e),
     dedupeKey: eventKey,
     idOf: eventId(calendarId),
   });
@@ -69,7 +71,7 @@ export const listEventsInput = z.object({
   startTime: z.string().optional().describe('RFC3339. Defaults to now.'),
   endTime: z.string().optional().describe('RFC3339. Defaults to start + 7 days.'),
   fullText: z.string().optional(),
-  orderBy: z.enum(['startTime', 'updated']).optional(),
+  orderBy: z.enum(['startTime', 'updated']).optional().describe('Accepted for compatibility; merged results are always earliest first.'),
   pageSize: pageSizeField,
   pageToken: z.string().optional().describe('Opaque nextCursor from a previous call.'),
   eventType: z.array(z.string()).optional(),
@@ -80,7 +82,7 @@ export const listEventsInput = z.object({
 export const listEventsTool: ToolDef<typeof listEventsInput> = {
   name: 'list_events',
   description:
-    'Lists events in a time range across every connected account (or the one named in `account`), merged newest first. A meeting on several accounts appears once with `accounts` and `sources`.',
+    'Lists events in a time range across every connected account (or the one named in `account`), merged earliest first by start time. A meeting on several accounts appears once with `accounts` and `sources`.',
   input: listEventsInput,
   kind: 'read',
   handler(input, ctx) {
@@ -93,7 +95,7 @@ export const listEventsTool: ToolDef<typeof listEventsInput> = {
       timeMin,
       timeMax,
       ...(input.fullText ? { q: input.fullText } : {}),
-      ...(input.orderBy ? { orderBy: input.orderBy } : {}),
+      orderBy: 'startTime' as const, // required for exact cross-account paging; input.orderBy is accepted but ignored
       ...(input.eventType ? { eventTypes: input.eventType } : {}),
       ...(input.timeZone ? { timeZone: input.timeZone } : {}),
     }));

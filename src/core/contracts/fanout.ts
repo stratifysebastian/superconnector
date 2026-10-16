@@ -15,7 +15,7 @@ export interface FanOutReadSpec<T> {
   /** Calls one account's adapter. Receives that account's own page token. */
   fetch: (account: Account, pageToken: string | undefined, pageSize: number) => Promise<AccountPage<T>>;
   /** Natural date of an item (ms epoch): message date, event start, modifiedTime. */
-  dateOf: (item: T) => number;
+  dateOf: (item: T) => number; // merged highest-first; each account's pages must arrive in the same order
   /** Optional de-dup key: `${iCalUID}|${start}` for events, file id for Drive. */
   dedupeKey?: (item: T) => string | undefined;
   /** Per-item native id, kept in `sources` when items collapse. */

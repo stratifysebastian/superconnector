@@ -202,7 +202,7 @@ describe('Calendar MCP end to end (mock mode)', () => {
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 
-  it('morning brief: both accounts, newest first, shared meeting once', async () => {
+  it('morning brief: both accounts, earliest first, shared meeting once', async () => {
     const r = await call('list_events', { ...WEEK, pageSize: 250 });
     expect(r.isError).toBe(false);
     const events = r.sc.events as R[];
@@ -213,7 +213,7 @@ describe('Calendar MCP end to end (mock mode)', () => {
       expect(e.accountEmail).toBeTruthy();
     }
     const starts = events.map(startOf);
-    expect(starts).toEqual([...starts].sort((a, b) => b - a));
+    expect(starts).toEqual([...starts].sort((a, b) => a - b));
     const shared = sync(events);
     expect(shared).toHaveLength(1);
     expect(shared[0]!.accounts).toEqual(['stratify', 'prime']);
@@ -222,10 +222,7 @@ describe('Calendar MCP end to end (mock mode)', () => {
     expect(events).toHaveLength(23);
   });
 
-  // TODO(bug): the fan-out engine assumes each account's page stream is newest-first, but list_events asks the
-  // adapter for no ordering (mock: fixture order; Google: ascending with orderBy=startTime), so paging with a small
-  // pageSize repeats events and skips others (pageSize 4 returns 23 rows, 15 distinct, and misses some).
-  it.fails('pages with pageSize 4 and sees every event once in global order', async () => {
+  it('pages with pageSize 4 and sees every event once in global order', async () => {
     const all = (await call('list_events', { ...WEEK, pageSize: 250 })).sc.events as R[];
     const seen: R[] = [];
     let cursor: string | undefined;
@@ -242,7 +239,7 @@ describe('Calendar MCP end to end (mock mode)', () => {
     expect(sync(seen)).toHaveLength(1);
     expect(seen).toHaveLength(all.length);
     const starts = seen.map(startOf);
-    expect(starts).toEqual([...starts].sort((a, b) => b - a));
+    expect(starts).toEqual([...starts].sort((a, b) => a - b));
   });
 
   it('partial failure: invalid_grant on prime still returns stratify with a reconnect error', async () => {

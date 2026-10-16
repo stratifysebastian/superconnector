@@ -51,7 +51,8 @@ function makeFake(label: string): Fake {
     listEvents: vi.fn(async (p) => {
       if (f.fail) throw f.fail;
       const start = Number(p.pageToken ?? 0);
-      const items = f.events.slice(start, start + p.pageSize);
+      const all = p.orderBy === 'startTime' ? [...f.events].sort((a, b) => Date.parse(a.start!.dateTime!) - Date.parse(b.start!.dateTime!)) : f.events;
+      const items = all.slice(start, start + p.pageSize);
       const next = start + p.pageSize;
       return { items, ...(next < f.events.length ? { nextPageToken: String(next) } : {}) };
     }),
@@ -100,12 +101,12 @@ describe('reads', () => {
     ];
   });
 
-  it('merges newest first and collapses the shared meeting', async () => {
+  it('merges earliest first and collapses the shared meeting', async () => {
     const r = await call('list_events', { startTime: '2026-10-01T00:00:00Z', endTime: '2026-11-01T00:00:00Z' });
-    expect(r.events.map((e: GEvent) => e.id)).toEqual(['p1', 's1', 'sm']);
-    expect(r.events[0].conferenceUrl).toBe('https://meet.example/abc');
-    expect(r.events[2]).toMatchObject({ account: 'stratify', accounts: ['stratify', 'prime'] });
-    expect(r.events[2].sources).toEqual([
+    expect(r.events.map((e: GEvent) => e.id)).toEqual(['sm', 's1', 'p1']);
+    expect(r.events[2].conferenceUrl).toBe('https://meet.example/abc');
+    expect(r.events[0]).toMatchObject({ account: 'stratify', accounts: ['stratify', 'prime'] });
+    expect(r.events[0].sources).toEqual([
       { account: 'stratify', id: 'sm', calendarId: 'primary' },
       { account: 'prime', id: 'pm', calendarId: 'primary' },
     ]);
@@ -116,17 +117,17 @@ describe('reads', () => {
   it('reports a disconnected account in accountErrors', async () => {
     fakes.prime!.fail = new ProviderError('needs_reconnect', 'invalid_grant');
     const r = await call('list_events', {});
-    expect(r.events.map((e: GEvent) => e.id)).toEqual(['s1', 'sm']);
+    expect(r.events.map((e: GEvent) => e.id)).toEqual(['sm', 's1']);
     expect(r.accountErrors).toHaveLength(1);
     expect(r.accountErrors[0]).toMatchObject({ account: 'prime', kind: 'needs_reconnect' });
   });
 
   it('round-trips the cursor', async () => {
     const first = await call('list_events', { pageSize: 2 });
-    expect(first.events.map((e: GEvent) => e.id)).toEqual(['p1', 's1']);
+    expect(first.events.map((e: GEvent) => e.id)).toEqual(['sm', 's1']);
     expect(first.nextCursor).toBeTruthy();
     const second = await call('list_events', { pageSize: 2, pageToken: first.nextCursor });
-    expect(second.events.map((e: GEvent) => e.id)).toEqual(['sm']);
+    expect(second.events.map((e: GEvent) => e.id)).toEqual(['p1']);
     expect(second.nextCursor).toBeUndefined();
   });
 

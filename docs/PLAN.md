@@ -293,7 +293,7 @@ Done when (spec): the morning brief shows events from both accounts, with shared
 | Tool | Accounts | Behaviour |
 | --- | --- | --- |
 | `list_calendars` | fan-out | Merged list, each calendar tagged with its account. |
-| `list_events` | fan-out | Merged newest-first. Events de-duplicated on `iCalUID` + start. |
+| `list_events` | fan-out | Merged **earliest first** by start time (Seb, 2026-10-16; deviates from the spec's newest-first, Calendar only). Each account is fetched with `orderBy=startTime` so paging stays exact; the `orderBy` input is accepted but ignored. Events de-duplicated on `iCalUID` + start. |
 | `search_events` | fan-out | Same merge and de-duplication. Uses the Calendar API's keyword `q` on each primary calendar (accepted deviation from the built-in's semantic search). |
 | `get_event` | lookup | Finds the event in whichever account has it. |
 | `suggest_time` | fan-out | Combines free/busy across all of Seb's calendars and the given attendees. Returns free slots. |
@@ -360,6 +360,7 @@ Known items to raise when each phase starts (not decided here):
 
 - ADR-6 separate admin sign-in client: **approved** (Seb, 2026-10-07).
 - ADR-8 OAuth tables added to the data model: **approved** (Seb, 2026-10-07).
+- Calendar merged order: **earliest first** (Seb, 2026-10-16). C4 found that newest-first merging over Google's ascending `startTime` pages skipped events across pages. Calendar tools negate `dateOf` and always request `orderBy=startTime`. Gmail and Drive stay newest first.
 
 ## 8. Open questions (from the spec), and when they get asked
 
