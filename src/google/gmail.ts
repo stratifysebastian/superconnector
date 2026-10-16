@@ -72,18 +72,23 @@ export function parseAddresses(value: string | undefined): string[] {
   if (!value) return [];
   const out: string[] = [];
   let cur = '';
+  let addr: string | undefined; // the angle-address, taken only from text outside quotes
   let quoted = false;
   let angle = false;
+  let escaped = false;
   const flush = () => {
-    const m = /<([^<>]*)>/.exec(cur);
-    const a = (m ? m[1]! : cur).trim().replace(/^"|"$/g, '');
+    const a = (addr ?? cur).trim().replace(/^"|"$/g, '');
     if (a) out.push(a);
     cur = '';
+    addr = undefined;
   };
   for (const c of value) {
-    if (c === '"') quoted = !quoted;
-    else if (!quoted && c === '<') angle = true;
+    if (escaped) escaped = false;
+    else if (quoted && c === '\\') escaped = true;
+    else if (c === '"') quoted = !quoted;
+    else if (!quoted && c === '<') { angle = true; addr = ''; cur += c; continue; }
     else if (!quoted && c === '>') angle = false;
+    else if (angle && !quoted) addr += c;
     if (c === ',' && !quoted && !angle) flush();
     else cur += c;
   }

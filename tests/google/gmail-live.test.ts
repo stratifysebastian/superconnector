@@ -51,6 +51,9 @@ describe('parseAddresses', () => {
   it('returns bare addresses', () => {
     expect(parseAddresses('"Doe, Ann" <ann@x.com>, Bob <bob@x.com>, c@x.com')).toEqual(['ann@x.com', 'bob@x.com', 'c@x.com']);
     expect(parseAddresses(undefined)).toEqual([]);
+    // A display name can't steer the address (A4 F1).
+    expect(parseAddresses('"<attacker@evil.test>" <boss@corp.test>')).toEqual(['boss@corp.test']);
+    expect(parseAddresses('"a\\" <x@evil.test>" <boss@corp.test>')).toEqual(['boss@corp.test']);
   });
 });
 

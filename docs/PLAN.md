@@ -8,7 +8,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | --- | --- |
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
-| 2 Gmail | 🟦 approved 2026-10-16; G1–G3 merged on the branch (21 tools, 775 tests green); G4 e2e and A4 audit running |
+| 2 Gmail | 🟨 built and audited 2026-10-16 (21 tools, 792 tests); awaiting Seb's live verification |
 | 3 Drive | ⬜ |
 | 4 Docs | ⬜ |
 | 5 Sheets | ⬜ |
@@ -358,11 +358,11 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 
 | Task | Scope |
 | --- | --- |
-| G1 | Fixtures and mock adapter. Two accounts, including the same email received by both, multiple pages, `invalid_grant`, 429 and timeout. |
-| G2 | Live adapter and endpoint rules: MIME building for drafts, and thread metadata fetches for search. The orchestrator adds the `GmailAdapter` contract first. |
-| G3 | Tool handlers. |
-| G4 | Guardrail and MCP tests. |
-| A4 | Fresh-agent audit of the Gmail guardrails. |
+| ✅ G1 | Fixtures and mock adapter. Two accounts, including the same email received by both, multiple pages, `invalid_grant`, 429 and timeout. |
+| ✅ G2 | Live adapter and endpoint rules: MIME building for drafts, and thread metadata fetches for search. The orchestrator adds the `GmailAdapter` contract first. |
+| ✅ G3 | Tool handlers. |
+| ✅ G4 | Guardrail and MCP tests (15 end-to-end cases in mock mode). |
+| ✅ A4 | Fresh-agent audit of the Gmail guardrails. **Done 2026-10-16.** No path to send, trash, delete or settings across 43 bypass attempts. No MIME header injection, and account isolation holds. Fixed: a quoted display name could steer a reply draft's `To` (medium); downstream policy blocks are now audited `rejected` and carry the hand-back text (low); double-encoded paths (`%25`) are refused (info). Not fixed (info): lookalike label ids such as zero-width + TRASH pass the policy, but Google treats them as unknown labels; attachment content has no size cap; un-spamming a whole thread moves sent messages to the inbox too. |
 
 **Live verification (with Seb):**
 1. Search with no account: mail from both accounts, newest first.

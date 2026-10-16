@@ -318,6 +318,7 @@ const REJECTIONS: Reject[] = [
   { name: '%2e path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/%2e%2e/x' }), rule: /path-trickery/ },
   { name: '%2E%2E mixed case', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/%2E%2E/x' }), rule: /path-trickery/ },
   { name: '%2f path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files/a%2fb' }), rule: /path-trickery/ },
+  { name: 'double-encoded path', req: () => ({ method: 'POST', url: 'https://gmail.googleapis.com/gmail/v1/users/me/drafts/x%253Asend' }), rule: /path-trickery/ },
   { name: 'backslash path', req: () => ({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files\\a' }), rule: /path-trickery/ },
   { name: 'tab smuggled into a segment', req: () => ({ method: 'POST', url: `${GMAIL}/messages/se\tnd`, body: {} }), rule: /control-chars/ },
   { name: 'userinfo', req: () => ({ method: 'GET', url: 'https://user:pw@www.googleapis.com/drive/v3/files/a' }), rule: /userinfo/ },

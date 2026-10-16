@@ -165,6 +165,13 @@ describe('writes', () => {
     expect(fakes.prime!.modifyMessage).toHaveBeenLastCalledWith({ messageId: 'pm', add: ['A'], remove: ['B'] });
   });
 
+  it('a policy block downstream is audited as rejected and tells Claude not to route around it', async () => {
+    vi.mocked(fakes.prime!.modifyMessage).mockRejectedValueOnce(new GuardrailError('hard-ban/x', 'GoogleHttp blocked the request'));
+    const err = (await call('label_message', { account: 'prime', messageId: 'pm', labelIds: ['STARRED'] }).catch((e: Error) => e)) as Error;
+    expect(err).toBeInstanceOf(GuardrailError);
+    expect(err.message).toContain('do not use another connector');
+    expect(audit.at(-1)).toMatchObject({ tool: 'label_message', outcome: 'rejected' });
+  });
   it('create_label and update_label need an account', async () => {
     await expect(call('create_label', { displayName: 'X' })).rejects.toThrow();
     expect((await call('create_label', { displayName: 'X', account: 'prime' })).account).toBe('prime');
