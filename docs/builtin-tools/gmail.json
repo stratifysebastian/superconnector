@@ -1,0 +1,74 @@
+{
+  "_source": "Built-in claude.ai Gmail connector. Input schemas are taken from its tool definitions. Output shapes were observed 2026-10-16 with read-only metadata-view calls (Seb approved). Field names and structure only; the values below are type placeholders, with no mail content.",
+  "_notes": [
+    "Outputs are NOT raw Gmail API resources. They use a flattened message shape (sender, toRecipients, ...) plus viewUrl.",
+    "viewUrl format: https://mail.google.com/mail/?authuser=<account email>#all/thread-f:<decimal of hex threadId>[|msg-f:<decimal of hex messageId>]. Drafts use #all?compose=thread-f:<decimal threadId>%2Bmsg-a:<draftId>.",
+    "Fields per view (from the tool descriptions): MINIMAL adds subject and snippet. PLAIN_TEXT adds plaintextBody, attachmentIds and attachments. FULL_CONTENT also adds htmlBody. METADATA_ONLY omits subject, snippet and bodies.",
+    "Not observed (needs a non-metadata call): the shape of `attachments` items, and of subject, snippet and plaintextBody (assumed to be strings).",
+    "Empty results are returned as {}.",
+    "Our tools add: account and accountEmail on every item, plus top-level accountErrors[] and nextCursor (which replaces nextPageToken). resultCountEstimate is summed across accounts."
+  ],
+  "Message": {
+    "id": "string (hex)",
+    "threadId": "string (hex)",
+    "historyId": "string (numeric)",
+    "internalDate": "string (epoch ms)",
+    "date": "RFC3339 UTC",
+    "sender": "email string",
+    "toRecipients": ["email string"],
+    "ccRecipients": ["email string"],
+    "bccRecipients": ["email string"],
+    "labelIds": ["string"],
+    "sizeEstimate": "number",
+    "viewUrl": "url",
+    "subject": "string? (MINIMAL and above)",
+    "snippet": "string? (MINIMAL and above)",
+    "plaintextBody": "string? (PLAIN_TEXT, FULL_CONTENT)",
+    "htmlBody": "string? (FULL_CONTENT)",
+    "attachmentIds": ["string? (PLAIN_TEXT, FULL_CONTENT)"],
+    "attachments": "array? (shape not observed)"
+  },
+  "search_threads": {
+    "threads": [{ "id": "string", "messageCount": "number", "messages": ["<Message>"], "viewUrl": "url" }],
+    "nextPageToken": "string?",
+    "resultCountEstimate": "string (numeric)"
+  },
+  "get_thread": { "id": "string", "messageCount": "number", "messages": ["<Message>"], "viewUrl": "url" },
+  "get_message": "<Message>",
+  "list_labels": {
+    "labels": [
+      {
+        "labelId": "string (system name or Label_<digits>)",
+        "name": "string (nested names use /)",
+        "labelType": "SYSTEM|USER",
+        "labelListVisibility": "LABEL_SHOW|LABEL_SHOW_IF_UNREAD|LABEL_HIDE?",
+        "messageListVisibility": "SHOW|HIDE?",
+        "messagesTotal": "number",
+        "messagesUnread": "number",
+        "threadsTotal": "number",
+        "threadsUnread": "number",
+        "color": { "backgroundColor": "hex?", "textColor": "hex?" },
+        "colorPreset": "LABEL_COLOR_PRESET_*?"
+      }
+    ]
+  },
+  "Draft": {
+    "id": "string (r-<digits>)",
+    "messageId": "string (hex)",
+    "threadId": "string (hex)",
+    "date": "RFC3339 UTC",
+    "sender": "email string",
+    "toRecipients": ["email string"],
+    "ccRecipients": ["email string?"],
+    "bccRecipients": ["email string?"],
+    "labelIds": ["DRAFT"],
+    "viewUrl": "url",
+    "subject": "string? (DRAFT_VIEW_FULL / non-metadata formats)",
+    "plaintextBody": "string? (DRAFT_VIEW_FULL / non-metadata formats)"
+  },
+  "list_drafts": { "drafts": ["<Draft>"], "nextPageToken": "string?" },
+  "get_draft": "<Draft>",
+  "create_draft": "Draft with id, threadId and viewUrl (from the tool description; not observed, since creating is a write)",
+  "update_draft": "Same as create_draft",
+  "label_and_spam_tools": "Not observed (they are writes). Ask Seb before assuming a shape beyond the modified Message."
+}
