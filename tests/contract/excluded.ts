@@ -83,6 +83,15 @@ export const ALLOWED_LITERALS: Record<string, Record<string, readonly (string | 
   'google-fetch': Object.fromEntries(TOKEN_FILES.map((f) => [f, TOKEN_URLS])),
   // The shared client's default transport. Its host and path checks live in src/google/endpoints.
   'raw-network-client': { 'src/google/http.ts': ['globalThis.fetch(...a)'] },
+  // Calendar tools accept guest fields in their INPUT schema only so they can refuse them with a clear message
+  // (refuseGuestFields). Only these schema declarations are exempt; any other attendee use in these files still fails.
+  // Request bodies are typed EventWriteBody (no attendee keys) and the runtime policy rejects attendees anyway.
+  'cal-attendees-write': {
+    'src/mcp/tools/calendar/writes.ts': [
+      /\b(?:attendees|attendeeEmails|addedAttendees|addedAttendeeEmails|removedAttendeeEmails|guestPermissions): guestField\b/g,
+    ],
+    'src/mcp/tools/calendar/suggest_time.ts': [/\battendeeEmails: z\.array\(z\.string\(\)\)/g],
+  },
 };
 
 /**

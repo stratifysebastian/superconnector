@@ -3,4 +3,13 @@
  * name here must be registered: tests/contract/enabled.test.ts compares this list with the real registry exactly.
  * Each phase adds its tool names here in the same change that registers them.
  */
-export const ENABLED_TOOL_NAMES: readonly string[] = ['list_accounts'];
+export const ENABLED_TOOL_NAMES: readonly string[] = [
+  'list_accounts',
+  'list_calendars',
+  'list_events',
+  'search_events',
+  'get_event',
+  'suggest_time',
+  'create_event',
+  'update_event',
+];
