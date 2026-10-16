@@ -169,4 +169,4 @@ Operational notes:
 - **Rate limit on `/register` and `/token`.** The app does not rate limit these endpoints. It is a Vercel firewall setting: in the project open **Firewall** → **Configure** → add a rule (rate limit) for paths `/register` and `/token`, for example 20 requests per minute per IP, action Deny or Challenge (labels may differ). Dynamic client registrations are capped at 200 in the app and stale ones are purged daily.
 - **Scopes are broad on purpose.** `gmail.modify` and `drive` permit sending and sharing. Safety rests on the server's endpoint policy, not on the scopes. Do not reuse these OAuth clients for anything else.
 - **Secrets.** Never commit `.env*`. If a secret is pasted anywhere public, rotate it using the procedures above.
-- **Headers.** The app sets `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy: no-referrer` and HSTS on all routes.
+- **Headers.** The app sets `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy: same-origin` (not `no-referrer`, which makes browsers send `Origin: null` on form posts and breaks the consent page) and HSTS on all routes.
