@@ -1,0 +1,98 @@
+[
+  {
+    "Id": "1",
+    "Name": "Consulting Services",
+    "Type": "Service",
+    "Active": true,
+    "Description": "Hourly consulting",
+    "UnitPrice": 175,
+    "SalesTaxCodeRef": {
+      "value": "6",
+      "name": "HST ON"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "2",
+    "Name": "Software Subscription",
+    "Type": "Service",
+    "Active": true,
+    "Description": "Monthly software subscription",
+    "UnitPrice": 499,
+    "SalesTaxCodeRef": {
+      "value": "6",
+      "name": "HST ON"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "3",
+    "Name": "Support Retainer",
+    "Type": "Service",
+    "Active": true,
+    "Description": "Monthly support retainer",
+    "UnitPrice": 1200,
+    "SalesTaxCodeRef": {
+      "value": "6",
+      "name": "HST ON"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "4",
+    "Name": "Hardware Widget",
+    "Type": "Inventory",
+    "Active": true,
+    "Sku": "HW-001",
+    "UnitPrice": 89.99,
+    "QtyOnHand": 40,
+    "SalesTaxCodeRef": {
+      "value": "6",
+      "name": "HST ON"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "5",
+    "Name": "Installation Fee",
+    "Type": "NonInventory",
+    "Active": true,
+    "UnitPrice": 250,
+    "Taxable": true,
+    "SyncToken": "0"
+  },
+  {
+    "Id": "6",
+    "Name": "Training Session",
+    "Type": "Service",
+    "Active": true,
+    "Description": "Half-day training session",
+    "UnitPrice": 950,
+    "SalesTaxCodeRef": {
+      "value": "6",
+      "name": "HST ON"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "7",
+    "Name": "Training Workshop",
+    "Type": "Service",
+    "Active": true,
+    "Description": "Full-day training workshop",
+    "UnitPrice": 1500,
+    "SalesTaxCodeRef": {
+      "value": "6",
+      "name": "HST ON"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "8",
+    "Name": "Legacy Plan",
+    "Type": "Service",
+    "Active": false,
+    "UnitPrice": 99,
+    "SyncToken": "0"
+  }
+]

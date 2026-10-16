@@ -1,0 +1,487 @@
+{
+  "Header": {
+    "Time": "2026-10-16T09:00:00-04:00",
+    "ReportName": "AgedPayableDetail",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-10-16",
+    "EndPeriod": "2026-10-16",
+    "Currency": "CAD",
+    "Option": [
+      {
+        "Name": "AccountingMethod",
+        "Value": "Accrual"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "Date",
+        "ColType": "Date",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "tx_date"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Transaction Type",
+        "ColType": "String",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "txn_type"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Num",
+        "ColType": "String",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "doc_num"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Vendor",
+        "ColType": "String",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "vendor"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Due Date",
+        "ColType": "Date",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "due_date"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Past Due",
+        "ColType": "Numeric",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "past_due"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Amount",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "subt_nat_amount"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Open Balance",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "rbal_nat_amount"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "type": "Section",
+        "group": "bucket0",
+        "Header": {
+          "ColData": [
+            {
+              "value": "Current"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-10-01"
+                },
+                {
+                  "value": "Bill",
+                  "id": "OCT-RENT"
+                },
+                {
+                  "value": "OCT-RENT"
+                },
+                {
+                  "value": "Queen Street Properties Ltd.",
+                  "id": "11"
+                },
+                {
+                  "value": "2026-10-31"
+                },
+                {
+                  "value": "0"
+                },
+                {
+                  "value": "3955.00"
+                },
+                {
+                  "value": "3955.00"
+                }
+              ]
+            },
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-10-10"
+                },
+                {
+                  "value": "Bill",
+                  "id": "CC-7902"
+                },
+                {
+                  "value": "CC-7902"
+                },
+                {
+                  "value": "Cloudcore Hosting Inc.",
+                  "id": "12"
+                },
+                {
+                  "value": "2026-11-09"
+                },
+                {
+                  "value": "0"
+                },
+                {
+                  "value": "1469.00"
+                },
+                {
+                  "value": "1469.00"
+                }
+              ]
+            },
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-10-08"
+                },
+                {
+                  "value": "Bill",
+                  "id": "55120"
+                },
+                {
+                  "value": "55120"
+                },
+                {
+                  "value": "Bell Canada",
+                  "id": "14"
+                },
+                {
+                  "value": "2026-10-28"
+                },
+                {
+                  "value": "0"
+                },
+                {
+                  "value": "242.50"
+                },
+                {
+                  "value": "242.50"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total for Current"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "5666.50"
+            },
+            {
+              "value": "5666.50"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "bucket1",
+        "Header": {
+          "ColData": [
+            {
+              "value": "1 - 30 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-09-10"
+                },
+                {
+                  "value": "Bill",
+                  "id": "CC-7781"
+                },
+                {
+                  "value": "CC-7781"
+                },
+                {
+                  "value": "Cloudcore Hosting Inc.",
+                  "id": "12"
+                },
+                {
+                  "value": "2026-10-10"
+                },
+                {
+                  "value": "6"
+                },
+                {
+                  "value": "1469.00"
+                },
+                {
+                  "value": "1469.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total for 1 - 30 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "1469.00"
+            },
+            {
+              "value": "1469.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "bucket3",
+        "Header": {
+          "ColData": [
+            {
+              "value": "61 - 90 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-07-15"
+                },
+                {
+                  "value": "Bill",
+                  "id": "H-2201"
+                },
+                {
+                  "value": "H-2201"
+                },
+                {
+                  "value": "Hartley & Co. CPA",
+                  "id": "13"
+                },
+                {
+                  "value": "2026-08-14"
+                },
+                {
+                  "value": "63"
+                },
+                {
+                  "value": "1356.00"
+                },
+                {
+                  "value": "1356.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total for 61 - 90 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "1356.00"
+            },
+            {
+              "value": "1356.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "GrandTotal",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "TOTAL"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "8491.50"
+            },
+            {
+              "value": "8491.50"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

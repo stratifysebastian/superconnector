@@ -1,0 +1,122 @@
+{
+  "Header": {
+    "Time": "2026-10-16T09:00:00-04:00",
+    "ReportName": "CustomerSales",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-01-01",
+    "EndPeriod": "2026-10-16",
+    "Currency": "CAD",
+    "Option": [
+      {
+        "Name": "AccountingMethod",
+        "Value": "Accrual"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "",
+        "ColType": "Customer",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "customer"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Total",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "total"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Acme Corporation",
+            "id": "1"
+          },
+          {
+            "value": "35223.24"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Maple Leaf Logistics Inc.",
+            "id": "3"
+          },
+          {
+            "value": "30678.31"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Prairie Analytics Ltd.",
+            "id": "5"
+          },
+          {
+            "value": "21588.44"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Northern Lights Studio Inc.",
+            "id": "4"
+          },
+          {
+            "value": "14771.04"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Harbourfront Dental Group",
+            "id": "6"
+          },
+          {
+            "value": "11362.33"
+          }
+        ]
+      },
+      {
+        "type": "Section",
+        "group": "GrandTotal",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "TOTAL"
+            },
+            {
+              "value": "113623.36"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

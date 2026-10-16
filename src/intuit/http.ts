@@ -1,6 +1,7 @@
 import type { IntuitHttp } from '@/core/contracts/adapter';
 import type { Logger } from '@/core/contracts/tool';
 import { GuardrailError, ProviderError } from '@/core/errors';
+import { IntuitError, faultMessage, parseFault, type IntuitFault } from './errors';
 import {
   INTUIT_MINOR_VERSION,
   INTUIT_RULES,
@@ -32,7 +33,7 @@ export interface IntuitHttpOptions {
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Deny by default, GET only. Logs hold method, path template and status: no ids, amounts, names or emails. */
+/** Deny by default. GET and the two create POSTs only; a POST is never retried. Logs hold method, path template and status: no ids, amounts, names or emails. */
 export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
   const timeoutMs = opts.timeoutMs ?? 15000;
   const doFetch = opts.fetchImpl ?? ((...a: Parameters<typeof fetch>) => globalThis.fetch(...a));
@@ -42,9 +43,11 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
   const host = intuitHostFor(opts.env);
 
   return {
-    async json<T>(req: { method: 'GET'; path: string; query?: Record<string, string | number | boolean | undefined> }): Promise<T> {
+    async json<T>(req: { method: 'GET' | 'POST'; path: string; query?: Record<string, string | number | boolean | undefined>; body?: Record<string, unknown> }): Promise<T> {
       // Snapshot every input once; only these locals are used from here on.
-      const { method, path, query: rawQuery } = req;
+      const { method, path, query: rawQuery, body: rawBody } = req;
+      // Serialised once, before the policy check sees the same snapshot, so what is checked is what is sent.
+      const body = rawBody === undefined ? undefined : (JSON.parse(JSON.stringify(rawBody)) as Record<string, unknown>);
       const query: Record<string, string> = {};
       if (rawQuery !== undefined && rawQuery !== null) {
         if (typeof rawQuery !== 'object' || Array.isArray(rawQuery)) {
@@ -58,7 +61,7 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
           query[k] = String(v);
         }
       }
-      const verdict = checkIntuitRequest(rules, { method, host, path, query, realmId: opts.realmId, env: opts.env });
+      const verdict = checkIntuitRequest(rules, { method, host, path, query, body, realmId: opts.realmId, env: opts.env });
       if (!verdict.ok) throw new GuardrailError(verdict.rule, `IntuitHttp blocked the request: ${verdict.reason}`);
 
       const qs = new URLSearchParams({ ...query, minorversion: INTUIT_MINOR_VERSION }).toString();
@@ -68,16 +71,18 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
       let status: number | undefined;
       // Intuit's support id and error code/name help them trace a failure; neither carries company data.
       let intuitTid: string | undefined;
-      let intuitCode: string | undefined;
+      let fault: IntuitFault = {};
+      const intuitCode = () => [fault.code, fault.name].filter(Boolean).join(' ') || undefined;
       const log = (outcome: string) =>
         opts.log?.info({
           msg: 'intuit_http', outcome, method, path: verdict.rule.template, status, durationMs: Date.now() - started, attempts,
           ...(intuitTid ? { intuitTid } : {}),
-          ...(intuitCode ? { intuitCode } : {}),
+          ...(intuitCode() ? { intuitCode: intuitCode() } : {}),
         });
+      const write = method === 'POST';
       const fail = (err: ProviderError): never => {
         log(err.kind);
-        throw err;
+        throw err instanceof IntuitError ? err : new IntuitError(err.kind, err.message, err.status, fault.code, fault.name, intuitTid);
       };
 
       let token = await opts.getAccessToken();
@@ -92,14 +97,17 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
         try {
           res = await doFetch(url, {
             method,
-            headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
+            headers: { authorization: `Bearer ${token}`, accept: 'application/json', ...(write ? { 'content-type': 'application/json' } : {}) },
+            ...(write ? { body: JSON.stringify(body) } : {}),
             signal,
             redirect: 'error',
           });
         } catch {
           status = undefined;
-          if (signal.aborted) return fail(new ProviderError('timeout', 'QuickBooks request timed out'));
-          return fail(new ProviderError('upstream_error', 'QuickBooks request failed'));
+          // A write that timed out may still have gone through: say so, and never retry it.
+          const unsure = write ? ' The record may or may not have been created; search for it before trying again.' : '';
+          if (signal.aborted) return fail(new ProviderError('timeout', `QuickBooks request timed out.${unsure}`));
+          return fail(new ProviderError('upstream_error', `QuickBooks request failed.${unsure}`));
         }
         status = res.status;
         const tid = res.headers.get('intuit_tid');
@@ -117,6 +125,7 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
         }
 
         if (res.status === 401) {
+          if (write) return fail(new ProviderError('upstream_error', 'QuickBooks rejected the credentials for this write; nothing was retried. Try again.', 401));
           if (!refreshed) {
             refreshed = true;
             try {
@@ -130,8 +139,16 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
           return fail(new ProviderError('needs_reconnect', 'QuickBooks rejected the credentials; reconnect the company', 401));
         }
 
-        // Retries are for GET only (this client has no other verb in Q0, so the check is a guard for later phases).
-        if ((res.status === 429 || res.status >= 500) && method === 'GET') {
+        // Retries are for GET only. A POST is never retried: a repeat could create the record twice.
+        if (res.status === 429 || res.status >= 500) {
+          if (write) {
+            fault = await readFault(res);
+            return fail(
+              res.status === 429
+                ? new ProviderError('rate_limited', 'QuickBooks rate limit exceeded; the write was not retried', res.status)
+                : new ProviderError('upstream_error', 'QuickBooks service error; the write was not retried and may not have completed. Search for the record before trying again.', res.status),
+            );
+          }
           if (retries >= MAX_RETRIES) {
             return res.status === 429
               ? fail(new ProviderError('rate_limited', 'QuickBooks rate limit exceeded after retries', res.status))
@@ -145,7 +162,7 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
           await sleep(delay);
           continue;
         }
-        intuitCode = await readIntuitCode(res);
+        fault = await readFault(res);
         if (res.status === 403) {
           return fail(
             new ProviderError(
@@ -156,21 +173,17 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
           );
         }
         if (res.status === 404) return fail(new ProviderError('not_found', 'QuickBooks resource not found', 404));
-        return fail(new ProviderError('upstream_error', 'QuickBooks request failed', res.status));
+        return fail(new ProviderError('upstream_error', faultMessage(verdict.rule.label, res.status, fault), res.status));
       }
     },
   };
 }
 
-/** Intuit's error code and short error name only (e.g. "003100 ApplicationAuthorizationFailed"); never free text. */
-async function readIntuitCode(res: Response): Promise<string | undefined> {
+/** Intuit's error code, short error name and fault type only; never free text such as Detail. */
+async function readFault(res: Response): Promise<IntuitFault> {
   try {
-    const body = (await res.json()) as { Fault?: { Error?: { code?: unknown; Message?: unknown }[] } };
-    const e = body?.Fault?.Error?.[0];
-    const code = typeof e?.code === 'string' && /^\d{1,8}$/.test(e.code) ? e.code : undefined;
-    const name = typeof e?.Message === 'string' && /^[A-Za-z]{1,60}$/.test(e.Message) ? e.Message : undefined;
-    return [code, name].filter(Boolean).join(' ') || undefined;
+    return parseFault(await res.json());
   } catch {
-    return undefined;
+    return {};
   }
 }

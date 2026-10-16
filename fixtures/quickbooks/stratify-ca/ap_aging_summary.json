@@ -1,0 +1,235 @@
+{
+  "Header": {
+    "Time": "2026-10-16T09:00:00-04:00",
+    "ReportName": "AgedPayables",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-10-16",
+    "EndPeriod": "2026-10-16",
+    "Currency": "CAD",
+    "Option": [
+      {
+        "Name": "AccountingMethod",
+        "Value": "Accrual"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "",
+        "ColType": "Vendor",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "customer"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Current",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "current"
+          }
+        ]
+      },
+      {
+        "ColTitle": "1 - 30",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "bucket1"
+          }
+        ]
+      },
+      {
+        "ColTitle": "31 - 60",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "bucket2"
+          }
+        ]
+      },
+      {
+        "ColTitle": "61 - 90",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "bucket3"
+          }
+        ]
+      },
+      {
+        "ColTitle": "91 and over",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "bucket4"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Total",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "total"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Queen Street Properties Ltd.",
+            "id": "11"
+          },
+          {
+            "value": "3955.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "3955.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Cloudcore Hosting Inc.",
+            "id": "12"
+          },
+          {
+            "value": "1469.00"
+          },
+          {
+            "value": "1469.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "2938.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Hartley & Co. CPA",
+            "id": "13"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "1356.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "1356.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Bell Canada",
+            "id": "14"
+          },
+          {
+            "value": "242.50"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "242.50"
+          }
+        ]
+      },
+      {
+        "type": "Section",
+        "group": "GrandTotal",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "TOTAL"
+            },
+            {
+              "value": "5666.50"
+            },
+            {
+              "value": "1469.00"
+            },
+            {
+              "value": "0.00"
+            },
+            {
+              "value": "1356.00"
+            },
+            {
+              "value": "0.00"
+            },
+            {
+              "value": "8491.50"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

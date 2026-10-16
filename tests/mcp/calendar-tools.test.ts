@@ -83,10 +83,10 @@ const call = (name: string, args: Record<string, unknown> = {}) => {
 };
 
 describe('registry', () => {
-  it('registers exactly the 39 enabled names and no excluded tool', () => {
+  it('registers exactly the 60 enabled names and no excluded tool', () => {
     const names = getToolDefs('http://x').map((d) => d.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(ENABLED_TOOL_NAMES).toHaveLength(39);
+    expect(ENABLED_TOOL_NAMES).toHaveLength(60);
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 });

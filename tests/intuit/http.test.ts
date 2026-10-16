@@ -46,8 +46,16 @@ describe('IntuitHttp policy', () => {
     expect(init.method).toBe('GET');
   });
 
-  it('Q0 has exactly one rule: GET companyinfo/{realmId}', () => {
-    expect(INTUIT_RULES.map((r) => `${r.method} ${r.template}`)).toEqual(['GET /v3/company/{realmId}/companyinfo/{realmId}']);
+  it('the rules are exactly: CompanyInfo, the query endpoint, nine reports and the two creates', () => {
+    expect(INTUIT_RULES.map((r) => `${r.method} ${r.template}`)).toEqual([
+      'GET /v3/company/{realmId}/companyinfo/{realmId}',
+      'GET /v3/company/{realmId}/query',
+      ...['BalanceSheet', 'ProfitAndLoss', 'CashFlow', 'AgedReceivables', 'AgedReceivableDetail', 'AgedPayables', 'AgedPayableDetail', 'CustomerSales', 'ItemSales'].map(
+        (r) => `GET /v3/company/{realmId}/reports/${r}`,
+      ),
+      'POST /v3/company/{realmId}/item',
+      'POST /v3/company/{realmId}/customer',
+    ]);
   });
 
   it('denies another realm, in the company segment or in the resource', async () => {
@@ -74,7 +82,7 @@ describe('IntuitHttp policy', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('denies every verb but GET', async () => {
+  it('denies every verb but GET (and POST on the two create paths)', async () => {
     const { http, fetchImpl } = setup();
     for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'get']) {
       await expect(http.json({ ...info(), method } as never)).rejects.toBeInstanceOf(GuardrailError);
