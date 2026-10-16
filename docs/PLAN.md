@@ -8,7 +8,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | --- | --- |
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
-| 2 Gmail | 🟨 plan proposed 2026-10-16 (§4c); awaiting approval |
+| 2 Gmail | 🟦 approved 2026-10-16; building (G1–G3 running) |
 | 3 Drive | ⬜ |
 | 4 Docs | ⬜ |
 | 5 Sheets | ⬜ |
@@ -324,7 +324,7 @@ Done when (spec): the morning brief shows events from both accounts, with shared
 
 Orchestrator contract (done): `src/core/contracts/calendar.ts` (`CalendarAdapter`, `GEvent`, `EventWriteBody` with no attendee or notification fields), `AdapterFactory.calendar` narrowed, `ToolContext.adapterContext(account)` wired to a guarded `GoogleHttp` per account.
 
-## 4c. Phase 2 — Gmail (proposed 2026-10-16; awaiting Seb's approval)
+## 4c. Phase 2 — Gmail (approved 2026-10-16; building)
 
 **Tools (21):**
 - Reads: `search_threads`, `get_thread`, `get_message`, `list_drafts`, `get_draft` and `list_labels`.
@@ -332,10 +332,10 @@ Orchestrator contract (done): `src/core/contracts/calendar.ts` (`CalendarAdapter
 - Labels: `create_label`, `update_label`, `label_message`, `label_thread`, `unlabel_message`, `unlabel_thread` and `update_message_labels`.
 - Spam: `apply_sensitive_message_label`, `apply_sensitive_thread_label`, `mark_message_spam`, `mark_thread_spam`, `unmark_message_spam` and `unmark_thread_spam`.
 
-Each takes the built-in input schema plus `account`. Input schemas were captured from the built-in connector on 2026-10-16. Output shapes still need one read-only observation each (ask Seb).
+Each takes the built-in input schema plus `account`. Input schemas were captured from the built-in connector on 2026-10-16. Read output shapes observed 2026-10-16 (Seb approved; `docs/builtin-tools/gmail.json`). Write outputs were not observed. Drafts return the Draft shape; label and spam tools return the modified message or thread. `includeSignature` is accepted but ignored, because signatures live in Gmail settings, which stay banned.
 
 **Excluded:** `send_message`, `reply`, `forward`, `trash_*`, `untrash_*`, `delete_draft` and `delete_label`.
-- `create_filter` is not in the current built-in Gmail connector. It also needs the `gmail.settings.basic` scope, which means a reconnect, and it needs the Gmail-settings hard ban loosened. It is on hold until Seb confirms.
+- `create_filter`: **skipped for now** (Seb, 2026-10-16). It is not in the current built-in Gmail connector. It also needs the `gmail.settings.basic` scope, which means a reconnect, and it needs the Gmail-settings hard ban loosened. It is on hold until Seb confirms.
 
 **Accounts:**
 
@@ -387,7 +387,7 @@ Known items to raise when each phase starts (not decided here):
 - **Phase 1:** the built-in uses `notificationLevel`. We force `NONE` / `sendUpdates=none` and reject `attendees`, `attendeeEmails`, `addedAttendees`, `addedAttendeeEmails`, `removedAttendeeEmails` and `guestPermissions`.
 - **Phase 1:** events with other guests: blocked; the tool tells Seb what change is needed (see §7).
 - **Phase 2:** the built-in `apply_sensitive_*_label` takes `TRASH` or `SPAM`. The spec includes "apply sensitive labels" but excludes trash. Seb: "fine" (2026-10-07). Read as: include the tools, SPAM allowed, TRASH still blocked per the spec's exclusion; **Confirmed by Seb 2026-10-16.** Label tools must also refuse adding the `TRASH` label and removing it (untrash).
-- **Phase 2:** `create_filter` included (Seb, 2026-10-16) with the `forward` and delete (`TRASH`) actions blocked.
+- **Phase 2:** `create_filter` skipped for now (Seb, 2026-10-16).
 - **Phases 1–3:** return shapes. Input schemas are visible to me but output shapes are not. Ask Seb before guessing; one option is to call a read-only built-in tool once with his permission and record the shape.
 - **Phase 3 (Drive):** `GoogleHttp` only does JSON, so content upload, `alt=media` download and export need a non-JSON path designed in the same policy layer. Also decide whether to ban Drive `writersCanShare` and `copyRequiresWriterPermission` changes (they change sharing capability without touching permissions).
 - **Phases 5–6:** Sheets and Slides `batchUpdate` can delete content (`deleteSheet`, `deleteObject`, `values:batchClear`). The spec's "no trash or delete" is about files; confirm with Seb that content edits inside a file are allowed.
@@ -419,4 +419,4 @@ Known items to raise when each phase starts (not decided here):
 | Server domain: subdomain or default Vercel URL? | Phase 0 (redirect URIs, OAuth metadata) | **`mcp.stratifysoftware.com`** (Seb, 2026-10-07). Needs a DNS CNAME to Vercel; `PUBLIC_BASE_URL=https://mcp.stratifysoftware.com`. |
 | Repo | — | `stratifysebastian/superconnector` |
 | Calendar updates on events with other guests | Phase 1 | **Block** (Seb, 2026-10-07). `update_event` never changes an event with other guests; it returns a plain-language result telling Seb what change is needed so he can make it himself. |
-| Gmail `create_filter` | Phase 2 | **Include, no forward or delete actions** (Seb, 2026-10-16). |
+| Gmail `create_filter` | Phase 2 | First answered "include, no forward or delete"; then **skipped for now** (Seb, 2026-10-16), after learning it is not in the built-in and needs a new scope plus a reconnect. |
