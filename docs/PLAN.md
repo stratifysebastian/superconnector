@@ -484,7 +484,25 @@ There are also policy tests showing that hand-built raw MIME with a different `T
 - **Scope:** the built-in QuickBooks connector's tools that Intuit's public QuickBooks Online Accounting API supports. Payroll (27 tools), lending (6), Money onboarding (2), industry benchmarks, recommendations and health widgets (~7) use Intuit-internal services and stay with the built-in connector, which remains attached.
 - **Send and delete:** parity with the built-in connector. `send_invoice`, `send_estimate`, `send_invoice_reminder` and the three `delete_*` tools are included.
 - **Companies:** PR1ME only to start. Stratify stays on the built-in connector. More companies can be added through `/connect`.
-- Tool names and inputs mirror the built-in connector (`docs/builtin-tools/quickbooks.json`), plus `account`.
+- Tool names and inputs mirror the built-in connector (`docs/builtin-tools/quickbooks.json`, 50 tools captured, inputs only), plus `account`.
+
+**Findings from the built-in definitions (2026-10-16):**
+- The built-in sales tools run on Intuit's internal GraphQL gateway: ids look like `djQuMTo…:3`, with `traits`/`header`/`lines` objects. Ours use the public REST API, so ids are REST ids, and an id from the built-in connector won't work with ours. That's harmless here, since the two connectors cover different companies.
+- **Not buildable on the public API (left to the built-in connector):**
+  - `profit_loss_generator` and `cash_flow_generator`: Intuit's AI categorisation of pasted or uploaded transactions;
+  - `quickbooks_transaction_import`: Intuit's AI import service;
+  - `quickbooks_profile_info_update`: Intuit's onboarding profile;
+  - the 4 payment-link tools (QuickBooks Payments "PaymentRequests").
+- **Partial on the public API (supported fields only; the rest are refused with a plain message):**
+  - estimate deposit and e-signature requests;
+  - settings toggles for tips, late fees, deposits, payment methods and the reminder template (`update_settings` / `get_settings` cover terms, shipping, tax, classes and locations through the Preferences/Term APIs);
+  - the reminder template.
+- **Send recipients:**
+  - `send_invoice`/`send_estimate` take `delivery_address` (to) plus optional cc and bcc;
+  - `send_invoice_reminder` uses the address on file, or a per-invoice override.
+
+  These are mirrored as they are (parity, as Seb chose).
+- **Total in scope: 42 tools.**
 
 **Q0 — provider foundation** (orchestrator plus one implementer). The server is Google-only today. In order:
 1. **Supabase migration `0002_intuit.sql`** (Seb approves before it's applied):
@@ -505,7 +523,7 @@ There are also policy tests showing that hand-built raw MIME with a different `T
 
 **Q1 — reads and contacts:**
 - `company_info`;
-- the P&L, cash flow and balance sheet tools (`*_quickbooks_account`, `*_text`);
+- the P&L, cash flow and balance sheet tools (`*_quickbooks_account`, `*_text`; not the `*_generator` tools);
 - the AR and AP aging tools, sales by customer and by product, and the product/service list;
 - `qbo_catalog_search_products`, `qbo_catalog_create_product`, `qbo_contact_search_customer` and `qbo_contact_create_customer`.
 
@@ -516,7 +534,7 @@ Reports fan out across companies, with results tagged per company (reports aren'
 - the reminder, `get_transaction_document` (PDF) and `operate_recurring_invoice`;
 - `get_settings` and `update_settings`.
 
-Writes need exactly one company. Every send and delete is audited and goes only to the company named. Payment links (5 tools) are left out unless the public API turns out to support them.
+Writes need exactly one company. Every send and delete is audited and goes only to the company named.
 
 **Testing rule:** mock mode, then Intuit's sandbox company. I never send or delete anything in a live company. Seb does any live send or delete himself.
 
