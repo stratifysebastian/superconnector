@@ -9,8 +9,8 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
 | 2 Gmail | ✅ live-verified 2026-10-16 (PR #4): search across both accounts, reply draft in the right PR1ME thread, label create/rename/apply/remove, trash and send refused |
-| 3 Drive | 🟨 built and audited 2026-10-16 (9 tools, 920 tests); awaiting Seb's live verification |
-| 4 Docs | ⬜ |
+| 3 Drive | ✅ live-verified 2026-10-16 (PR #5): recent files across both accounts, Doc and PDF read, create/rename/move into a private folder, move into a shared folder refused, share and trash refused |
+| 4 Docs | ⏸ blocked: the built-in Docs connector's tool schemas aren't visible in this session; Seb to connect it or paste its tool list |
 | 5 Sheets | ⬜ |
 | 6 Slides | ⬜ |
 | 7 Microsoft 365 | out of scope until a separate spec round |
@@ -371,7 +371,7 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 4. Ask to trash a message. It must be refused.
 5. Ask to send the draft. Nothing should send it.
 
-## 4d. Phase 3 — Drive (approved 2026-10-16; building)
+## 4d. Phase 3 — Drive (✅ live-verified 2026-10-16)
 
 **Tools (9).** The built-in Drive connector minus `share_file` and `trash_file`. Each takes the built-in input schema (captured 2026-10-16) plus `account`.
 - **Reads:** `search_files`, `list_recent_files`, `get_file_metadata`, `get_file_permissions`, `read_file_content` and `download_file_content`.
