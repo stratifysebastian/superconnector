@@ -222,6 +222,23 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
         ) as { account_id: string }[];
         return rows.length === 1;
       },
+      async acquireRefreshLease(id, ms) {
+        // Conditional update: matches only while there is no live lease. Uses this server's clock (a skew of seconds is harmless against a 30 s lease).
+        const nowMs = Date.now();
+        const rows = ok(
+          await db
+            .from('account_tokens')
+            .update({ refresh_lock_until: msToIso(nowMs + ms) })
+            .eq('account_id', id)
+            .or(`refresh_lock_until.is.null,refresh_lock_until.lt.${msToIso(nowMs)}`)
+            .select('account_id'),
+          'tokens.acquireLease',
+        ) as { account_id: string }[];
+        return rows.length === 1;
+      },
+      async releaseRefreshLease(id) {
+        ok(await db.from('account_tokens').update({ refresh_lock_until: null }).eq('account_id', id), 'tokens.releaseLease');
+      },
       async getCachedAccess(id) {
         const r = ok(
           await db.from('account_tokens').select('access_token_enc,access_expires_at').eq('account_id', id).maybeSingle(),

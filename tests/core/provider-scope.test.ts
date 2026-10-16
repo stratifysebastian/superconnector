@@ -177,6 +177,22 @@ describe('provider scoping (enforced once, in the registry)', () => {
     }
   });
 
+  it('tool handlers get no tokens or org-client access at all', async () => {
+    const seen: Record<string, unknown> = {};
+    const def = { name: 'peek', description: 'p', input, kind: 'read', async handler(_i: unknown, c: ToolContext) {
+      Object.assign(seen, { store: Object.keys(c.store), ctx: Object.keys(c) });
+      return {};
+    } } as AnyToolDef;
+    const transport = new StreamableHTTPClientTransport(new URL(MCP_URL), {
+      fetch: (i, init) => handleMcpRequest(new Request(i, init), { ctx, verify: async () => ({ subject: 's', clientId: 'c' }), defs: [def] }),
+    });
+    const client = new Client({ name: 't', version: '0' });
+    await client.connect(transport);
+    await client.callTool({ name: 'peek', arguments: {} });
+    expect(seen.store).not.toContain('tokens');
+    expect(seen.store).not.toContain('orgClients');
+    expect(seen.ctx).not.toContain('tokens');
+  });
   it('the adapter context builders refuse the wrong provider', async () => {
     const [g, , q] = await ctx.store.accounts.list();
     expect(() => ctx.adapterContext(q!)).toThrow();

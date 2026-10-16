@@ -59,7 +59,22 @@ describe('0002_intuit.sql', () => {
 
   it('adds no secret-like column', () => {
     for (const m of sql.matchAll(/add column\s+(?:if not exists\s+)?(\w+)/gi)) {
+      if (m[1] === 'refresh_lock_until') continue; // a timestamptz lease, holds no secret
       expect(m[1]).not.toMatch(/(secret|token|refresh)/i);
     }
+  });
+
+  it('adds the refresh lease column', () => {
+    expect(sql).toMatch(/alter table account_tokens add column if not exists refresh_lock_until timestamptz\s*;/i);
+  });
+
+  it('ends with a check that fails the migration if an old unique constraint survived', () => {
+    const block = sql.slice(sql.lastIndexOf('do $$'));
+    expect(block).toMatch(/from pg_constraint/i);
+    expect(block).toMatch(/contype = 'u'/i); // unique constraints only, never the per-provider indexes
+    expect(block).toMatch(/'accounts'::regclass and k\.cols in \('label', 'email,provider'\)/i);
+    expect(block).toMatch(/'google_org_clients'::regclass and k\.cols = 'label'/i);
+    expect(block).toMatch(/raise exception/i);
+    expect(sql.trimEnd().endsWith('$$;')).toBe(true);
   });
 });

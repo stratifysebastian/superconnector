@@ -67,7 +67,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
     const name = (info.CompanyName ?? info.LegalName)?.toString().trim().slice(0, 200) || undefined;
     const rawEmail = info.Email?.Address?.toString().trim().toLowerCase();
-    const email = rawEmail && rawEmail.length <= 254 && EMAIL_RE.test(rawEmail) ? rawEmail : `realm-${realmId}@intuit.local`;
+    const email = rawEmail && rawEmail.length <= 254 && EMAIL_RE.test(rawEmail) ? rawEmail : 'quickbooks@intuit.invalid';
 
     const account = await ctx.store.accounts.upsertOnConnect({
       provider: 'intuit',

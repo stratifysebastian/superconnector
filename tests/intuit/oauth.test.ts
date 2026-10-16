@@ -151,6 +151,8 @@ describe('token manager', () => {
 
   it('two instances refreshing at once cannot overwrite each other: one rotated token survives', async () => {
     // Both read R1 before either saves. Each gets its own new token; the store keeps whichever swapped first.
+    // The lease normally prevents this; simulate it failing (expiry, clock skew) so the compare-and-set guard is still exercised.
+    store.tokens.acquireRefreshLease = async () => true;
     let n = 0;
     let open!: () => void;
     const gate = new Promise<void>((r) => (open = r));

@@ -44,6 +44,35 @@ alter table google_org_clients add constraint google_org_clients_workspace_domai
 alter table google_org_clients drop constraint if exists google_org_clients_label_key;
 create unique index if not exists google_org_clients_provider_label_idx on google_org_clients (provider, label);
 
+-- account_tokens: lease that makes Intuit refresh single-flight across server instances.
+alter table account_tokens add column if not exists refresh_lock_until timestamptz;
+
 -- Row Level Security: unchanged (enabled, no policies). Restated so a partial replay stays safe.
 alter table google_org_clients enable row level security;
 alter table accounts enable row level security;
+
+-- Fail the migration if a drop above silently missed (e.g. a constraint with a different name survived).
+-- Only contype 'u' (unique constraints) is checked; the per-provider unique INDEXES created above are not in
+-- pg_constraint, and the new (provider, ...) uniques are indexes, so they cannot trip this.
+do $$
+declare
+  bad text;
+begin
+  select string_agg(format('%s(%s)', c.conrelid::regclass, k.cols), ', ')
+    into bad
+    from pg_constraint c
+    cross join lateral (
+      select string_agg(a.attname::text, ',' order by a.attname) as cols
+        from pg_attribute a
+       where a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+    ) k
+   where c.contype = 'u'
+     and (
+       (c.conrelid = 'accounts'::regclass and k.cols in ('label', 'email,provider'))
+       or (c.conrelid = 'google_org_clients'::regclass and k.cols = 'label')
+     );
+  if bad is not null then
+    raise exception '0002_intuit: old unique constraint still present: %', bad;
+  end if;
+end
+$$;

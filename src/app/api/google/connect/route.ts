@@ -28,7 +28,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   let loginHint: string | undefined;
   if (accountId) {
     const acct = (await ctx.store.accounts.list()).find((a) => a.id === accountId);
-    if (!acct) return noStore(NextResponse.json({ error: 'Unknown account' }, { status: 404 }));
+    if (!acct || acct.provider !== 'google') return noStore(NextResponse.json({ error: 'Unknown account' }, { status: 404 }));
     loginHint = acct.email;
   }
 

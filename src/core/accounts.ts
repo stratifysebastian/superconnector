@@ -24,7 +24,15 @@ export function resolveAccounts(selector: AccountSelector, accounts: Account[]):
   for (const raw of entries) {
     const key = String(raw).trim().toLowerCase();
     if (key === 'all') return ordered;
-    const hit = ordered.find((a) => a.label.toLowerCase() === key || a.email.toLowerCase() === key);
+    const label = ordered.find((a) => a.label.toLowerCase() === key);
+    const byEmail = ordered.filter((a) => a.email.toLowerCase() === key);
+    if (!label && byEmail.length > 1) {
+      throw new AccountSelectionError(
+        `"${String(raw)}" matches more than one account (${byEmail.map((a) => a.label).join(', ')}). Select by label instead.`,
+        labels,
+      );
+    }
+    const hit = label ?? byEmail[0];
     if (!hit) {
       throw new AccountSelectionError(
         `Unknown account "${String(raw)}". Connected accounts: ${labels.join(', ') || 'none'}.`,

@@ -24,6 +24,7 @@ interface OrgRow {
 }
 interface TokenRow {
   refreshEnc?: string;
+  leaseUntil?: number;
   accessEnc?: string;
   accessExpiresAt?: number;
 }
@@ -195,6 +196,16 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         if (cur === undefined || cipher.decrypt(cur) !== expected) return false;
         tokens.set(id, { ...tokens.get(id), refreshEnc: cipher.encrypt(next) });
         return true;
+      },
+      async acquireRefreshLease(id, ms) {
+        const row = tokens.get(id);
+        if (!row || (row.leaseUntil !== undefined && row.leaseUntil > Date.now())) return false;
+        tokens.set(id, { ...row, leaseUntil: Date.now() + ms });
+        return true;
+      },
+      async releaseRefreshLease(id) {
+        const row = tokens.get(id);
+        if (row) tokens.set(id, { ...row, leaseUntil: undefined });
       },
       async setCachedAccess(id, token, expiresAt) {
         tokens.set(id, { ...tokens.get(id), accessEnc: cipher.encrypt(token), accessExpiresAt: expiresAt });

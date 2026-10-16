@@ -34,6 +34,12 @@ export interface Store {
      * `expected`. True only for the caller that swapped it, so two concurrent refreshes cannot overwrite each other.
      */
     swapRefreshToken(accountId: string, expected: string, next: string): Promise<boolean>;
+    /**
+     * Cross-instance single-flight for refreshes: sets a lease for `ms` only if there is none or it has expired.
+     * True only for the caller that got it. Always pair with releaseRefreshLease in a `finally`.
+     */
+    acquireRefreshLease(accountId: string, ms: number): Promise<boolean>;
+    releaseRefreshLease(accountId: string): Promise<void>;
   };
   oauth: {
     createClient(c: { redirectUris: string[]; clientName?: string }): Promise<{ clientId: string }>;

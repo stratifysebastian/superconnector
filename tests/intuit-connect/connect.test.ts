@@ -169,7 +169,7 @@ describe('callback route', () => {
     info = { CompanyInfo: { CompanyName: NAME } };
     const state = await startState();
     await callback(`code=${CODE}&realmId=${REALM}&state=${state}`);
-    expect((await intuitAccounts())[0]!.email).toBe(`realm-${REALM}@intuit.local`);
+    expect((await intuitAccounts())[0]!.email).toBe('quickbooks@intuit.invalid');
   });
 
   it('the state is single use', async () => {

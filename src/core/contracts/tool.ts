@@ -17,8 +17,10 @@ export interface ToolDef<I extends z.ZodTypeAny> {
   provider?: Provider | 'any';
   handler(input: z.infer<I>, ctx: ToolContext): Promise<unknown>;
 }
+/** What tool handlers may touch. Tokens and org-client credentials are deliberately absent. */
+export type ToolStore = Pick<Store, 'accounts' | 'audit'>;
 export interface ToolContext {
-  store: Store;
+  store: ToolStore;
   fanout: FanOutEngine;
   adapters: AdapterFactory;
   /** Builds the per-account context (guarded GoogleHttp bound to that account's token). */

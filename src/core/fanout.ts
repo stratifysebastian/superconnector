@@ -104,7 +104,7 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
     let cursorState: CursorState | undefined;
     let targets = resolved;
     if (spec.page.cursor) {
-      const state = decodeCursor(spec.page.cursor, cursorSecret);
+      const state = decodeCursor(spec.page.cursor, cursorSecret, spec.provider ?? 'google');
       cursorState = state;
       const labels = new Set(resolved.map((a) => a.label));
       const outside = Object.keys(state).filter((l) => !labels.has(l));
@@ -241,7 +241,7 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
 
     const accountErrors = errorsByOrder.sort((x, y) => x.order - y.order || x.seq - y.seq).map((e) => e.error);
     const result: FanOutReadResult<T> = { items, accountErrors };
-    if (Object.keys(nextState).length > 0) result.nextCursor = encodeCursor(nextState, cursorSecret);
+    if (Object.keys(nextState).length > 0) result.nextCursor = encodeCursor(nextState, cursorSecret, spec.provider ?? 'google');
     return result;
   }
 

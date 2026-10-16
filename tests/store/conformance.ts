@@ -292,6 +292,18 @@ export function runStoreConformance(name: string, makeStore: () => StoreHarness)
         if (h.dump) expect(JSON.stringify(h.dump())).not.toContain('rt-two');
       });
 
+      it('refresh lease: one holder at a time, released or expired leases can be taken again', async () => {
+        const q = await company('q', 'r1');
+        expect(await s.tokens.acquireRefreshLease(q.id, 30_000)).toBe(false); // no token row yet
+        await s.tokens.setRefreshToken(q.id, 'rt-one');
+        const got = await Promise.all([1, 2, 3].map(() => s.tokens.acquireRefreshLease(q.id, 30_000)));
+        expect(got.filter(Boolean)).toHaveLength(1);
+        await s.tokens.releaseRefreshLease(q.id);
+        expect(await s.tokens.acquireRefreshLease(q.id, 1)).toBe(true);
+        await new Promise((r) => setTimeout(r, 10));
+        expect(await s.tokens.acquireRefreshLease(q.id, 30_000)).toBe(true); // expired
+      });
+
       it('concurrent swaps from the same token have exactly one winner', async () => {
         const q = await company('q', 'r1');
         await s.tokens.setRefreshToken(q.id, 'rt-one');
