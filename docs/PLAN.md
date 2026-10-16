@@ -426,7 +426,7 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 3. Create a text file on Stratify, rename it and move it to another of your folders.
 4. Ask to share it, or to trash it. Both must be refused.
 
-## 4e. `send_self_report` (requested 2026-10-16; proposed, awaiting Seb's approval)
+## 4e. `send_self_report` (approved 2026-10-16; building)
 
 Source: `docs/MIGRATION.md`, Part 1, Option B. This tool is a **deliberate, owner-approved exception** to the spec's "never send". The invariant it keeps: **this server cannot email anyone other than the account's own address.** Docs, Sheets and Slides are paused until it ships.
 
@@ -460,6 +460,12 @@ Source: `docs/MIGRATION.md`, Part 1, Option B. This tool is a **deliberate, owne
 There are also policy tests showing that hand-built raw MIME with a different `To`, or with an added `Bcc`, is denied.
 
 **Testing rule:** mock only. Nothing is ever sent by me; Seb sends the first live one.
+
+**Decisions (Seb, 2026-10-16):**
+- Design approved.
+- The daily cap resets at midnight America/Toronto.
+- Seb sends the first live report himself.
+- The edits to the trigger prompts and the Drive config in `docs/MIGRATION.md` Parts 2–5 are drafted as diffs for Seb's OK after the tool is live, then applied in one pass.
 
 ## 5. Later phases (detailed per phase after the previous gate)
 
