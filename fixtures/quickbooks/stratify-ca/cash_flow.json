@@ -1,0 +1,457 @@
+{
+  "Header": {
+    "Time": "2026-10-16T09:00:00-04:00",
+    "ReportName": "CashFlow",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-08-01",
+    "EndPeriod": "2026-10-16",
+    "Currency": "CAD",
+    "Option": [
+      {
+        "Name": "AccountingMethod",
+        "Value": "Accrual"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "",
+        "ColType": "Account",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "account"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Aug 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "aug_2026"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Sep 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "sep_2026"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Oct 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "oct_2026"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Total",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "total"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "type": "Section",
+        "group": "OperatingActivities",
+        "Header": {
+          "ColData": [
+            {
+              "value": "Operating Activities"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "Net Income",
+                  "id": ""
+                },
+                {
+                  "value": "707.10"
+                },
+                {
+                  "value": "693.60"
+                },
+                {
+                  "value": "-2434.70"
+                },
+                {
+                  "value": "-1034.00"
+                }
+              ]
+            },
+            {
+              "type": "Section",
+              "group": "Adjustments",
+              "Header": {
+                "ColData": [
+                  {
+                    "value": "Adjustments to reconcile Net Income to Net Cash provided by operations:"
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  }
+                ]
+              },
+              "Rows": {
+                "Row": [
+                  {
+                    "type": "Data",
+                    "ColData": [
+                      {
+                        "value": "Accounts Receivable (A/R)",
+                        "id": "84"
+                      },
+                      {
+                        "value": "-2200.00"
+                      },
+                      {
+                        "value": "-1800.00"
+                      },
+                      {
+                        "value": "-950.00"
+                      },
+                      {
+                        "value": "-4950.00"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "Data",
+                    "ColData": [
+                      {
+                        "value": "Accounts Payable (A/P)",
+                        "id": "33"
+                      },
+                      {
+                        "value": "900.00"
+                      },
+                      {
+                        "value": "-300.00"
+                      },
+                      {
+                        "value": "1200.00"
+                      },
+                      {
+                        "value": "1800.00"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "Data",
+                    "ColData": [
+                      {
+                        "value": "GST/HST Payable",
+                        "id": "70"
+                      },
+                      {
+                        "value": "640.00"
+                      },
+                      {
+                        "value": "720.00"
+                      },
+                      {
+                        "value": "515.75"
+                      },
+                      {
+                        "value": "1875.75"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "Summary": {
+                "ColData": [
+                  {
+                    "value": "Total Adjustments to reconcile Net Income to Net Cash provided by operations:"
+                  },
+                  {
+                    "value": "-660.00"
+                  },
+                  {
+                    "value": "-1380.00"
+                  },
+                  {
+                    "value": "765.75"
+                  },
+                  {
+                    "value": "-1274.25"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Net cash provided by operating activities"
+            },
+            {
+              "value": "47.10"
+            },
+            {
+              "value": "-686.40"
+            },
+            {
+              "value": "-1668.95"
+            },
+            {
+              "value": "-2308.25"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "InvestingActivities",
+        "Header": {
+          "ColData": [
+            {
+              "value": "Investing Activities"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "Computer Equipment",
+                  "id": "60"
+                },
+                {
+                  "value": "0.00"
+                },
+                {
+                  "value": "-4800.00"
+                },
+                {
+                  "value": "0.00"
+                },
+                {
+                  "value": "-4800.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Net cash provided by investing activities"
+            },
+            {
+              "value": "0.00"
+            },
+            {
+              "value": "-4800.00"
+            },
+            {
+              "value": "0.00"
+            },
+            {
+              "value": "-4800.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "FinancingActivities",
+        "Header": {
+          "ColData": [
+            {
+              "value": "Financing Activities"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "Business Loan",
+                  "id": "75"
+                },
+                {
+                  "value": "-500.00"
+                },
+                {
+                  "value": "-500.00"
+                },
+                {
+                  "value": "-500.00"
+                },
+                {
+                  "value": "-1500.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Net cash provided by financing activities"
+            },
+            {
+              "value": "-500.00"
+            },
+            {
+              "value": "-500.00"
+            },
+            {
+              "value": "-500.00"
+            },
+            {
+              "value": "-1500.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "CashIncrease",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Net cash increase for period"
+            },
+            {
+              "value": "-452.90"
+            },
+            {
+              "value": "-5986.40"
+            },
+            {
+              "value": "-2168.95"
+            },
+            {
+              "value": "-8608.25"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "BeginningCash",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Cash at beginning of period"
+            },
+            {
+              "value": "31000.00"
+            },
+            {
+              "value": "30547.10"
+            },
+            {
+              "value": "24560.70"
+            },
+            {
+              "value": "31000.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "EndingCash",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "CASH AT END OF PERIOD"
+            },
+            {
+              "value": "30547.10"
+            },
+            {
+              "value": "24560.70"
+            },
+            {
+              "value": "22391.75"
+            },
+            {
+              "value": "22391.75"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

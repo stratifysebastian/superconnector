@@ -1,0 +1,262 @@
+{
+  "Header": {
+    "Time": "2026-10-16T09:00:00-04:00",
+    "ReportName": "AgedReceivables",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-10-16",
+    "EndPeriod": "2026-10-16",
+    "Currency": "CAD",
+    "Option": [
+      {
+        "Name": "AccountingMethod",
+        "Value": "Accrual"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "",
+        "ColType": "Customer",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "customer"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Current",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "current"
+          }
+        ]
+      },
+      {
+        "ColTitle": "1 - 30",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "bucket1"
+          }
+        ]
+      },
+      {
+        "ColTitle": "31 - 60",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "bucket2"
+          }
+        ]
+      },
+      {
+        "ColTitle": "61 - 90",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "bucket3"
+          }
+        ]
+      },
+      {
+        "ColTitle": "91 and over",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "bucket4"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Total",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "total"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Acme Corporation",
+            "id": "1"
+          },
+          {
+            "value": "4520.00"
+          },
+          {
+            "value": "2260.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "6780.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Maple Leaf Logistics Inc.",
+            "id": "3"
+          },
+          {
+            "value": "6780.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "3390.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "10170.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Northern Lights Studio Inc.",
+            "id": "4"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "1695.00"
+          },
+          {
+            "value": "-339.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "1356.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Prairie Analytics Ltd.",
+            "id": "5"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "2825.00"
+          },
+          {
+            "value": "2825.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Harbourfront Dental Group",
+            "id": "6"
+          },
+          {
+            "value": "1356.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "0.00"
+          },
+          {
+            "value": "1356.00"
+          }
+        ]
+      },
+      {
+        "type": "Section",
+        "group": "GrandTotal",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "TOTAL"
+            },
+            {
+              "value": "12656.00"
+            },
+            {
+              "value": "2260.00"
+            },
+            {
+              "value": "5085.00"
+            },
+            {
+              "value": "-339.00"
+            },
+            {
+              "value": "2825.00"
+            },
+            {
+              "value": "22487.00"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

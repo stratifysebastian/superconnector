@@ -1,0 +1,206 @@
+{
+  "Header": {
+    "Time": "2026-10-16T09:00:00-04:00",
+    "ReportName": "ItemSales",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-01-01",
+    "EndPeriod": "2026-10-16",
+    "Currency": "CAD",
+    "Option": [
+      {
+        "Name": "AccountingMethod",
+        "Value": "Accrual"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "",
+        "ColType": "Product/Service",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "item"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Quantity",
+        "ColType": "Numeric",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "qty"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Amount",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "amount"
+          }
+        ]
+      },
+      {
+        "ColTitle": "% of Sales",
+        "ColType": "Numeric",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "pct_of_sales"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Avg Price",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "avg_price"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Consulting Services",
+            "id": "S1"
+          },
+          {
+            "value": "420"
+          },
+          {
+            "value": "73500.00"
+          },
+          {
+            "value": "64.69"
+          },
+          {
+            "value": "175.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Software Subscription",
+            "id": "S2"
+          },
+          {
+            "value": "36"
+          },
+          {
+            "value": "17964.00"
+          },
+          {
+            "value": "15.81"
+          },
+          {
+            "value": "499.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Support Retainer",
+            "id": "S3"
+          },
+          {
+            "value": "12"
+          },
+          {
+            "value": "14400.00"
+          },
+          {
+            "value": "12.67"
+          },
+          {
+            "value": "1200.00"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Hardware Widget",
+            "id": "S4"
+          },
+          {
+            "value": "64"
+          },
+          {
+            "value": "5759.36"
+          },
+          {
+            "value": "5.07"
+          },
+          {
+            "value": "89.99"
+          }
+        ]
+      },
+      {
+        "type": "Data",
+        "ColData": [
+          {
+            "value": "Installation Fee",
+            "id": "S5"
+          },
+          {
+            "value": "8"
+          },
+          {
+            "value": "2000.00"
+          },
+          {
+            "value": "1.76"
+          },
+          {
+            "value": "250.00"
+          }
+        ]
+      },
+      {
+        "type": "Section",
+        "group": "GrandTotal",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "TOTAL"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "113623.36"
+            },
+            {
+              "value": "100.00"
+            },
+            {
+              "value": ""
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

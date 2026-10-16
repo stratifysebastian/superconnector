@@ -2,8 +2,20 @@
   "CompanyName": "Stratify Software Canada Inc. (mock)",
   "LegalName": "Stratify Software Canada Inc. (mock)",
   "Country": "CA",
-  "Email": { "Address": "books@stratify-ca.example" },
+  "Email": {
+    "Address": "books@stratify-ca.example"
+  },
   "FiscalYearStartMonth": "January",
   "Id": "mock-realm-1",
-  "domain": "QBO"
+  "domain": "QBO",
+  "NameValue": [
+    {
+      "Name": "QBOIndustryType",
+      "Value": "Software Publishers"
+    },
+    {
+      "Name": "Country",
+      "Value": "CA"
+    }
+  ]
 }

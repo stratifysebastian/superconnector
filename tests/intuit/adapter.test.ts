@@ -36,11 +36,13 @@ describe('QuickBooks adapters', () => {
     expect(json).toHaveBeenCalledWith({ method: 'GET', path: '/v3/company/mock-realm-1/companyinfo/mock-realm-1' });
   });
 
-  it('adds no MCP tool in Q0: still 39 tools, all Google except list_accounts', () => {
+  it('registers 60 tools: 21 QuickBooks (provider intuit), list_accounts (any) and the rest Google', () => {
     const defs = getToolDefs('http://x');
-    expect(defs).toHaveLength(39);
-    expect(ENABLED_TOOL_NAMES).toHaveLength(39);
-    for (const d of defs) expect(d.provider ?? 'google').toBe(d.name === 'list_accounts' ? 'any' : 'google');
+    expect(defs).toHaveLength(60);
+    expect(ENABLED_TOOL_NAMES).toHaveLength(60);
+    const intuit = defs.filter((d) => d.provider === 'intuit');
+    expect(intuit).toHaveLength(21);
+    for (const d of defs.filter((x) => x.provider !== 'intuit')) expect(d.provider ?? 'google').toBe(d.name === 'list_accounts' ? 'any' : 'google');
   });
 
   it('a real Google tool cannot be pointed at the QuickBooks company', async () => {

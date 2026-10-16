@@ -72,10 +72,10 @@ const WRITES = ['createFile', 'copyFile', 'updateFile'] as const;
 const writeCalls = () => Object.values(fakes).flatMap((f) => WRITES.flatMap((m) => (f[m] as ReturnType<typeof vi.fn>).mock.calls));
 
 describe('registry', () => {
-  it('registers exactly the enabled names (29 existing + 9 Drive + send_self_report = 39) and no share or trash tool', () => {
+  it('registers exactly the enabled names (29 existing + 9 Drive + send_self_report + 21 QuickBooks = 60) and no share or trash tool', () => {
     const names = getToolDefs('http://x').map((d) => d.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(names).toHaveLength(39);
+    expect(names).toHaveLength(60);
     expect(names.filter((n) => /share|trash|delete/.test(n))).toEqual([]);
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });

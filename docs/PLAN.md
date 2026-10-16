@@ -478,7 +478,7 @@ There are also policy tests showing that hand-built raw MIME with a different `T
 - Seb sends the first live report himself.
 - The edits to the trigger prompts and the Drive config in `docs/MIGRATION.md` Parts 2–5 are drafted as diffs for Seb's OK after the tool is live, then applied in one pass.
 
-## 4f. QuickBooks Online (approved 2026-10-16; Q0 building)
+## 4f. QuickBooks Online (approved 2026-10-16; Q0 ✅ live 2026-10-16; Q1 built and audited, awaiting Seb's live check)
 
 **Decisions (Seb, 2026-10-16):**
 - **Scope:** the built-in QuickBooks connector's tools that Intuit's public QuickBooks Online Accounting API supports. Payroll (27 tools), lending (6), Money onboarding (2), industry benchmarks, recommendations and health widgets (~7) use Intuit-internal services and stay with the built-in connector, which remains attached.
@@ -523,6 +523,11 @@ There are also policy tests showing that hand-built raw MIME with a different `T
 4. **`IntuitHttp`:** the same deny-by-default endpoint policy as `GoogleHttp`, on host `quickbooks.api.intuit.com` (plus the sandbox host in mock and dev only). Paths are `/v3/company/{realmId}/…` with the account's own `realmId` forced. Query text (`SELECT … FROM …`) is built only by our code, with escaped values. Logs hold no amounts, names or emails.
 5. **`/connect`:** an Intuit app client form (client ID and secret, write-only) and a Connect QuickBooks button.
 
+**Q0 live (2026-10-16):**
+- Stratify Software Canada Inc. is connected in production as `stratify-ca`, with Production keys and `INTUIT_ENV=production`.
+- The first attempts got a 403 because the keys and `INTUIT_ENV` didn't match. PR #9 now logs `intuit_tid` and Intuit's error code.
+- Seb chose production over the sandbox (2026-10-16). Create, send and delete are therefore tested in mock mode only, and Seb's live checks are the first real writes.
+
 **Q1 — reads and contacts:**
 - `company_info`;
 - the P&L, cash flow and balance sheet tools (`*_quickbooks_account`, `*_text`; not the `*_generator` tools);
@@ -537,6 +542,23 @@ Reports fan out across companies, with results tagged per company (reports aren'
 - `get_settings` and `update_settings`.
 
 Writes need exactly one company. Every send and delete is audited and goes only to the company named.
+
+**Q1 built and audited (2026-10-16):** 21 tools (60 total), with output shapes recorded in `docs/builtin-tools/quickbooks-outputs.json`.
+
+Audit A8 found no critical or high issues; everything below is fixed with tests:
+- **(medium)** Inventory items used to fall back to an arbitrary account. They now need exact account sub-types and are refused plainly otherwise.
+- **(medium)** Timeouts used to leave a company's work running. They now abort it, are audited, and cap GET retries at 30 s.
+- **(low)** Intuit error titles come from an allowlist.
+- **(low)** The query shape refuses subselects and a second `from`.
+- **(low)** Clearer "may have been created" wording.
+- **(low)** A failed audit write no longer fails a successful create.
+- **(low)** No `Taxable` field on items for Canadian companies.
+- **(low)** Explicit Toronto calendar dates instead of `date_macro`. Quarter and year mean calendar periods; fiscal-year inputs are also read as calendar years (shortcut, because the fiscal start isn't known).
+
+Guesses still unverified live:
+- some report section and group names;
+- product and customer match fields;
+- Intuit error titles outside the allowlist, which are shown as "Intuit error <code>".
 
 **Additions from Intuit's app questionnaire (Seb, 2026-10-16), built in Q1:**
 - record Intuit's `intuit_tid` response header on every call;

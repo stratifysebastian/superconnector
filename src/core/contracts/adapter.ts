@@ -55,10 +55,19 @@ export interface QuickBooksAdapterContext {
   signal: AbortSignal;
 }
 
-/** The only way to reach QuickBooks. Deny by default (src/intuit/endpoints); there is no write verb in Q0. */
+/**
+ * The only way to reach QuickBooks. Deny by default (src/intuit/endpoints): every request must match a rule that names
+ * its method, path, query keys and (for POST) body keys. A POST is never retried.
+ */
 export interface IntuitHttp {
   /** `path` starts with `/v3/company/{realmId}/`; the realmId must be the account's own or the request is denied. */
-  json<T>(req: { method: 'GET'; path: string; query?: Record<string, string | number | boolean | undefined> }): Promise<T>;
+  json<T>(req: {
+    method: 'GET' | 'POST';
+    path: string;
+    query?: Record<string, string | number | boolean | undefined>;
+    /** POST only; its top-level keys must be listed by the rule. */
+    body?: Record<string, unknown>;
+  }): Promise<T>;
 }
 
 /** One adapter per product. Live and mock implementations satisfy the same interface; GOOGLE_MODE picks one. */

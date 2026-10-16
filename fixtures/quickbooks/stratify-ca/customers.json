@@ -1,0 +1,135 @@
+[
+  {
+    "Id": "1",
+    "DisplayName": "Acme Corporation",
+    "CompanyName": "Acme Corporation",
+    "Active": true,
+    "PrimaryEmailAddr": {
+      "Address": "ap@acme.example"
+    },
+    "CurrencyRef": {
+      "value": "CAD",
+      "name": "Canadian Dollar"
+    },
+    "BillAddr": {
+      "City": "Toronto",
+      "CountrySubDivisionCode": "ON",
+      "Country": "Canada"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "2",
+    "DisplayName": "Acme Industries Ltd.",
+    "CompanyName": "Acme Industries Ltd.",
+    "Active": true,
+    "PrimaryEmailAddr": {
+      "Address": "accounts@acme-industries.example"
+    },
+    "CurrencyRef": {
+      "value": "CAD",
+      "name": "Canadian Dollar"
+    },
+    "BillAddr": {
+      "City": "Toronto",
+      "CountrySubDivisionCode": "QC",
+      "Country": "Canada"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "3",
+    "DisplayName": "Maple Leaf Logistics Inc.",
+    "CompanyName": "Maple Leaf Logistics Inc.",
+    "Active": true,
+    "PrimaryEmailAddr": {
+      "Address": "billing@mapleleaf.example"
+    },
+    "CurrencyRef": {
+      "value": "CAD",
+      "name": "Canadian Dollar"
+    },
+    "BillAddr": {
+      "City": "Toronto",
+      "CountrySubDivisionCode": "ON",
+      "Country": "Canada"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "4",
+    "DisplayName": "Northern Lights Studio Inc.",
+    "CompanyName": "Northern Lights Studio Inc.",
+    "Active": true,
+    "PrimaryEmailAddr": {
+      "Address": "hello@northernlights.example"
+    },
+    "CurrencyRef": {
+      "value": "CAD",
+      "name": "Canadian Dollar"
+    },
+    "BillAddr": {
+      "City": "Toronto",
+      "CountrySubDivisionCode": "BC",
+      "Country": "Canada"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "5",
+    "DisplayName": "Prairie Analytics Ltd.",
+    "CompanyName": "Prairie Analytics Ltd.",
+    "Active": true,
+    "PrimaryEmailAddr": {
+      "Address": "finance@prairie.example"
+    },
+    "CurrencyRef": {
+      "value": "CAD",
+      "name": "Canadian Dollar"
+    },
+    "BillAddr": {
+      "City": "Toronto",
+      "CountrySubDivisionCode": "AB",
+      "Country": "Canada"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "6",
+    "DisplayName": "Harbourfront Dental Group",
+    "CompanyName": "Harbourfront Dental Group",
+    "Active": true,
+    "PrimaryEmailAddr": {
+      "Address": "office@harbourfront.example"
+    },
+    "CurrencyRef": {
+      "value": "CAD",
+      "name": "Canadian Dollar"
+    },
+    "BillAddr": {
+      "City": "Toronto",
+      "CountrySubDivisionCode": "ON",
+      "Country": "Canada"
+    },
+    "SyncToken": "0"
+  },
+  {
+    "Id": "7",
+    "DisplayName": "Old Client Co.",
+    "CompanyName": "Old Client Co.",
+    "Active": false,
+    "PrimaryEmailAddr": {
+      "Address": "old@client.example"
+    },
+    "CurrencyRef": {
+      "value": "CAD",
+      "name": "Canadian Dollar"
+    },
+    "BillAddr": {
+      "City": "Toronto",
+      "CountrySubDivisionCode": "ON",
+      "Country": "Canada"
+    },
+    "SyncToken": "0"
+  }
+]

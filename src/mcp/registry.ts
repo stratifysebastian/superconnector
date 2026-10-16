@@ -8,13 +8,14 @@ import { calendarTools } from './tools/calendar';
 import { driveTools } from './tools/drive';
 import { gmailTools } from './tools/gmail';
 import { createListAccountsTool } from './tools/list_accounts';
+import { quickbooksTools } from './tools/quickbooks';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyToolDef = ToolDef<z.ZodObject<any>>;
 
 /** Every enabled tool. Excluded tools are never listed here. */
 export function getToolDefs(baseUrl: string): AnyToolDef[] {
-  return [createListAccountsTool(baseUrl), ...calendarTools(), ...gmailTools(), ...driveTools()];
+  return [createListAccountsTool(baseUrl), ...calendarTools(), ...gmailTools(), ...driveTools(), ...quickbooksTools()];
 }
 
 function errorResult(message: string): CallToolResult {
@@ -45,12 +46,13 @@ export function buildServer(ctx: ToolContext, opts: BuildServerOptions): McpServ
           const result = await def.handler(args as never, provider === 'any' ? ctx : scopeToolContext(ctx, provider));
           done('ok');
           // A handler may return `mcpImage` ({data: base64, mimeType}); it becomes an image block, not JSON text.
-          const { mcpImage, ...json } = result as { mcpImage?: { data: string; mimeType: string } } & Record<string, unknown>;
+          // It may also return `mcpText`: the text block is then that string as it is (plain-text tools), not JSON.
+          const { mcpImage, mcpText, ...json } = result as { mcpImage?: { data: string; mimeType: string }; mcpText?: string } & Record<string, unknown>;
           // Only png/jpeg, valid base64, at most 2,000,000 characters; anything else is dropped and the text result stays.
           const okImage = mcpImage && /^image\/(png|jpeg)$/.test(mcpImage.mimeType) && mcpImage.data.length <= 2_000_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(mcpImage.data);
           return {
             content: [
-              { type: 'text', text: JSON.stringify(json) },
+              { type: 'text', text: typeof mcpText === 'string' ? mcpText : JSON.stringify(json) },
               ...(okImage ? [{ type: 'image' as const, data: mcpImage.data, mimeType: mcpImage.mimeType }] : []),
             ],
             structuredContent: json,

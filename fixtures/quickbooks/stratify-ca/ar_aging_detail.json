@@ -1,0 +1,708 @@
+{
+  "Header": {
+    "Time": "2026-10-16T09:00:00-04:00",
+    "ReportName": "AgedReceivableDetail",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-10-16",
+    "EndPeriod": "2026-10-16",
+    "Currency": "CAD",
+    "Option": [
+      {
+        "Name": "AccountingMethod",
+        "Value": "Accrual"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "Date",
+        "ColType": "Date",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "tx_date"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Transaction Type",
+        "ColType": "String",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "txn_type"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Num",
+        "ColType": "String",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "doc_num"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Customer",
+        "ColType": "String",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "customer"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Due Date",
+        "ColType": "Date",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "due_date"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Past Due",
+        "ColType": "Numeric",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "past_due"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Amount",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "subt_nat_amount"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Open Balance",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "rbal_nat_amount"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "type": "Section",
+        "group": "bucket0",
+        "Header": {
+          "ColData": [
+            {
+              "value": "Current"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-10-05"
+                },
+                {
+                  "value": "Invoice",
+                  "id": "1041"
+                },
+                {
+                  "value": "1041"
+                },
+                {
+                  "value": "Acme Corporation",
+                  "id": "1"
+                },
+                {
+                  "value": "2026-11-04"
+                },
+                {
+                  "value": "0"
+                },
+                {
+                  "value": "4520.00"
+                },
+                {
+                  "value": "4520.00"
+                }
+              ]
+            },
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-09-28"
+                },
+                {
+                  "value": "Invoice",
+                  "id": "1039"
+                },
+                {
+                  "value": "1039"
+                },
+                {
+                  "value": "Maple Leaf Logistics Inc.",
+                  "id": "3"
+                },
+                {
+                  "value": "2026-10-28"
+                },
+                {
+                  "value": "0"
+                },
+                {
+                  "value": "6780.00"
+                },
+                {
+                  "value": "6780.00"
+                }
+              ]
+            },
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-10-12"
+                },
+                {
+                  "value": "Invoice",
+                  "id": "1044"
+                },
+                {
+                  "value": "1044"
+                },
+                {
+                  "value": "Harbourfront Dental Group",
+                  "id": "6"
+                },
+                {
+                  "value": "2026-11-11"
+                },
+                {
+                  "value": "0"
+                },
+                {
+                  "value": "1356.00"
+                },
+                {
+                  "value": "1356.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total for Current"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "12656.00"
+            },
+            {
+              "value": "12656.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "bucket1",
+        "Header": {
+          "ColData": [
+            {
+              "value": "1 - 30 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-09-02"
+                },
+                {
+                  "value": "Invoice",
+                  "id": "1032"
+                },
+                {
+                  "value": "1032"
+                },
+                {
+                  "value": "Acme Corporation",
+                  "id": "1"
+                },
+                {
+                  "value": "2026-10-02"
+                },
+                {
+                  "value": "14"
+                },
+                {
+                  "value": "2260.00"
+                },
+                {
+                  "value": "2260.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total for 1 - 30 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "2260.00"
+            },
+            {
+              "value": "2260.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "bucket2",
+        "Header": {
+          "ColData": [
+            {
+              "value": "31 - 60 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-08-04"
+                },
+                {
+                  "value": "Invoice",
+                  "id": "1021"
+                },
+                {
+                  "value": "1021"
+                },
+                {
+                  "value": "Maple Leaf Logistics Inc.",
+                  "id": "3"
+                },
+                {
+                  "value": "2026-09-03"
+                },
+                {
+                  "value": "43"
+                },
+                {
+                  "value": "3390.00"
+                },
+                {
+                  "value": "3390.00"
+                }
+              ]
+            },
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-07-20"
+                },
+                {
+                  "value": "Invoice",
+                  "id": "1017"
+                },
+                {
+                  "value": "1017"
+                },
+                {
+                  "value": "Northern Lights Studio Inc.",
+                  "id": "4"
+                },
+                {
+                  "value": "2026-08-19"
+                },
+                {
+                  "value": "58"
+                },
+                {
+                  "value": "1695.00"
+                },
+                {
+                  "value": "1695.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total for 31 - 60 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "5085.00"
+            },
+            {
+              "value": "5085.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "bucket3",
+        "Header": {
+          "ColData": [
+            {
+              "value": "61 - 90 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-08-02"
+                },
+                {
+                  "value": "Credit Memo",
+                  "id": "1018"
+                },
+                {
+                  "value": "1018"
+                },
+                {
+                  "value": "Northern Lights Studio Inc.",
+                  "id": "4"
+                },
+                {
+                  "value": "2026-08-02"
+                },
+                {
+                  "value": "75"
+                },
+                {
+                  "value": "-339.00"
+                },
+                {
+                  "value": "-339.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total for 61 - 90 days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "-339.00"
+            },
+            {
+              "value": "-339.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "bucket4",
+        "Header": {
+          "ColData": [
+            {
+              "value": "91 or more days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "type": "Data",
+              "ColData": [
+                {
+                  "value": "2026-06-01"
+                },
+                {
+                  "value": "Invoice",
+                  "id": "0988"
+                },
+                {
+                  "value": "0988"
+                },
+                {
+                  "value": "Prairie Analytics Ltd.",
+                  "id": "5"
+                },
+                {
+                  "value": "2026-07-01"
+                },
+                {
+                  "value": "107"
+                },
+                {
+                  "value": "2825.00"
+                },
+                {
+                  "value": "2825.00"
+                }
+              ]
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total for 91 or more days past due"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "2825.00"
+            },
+            {
+              "value": "2825.00"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Section",
+        "group": "GrandTotal",
+        "Summary": {
+          "ColData": [
+            {
+              "value": "TOTAL"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "22487.00"
+            },
+            {
+              "value": "22487.00"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
