@@ -478,12 +478,14 @@ There are also policy tests showing that hand-built raw MIME with a different `T
 - Seb sends the first live report himself.
 - The edits to the trigger prompts and the Drive config in `docs/MIGRATION.md` Parts 2–5 are drafted as diffs for Seb's OK after the tool is live, then applied in one pass.
 
-## 4f. QuickBooks Online (requested 2026-10-16; plan drafted, awaiting Seb's approval)
+## 4f. QuickBooks Online (approved 2026-10-16; Q0 building)
 
 **Decisions (Seb, 2026-10-16):**
 - **Scope:** the built-in QuickBooks connector's tools that Intuit's public QuickBooks Online Accounting API supports. Payroll (27 tools), lending (6), Money onboarding (2), industry benchmarks, recommendations and health widgets (~7) use Intuit-internal services and stay with the built-in connector, which remains attached.
 - **Send and delete:** parity with the built-in connector. `send_invoice`, `send_estimate`, `send_invoice_reminder` and the three `delete_*` tools are included.
-- **Companies:** PR1ME only to start. Stratify stays on the built-in connector. More companies can be added through `/connect`.
+- **Companies:** **Stratify Software Canada Inc.**, label `stratify-ca` (corrected by Seb, 2026-10-16; not PR1ME). The built-in connector is attached to a different company, so there's no overlap. More companies can be added through `/connect`.
+- **Edition:** QuickBooks Online **Canada**. Lines carry GST/HST `TaxCodeRef`s, and some report and settings fields differ from the US edition. Build and test against a Canadian sandbox company.
+- **Plan approved.** The `0002_intuit.sql` migration may be applied to production once tests pass. The Intuit sandbox is used before the live company.
 - Tool names and inputs mirror the built-in connector (`docs/builtin-tools/quickbooks.json`, 50 tools captured, inputs only), plus `account`.
 
 **Findings from the built-in definitions (2026-10-16):**
@@ -509,7 +511,7 @@ There are also policy tests showing that hand-built raw MIME with a different `T
    - add `intuit` to the provider check;
    - add `realm_id text` to `accounts`;
    - add `provider` to `google_org_clients` (default `'google'`) and make `workspace_domain` nullable;
-   - change label uniqueness to `unique (provider, label)`, so the PR1ME company can also be called `prime`.
+   - change label uniqueness to `unique (provider, label)`, so labels are per provider.
 
    RLS and grants are unchanged.
 2. **Provider-scoped accounts.** `resolveAccounts` and the fan-out only see accounts of the tool's provider. Google tools never touch a QuickBooks company, and the reverse. `list_accounts` shows the provider.
