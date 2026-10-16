@@ -66,8 +66,15 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
       const started = Date.now();
       let attempts = 0;
       let status: number | undefined;
+      // Intuit's support id and error code/name help them trace a failure; neither carries company data.
+      let intuitTid: string | undefined;
+      let intuitCode: string | undefined;
       const log = (outcome: string) =>
-        opts.log?.info({ msg: 'intuit_http', outcome, method, path: verdict.rule.template, status, durationMs: Date.now() - started, attempts });
+        opts.log?.info({
+          msg: 'intuit_http', outcome, method, path: verdict.rule.template, status, durationMs: Date.now() - started, attempts,
+          ...(intuitTid ? { intuitTid } : {}),
+          ...(intuitCode ? { intuitCode } : {}),
+        });
       const fail = (err: ProviderError): never => {
         log(err.kind);
         throw err;
@@ -95,6 +102,8 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
           return fail(new ProviderError('upstream_error', 'QuickBooks request failed'));
         }
         status = res.status;
+        const tid = res.headers.get('intuit_tid');
+        intuitTid = tid && /^[\w-]{1,100}$/.test(tid) ? tid : undefined;
 
         if (res.ok) {
           let data: T;
@@ -136,10 +145,32 @@ export function createIntuitHttp(opts: IntuitHttpOptions): IntuitHttp {
           await sleep(delay);
           continue;
         }
-        if (res.status === 403) return fail(new ProviderError('missing_scope', 'QuickBooks refused the request: the company has not granted access', 403));
+        intuitCode = await readIntuitCode(res);
+        if (res.status === 403) {
+          return fail(
+            new ProviderError(
+              'upstream_error',
+              'QuickBooks refused the request (403). Most often the app keys do not match the environment: development keys need the sandbox company and INTUIT_ENV=sandbox, production keys need a live company and INTUIT_ENV=production.',
+              403,
+            ),
+          );
+        }
         if (res.status === 404) return fail(new ProviderError('not_found', 'QuickBooks resource not found', 404));
         return fail(new ProviderError('upstream_error', 'QuickBooks request failed', res.status));
       }
     },
   };
+}
+
+/** Intuit's error code and short error name only (e.g. "003100 ApplicationAuthorizationFailed"); never free text. */
+async function readIntuitCode(res: Response): Promise<string | undefined> {
+  try {
+    const body = (await res.json()) as { Fault?: { Error?: { code?: unknown; Message?: unknown }[] } };
+    const e = body?.Fault?.Error?.[0];
+    const code = typeof e?.code === 'string' && /^\d{1,8}$/.test(e.code) ? e.code : undefined;
+    const name = typeof e?.Message === 'string' && /^[A-Za-z]{1,60}$/.test(e.Message) ? e.Message : undefined;
+    return [code, name].filter(Boolean).join(' ') || undefined;
+  } catch {
+    return undefined;
+  }
 }

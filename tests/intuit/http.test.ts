@@ -168,7 +168,17 @@ describe('IntuitHttp transport', () => {
     await expect(s.http.json(info())).rejects.toMatchObject({ kind: 'upstream_error' });
   });
 
-  it.each([[403, 'missing_scope'], [404, 'not_found'], [400, 'upstream_error']])('maps HTTP %i to %s without retrying', async (status, kind) => {
+  it('logs Intuit\'s error code and intuit_tid on a 403, never free text', async () => {
+    const body = { Fault: { Error: [{ code: '003100', Message: 'ApplicationAuthorizationFailed', Detail: 'Secret Name Inc' }] } };
+    const { http, logs } = setup({ responses: [() => new Response(JSON.stringify(body), { status: 403, headers: { intuit_tid: 'abc-123' } })] });
+    const err = (await http.json(info()).catch((e: unknown) => e)) as Error;
+    expect(err.message).toContain('INTUIT_ENV');
+    expect(JSON.stringify(logs)).toContain('003100 ApplicationAuthorizationFailed');
+    expect(JSON.stringify(logs)).toContain('abc-123');
+    expect(JSON.stringify(logs)).not.toContain('Secret Name');
+  });
+
+  it.each([[403, 'upstream_error'], [404, 'not_found'], [400, 'upstream_error']])('maps HTTP %i to %s without retrying', async (status, kind) => {
     const { http, fetchImpl } = setup({ responses: [() => new Response(JSON.stringify({ Fault: { Error: [{ Detail: 'Secret Name Inc' }] } }), { status })] });
     const err = await http.json(info()).catch((e: unknown) => e);
     expect((err as ProviderError).kind).toBe(kind);
