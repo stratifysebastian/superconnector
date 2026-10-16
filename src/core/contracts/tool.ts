@@ -1,5 +1,6 @@
 import type { z } from 'zod';
-import type { AdapterFactory } from './adapter';
+import type { Account } from './account';
+import type { AdapterContext, AdapterFactory } from './adapter';
 import type { FanOutEngine } from './fanout';
 import type { Store } from './store';
 
@@ -14,6 +15,8 @@ export interface ToolContext {
   store: Store;
   fanout: FanOutEngine;
   adapters: AdapterFactory;
+  /** Builds the per-account context (guarded GoogleHttp bound to that account's token). */
+  adapterContext(account: Account, signal?: AbortSignal): AdapterContext;
   log: Logger;
 }
 export interface Logger {

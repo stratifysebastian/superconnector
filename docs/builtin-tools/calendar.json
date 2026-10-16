@@ -4,22 +4,42 @@
     "list_events / get_event / search_events return Google Calendar API Event resources nearly verbatim (camelCase), plus a top-level `conferenceUrl` convenience field when there is a Meet link.",
     "list_events wraps events in the Events-list envelope (accessRole, defaultReminders, summary, timeZone, updated, nextPageToken). search_events returns only { events } (no envelope observed).",
     "iCalUID is NOT present in the built-in output. We request it from the API for de-duplication and may include it as an extra field.",
-    "Our tools add: account, accountEmail (every item) and accounts[], sources[] (de-duplicated events), plus top-level accountErrors[] and nextCursor (replacing nextPageToken)."
+    "Our tools add: account, accountEmail (every item) and accounts[], sources[] (de-duplicated events), plus top-level accountErrors[] and nextCursor (replacing nextPageToken).",
+    "suggest_time observed once (Seb approved, 2026-10-16): returns { timeSlots } only; each slot has both nested start/end objects and flat startTime/endTime strings."
   ],
   "list_calendars": {
-    "calendars": [{ "id": "string (email or group id)", "summary": "string", "description": "string?", "timeZone": "IANA string" }],
+    "calendars": [
+      {
+        "id": "string (email or group id)",
+        "summary": "string",
+        "description": "string?",
+        "timeZone": "IANA string"
+      }
+    ],
     "nextPageToken": "string?"
   },
   "list_events": {
     "accessRole": "string",
-    "defaultReminders": [{ "method": "popup|email", "minutes": "number" }],
-    "events": ["<Event>"],
+    "defaultReminders": [
+      {
+        "method": "popup|email",
+        "minutes": "number"
+      }
+    ],
+    "events": [
+      "<Event>"
+    ],
     "nextPageToken": "string?",
     "summary": "string (calendar name)",
     "timeZone": "IANA string",
     "updated": "RFC3339"
   },
-  "search_events": { "events": ["<Event>"], "nextPageToken": "string?" },
+  "search_events": {
+    "events": [
+      "<Event>"
+    ],
+    "nextPageToken": "string?"
+  },
   "get_event": "<Event>",
   "Event": {
     "id": "string",
@@ -30,17 +50,66 @@
     "htmlLink": "url",
     "created": "RFC3339",
     "updated": "RFC3339",
-    "creator": { "email": "string", "self": "boolean?" },
-    "organizer": { "email": "string", "self": "boolean?" },
-    "start": { "dateTime": "RFC3339 with offset (or date for all-day)", "timeZone": "IANA string" },
-    "end": { "dateTime": "RFC3339 with offset (or date for all-day)", "timeZone": "IANA string" },
+    "creator": {
+      "email": "string",
+      "self": "boolean?"
+    },
+    "organizer": {
+      "email": "string",
+      "self": "boolean?"
+    },
+    "start": {
+      "dateTime": "RFC3339 with offset (or date for all-day)",
+      "timeZone": "IANA string"
+    },
+    "end": {
+      "dateTime": "RFC3339 with offset (or date for all-day)",
+      "timeZone": "IANA string"
+    },
     "eventType": "DEFAULT|FOCUS_TIME|OUT_OF_OFFICE|WORKING_LOCATION|FROM_GMAIL|BIRTHDAY",
-    "attendees": [{ "email": "string", "responseStatus": "string", "organizer": "boolean?", "self": "boolean?" }],
-    "conferenceData": { "videoEntryPoint": { "uri": "url" }, "phoneEntryPoints": "array", "moreDetailsEntryPoint": { "uri": "url" }, "solutionName": "string" },
+    "attendees": [
+      {
+        "email": "string",
+        "responseStatus": "string",
+        "organizer": "boolean?",
+        "self": "boolean?"
+      }
+    ],
+    "conferenceData": {
+      "videoEntryPoint": {
+        "uri": "url"
+      },
+      "phoneEntryPoints": "array",
+      "moreDetailsEntryPoint": {
+        "uri": "url"
+      },
+      "solutionName": "string"
+    },
     "conferenceUrl": "url? (built-in convenience field)",
     "visibility": "string?",
     "useDefaultReminders": "boolean",
-    "overrideReminders": [{ "method": "string", "minutes": "number" }]
+    "overrideReminders": [
+      {
+        "method": "string",
+        "minutes": "number"
+      }
+    ]
   },
-  "suggest_time": "not observed (would need attendee emails); shape to confirm in Phase 1"
+  "suggest_time": {
+    "timeSlots": [
+      {
+        "start": {
+          "dateTime": "RFC3339 with offset",
+          "timeZone": "offset or IANA string"
+        },
+        "end": {
+          "dateTime": "RFC3339 with offset",
+          "timeZone": "offset or IANA string"
+        },
+        "startTime": "RFC3339",
+        "endTime": "RFC3339",
+        "durationMinutes": "number"
+      }
+    ]
+  }
 }

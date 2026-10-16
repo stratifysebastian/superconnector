@@ -7,7 +7,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | Phase | Status |
 | --- | --- |
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in check pending |
-| 1 Calendar | ⬜ |
+| 1 Calendar | 🟦 approved 2026-10-16; building |
 | 2 Gmail | ⬜ |
 | 3 Drive | ⬜ |
 | 4 Docs | ⬜ |
@@ -279,7 +279,7 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 4. Ask Claude to call `list_accounts`. Expect both accounts, active, in the right order, with granted products.
 5. Negative check: a sign-in from a non-allowlisted Google account is refused.
 
-## 4b. Phase 1 — Calendar (proposed, awaiting Seb's approval)
+## 4b. Phase 1 — Calendar (approved 2026-10-16; building)
 
 Done when (spec): the morning brief shows events from both accounts, with shared meetings shown once carrying both tags; and `create_event` with attendees is rejected.
 
@@ -320,7 +320,9 @@ Done when (spec): the morning brief shows events from both accounts, with shared
 3. Create a guest-free test event on Stratify, and update it.
 4. Try to update an event that has other guests. It must be refused, with the change described.
 
-**Still open:** the `suggest_time` output shape hasn't been observed. Default plan: mirror the API's `{start, end}` slot list unless Seb lets me call the built-in once.
+`suggest_time` shape observed once with Seb's approval (`{ timeSlots: [{ start, end, startTime, endTime, durationMinutes }] }`), recorded in `docs/builtin-tools/calendar.json`.
+
+Orchestrator contract (done): `src/core/contracts/calendar.ts` (`CalendarAdapter`, `GEvent`, `EventWriteBody` with no attendee or notification fields), `AdapterFactory.calendar` narrowed, `ToolContext.adapterContext(account)` wired to a guarded `GoogleHttp` per account.
 
 ## 5. Later phases (detailed per phase after the previous gate)
 
