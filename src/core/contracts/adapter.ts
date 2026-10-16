@@ -1,5 +1,6 @@
 import type { Account } from './account';
 import type { CalendarAdapter } from './calendar';
+import type { DriveAdapter } from './drive';
 import type { GmailAdapter } from './gmail';
 
 /**
@@ -24,6 +25,20 @@ export interface GoogleHttp {
     query?: Record<string, string | number | boolean | undefined>;
     body?: unknown;
   }): Promise<T>;
+  /** POST multipart/related: a JSON metadata part (policy-checked like a body) plus raw content. */
+  upload<T>(req: {
+    url: string;
+    query?: Record<string, string | number | boolean | undefined>;
+    metadata: unknown;
+    content: Uint8Array;
+    contentType: string;
+  }): Promise<T>;
+  /** GET raw bytes. Fails without reading further once the response exceeds maxBytes. */
+  download(req: {
+    url: string;
+    query?: Record<string, string | number | boolean | undefined>;
+    maxBytes: number;
+  }): Promise<{ bytes: Uint8Array; contentType: string }>;
 }
 // Note: GoogleHttp has no delete verb by design. No adapter can issue one.
 
@@ -31,4 +46,5 @@ export interface GoogleHttp {
 export interface AdapterFactory {
   calendar(ctx: AdapterContext): CalendarAdapter;
   gmail(ctx: AdapterContext): GmailAdapter;
+  drive(ctx: AdapterContext): DriveAdapter;
 }

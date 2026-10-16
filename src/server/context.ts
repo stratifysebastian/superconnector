@@ -76,6 +76,10 @@ export async function createServerContext(opts: CreateServerContextOptions = {})
   const adapters: AdapterFactory = {
     calendar: mock ? createMockCalendarAdapter : createLiveCalendarAdapter,
     gmail: mock ? createMockGmailAdapter : createLiveGmailAdapter,
+    // shortcut: replaced by the mock and live Drive adapters (D1, D2) in this phase; no Drive tool is registered yet.
+    drive: () => {
+      throw new Error('Drive adapter is not wired yet');
+    },
   };
 
   const adapterContext = (account: Account, signal: AbortSignal = new AbortController().signal): AdapterContext => ({

@@ -398,7 +398,9 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 - `create_file`, `copy_file` and `update_file` refuse a destination folder that is shared with anyone other than the account owner. My Drive root is fine.
 - Output shapes were observed read-only and are recorded in `docs/builtin-tools/drive.json`.
 
-**Snippets.** The Drive API has no content snippets. `excludeContentSnippets` and `snippetVerbosity` are accepted. When snippets are wanted, a Google-native file's snippet is the start of its plain-text export, cut to the verbosity limit; other files get none.
+**Snippets (revised at build time).** The Drive API has no content snippets. `excludeContentSnippets` and `snippetVerbosity` are accepted. Only `get_file_metadata` returns a `contentSnippet`: the start of a Google-native file's plain-text export, cut to the verbosity limit. `search_files` and `list_recent_files` return none, because one export per result would be too slow for a function call.
+
+**Ordering.** Drive can't sort `fullText` searches; they come back in relevance order. Those merged results are listed account by account, in priority order, which keeps paging exact. All other searches merge newest first by `modifiedTime`. `list_recent_files` merges on the same time field Drive sorted by.
 
 **Guardrails:**
 - No `permissions` writes, ever: the GET of a file's permissions is the only permissions rule.
