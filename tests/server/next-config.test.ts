@@ -11,7 +11,7 @@ describe('next.config security headers', () => {
       'Content-Security-Policy': "frame-ancestors 'none'",
       'X-Frame-Options': 'DENY',
       'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'no-referrer',
+      'Referrer-Policy': 'same-origin',
       'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
     });
   });

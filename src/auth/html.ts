@@ -19,7 +19,8 @@ export function pageHeaders(extra: Record<string, string> = {}): Headers {
     Pragma: 'no-cache',
     'X-Frame-Options': 'DENY',
     'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': 'no-referrer',
+    // same-origin, not no-referrer: no-referrer makes browsers send "Origin: null" on form POSTs, which the consent origin check refuses.
+    'Referrer-Policy': 'same-origin',
     'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'",
   });
   for (const [k, v] of Object.entries(extra)) h.set(k, v);
