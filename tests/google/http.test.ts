@@ -467,8 +467,8 @@ describe('GoogleHttp guardrails: rejections never reach fetch', () => {
   });
 
   it('denies everything not covered by the default rule set', async () => {
-    // Calendar and Gmail rules only; these test URLs match none of them.
-    expect(ENDPOINT_RULES.every((r) => r.product === 'calendar' || r.product === 'gmail')).toBe(true);
+    // Calendar, Gmail and Drive rules only; these test URLs match none of them.
+    expect(ENDPOINT_RULES.every((r) => ['calendar', 'gmail', 'drive'].includes(r.product))).toBe(true);
     const calls: unknown[] = [];
     const http = createGoogleHttp({
       getAccessToken: async () => TOKEN,
@@ -477,9 +477,9 @@ describe('GoogleHttp guardrails: rejections never reach fetch', () => {
         return res(200);
       }) as unknown as typeof fetch,
     });
-    await expect(http.json({ method: 'GET', url: URL_WRITE })).rejects.toMatchObject({ rule: 'no-matching-rule' });
+    await expect(http.json({ method: 'GET', url: 'https://docs.googleapis.com/v1/documents/abc' })).rejects.toMatchObject({ rule: 'no-matching-rule' });
     await expect(
-      http.json({ method: 'GET', url: 'https://www.googleapis.com/drive/v3/files' }),
+      http.json({ method: 'PATCH', url: 'https://www.googleapis.com/drive/v3/files/abc/revisions/1', body: {} }),
     ).rejects.toMatchObject({ rule: 'no-matching-rule' });
     expect(calls).toHaveLength(0);
   });

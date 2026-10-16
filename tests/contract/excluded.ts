@@ -95,6 +95,13 @@ export const ALLOWED_LITERALS: Record<string, Record<string, readonly (string | 
   // The Gmail mock is in-memory and never reaches Google. It names the label only to hide it from search and to
   // refuse it, mirroring the endpoint policy. No other file is exempt.
   'gmail-trash-label': { 'src/google/mock/gmail.ts': ["'TRASH'"] },
+  // Importing the read-only permissions file names its path; nothing else in these files may mention permissions.
+  'drive-permissions': {
+    'src/google/drive.ts': [/'\.\/drive\/permissions-read'/g],
+    'src/google/endpoints/drive.ts': [/'\.\.\/drive\/permissions-read'/g],
+  },
+  // The read-only permissions file states its one verb explicitly; any other method or write verb still fails.
+  'drive-permissions-nonget': { 'src/google/drive/permissions-read.ts': [/\bmethod: 'GET'/g] },
   'trash-word': { 'src/google/mock/gmail.ts': [/'TRASH'|The TRASH label|\(this also blocks untrash\)/g] },
 };
 
