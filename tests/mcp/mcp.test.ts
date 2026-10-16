@@ -10,6 +10,7 @@ import { handleMcpRequest, type McpDeps } from '@/mcp/handler';
 import type { AnyToolDef } from '@/mcp/registry';
 import { createServerContext, type ServerContext } from '@/server/context';
 import { createMemoryStore } from '@/store/memory';
+import { ENABLED_TOOL_NAMES } from '../contract/enabled';
 import { assertNoExcludedTools } from '../contract/excluded';
 
 const BASE = 'http://localhost:3000';
@@ -63,10 +64,10 @@ describe('/api/mcp handler', () => {
     expect(res.headers.get('Allow')).toBe('POST');
   });
 
-  it('lists exactly list_accounts and no excluded tools', async () => {
+  it('lists exactly the enabled tools and no excluded tools', async () => {
     const client = await connect();
     const names = (await client.listTools()).tools.map((t) => t.name);
-    expect(names).toEqual(['list_accounts']);
+    expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 

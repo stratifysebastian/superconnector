@@ -1,0 +1,20 @@
+{
+  "kind": "calendar#calendarList",
+  "items": [
+    {
+      "kind": "calendar#calendarListEntry",
+      "id": "seb@prime.example",
+      "summary": "seb@prime.example",
+      "timeZone": "America/Toronto",
+      "primary": true,
+      "accessRole": "owner"
+    },
+    {
+      "kind": "calendar#calendarListEntry",
+      "id": "team-prime@group.calendar.example",
+      "summary": "FAKE prime team",
+      "timeZone": "America/Toronto",
+      "accessRole": "writer"
+    }
+  ]
+}

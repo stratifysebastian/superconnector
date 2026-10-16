@@ -302,3 +302,12 @@ describe('meta', () => {
     for (const p of BANNED_PATTERNS) expect(p.description.length).toBeGreaterThan(10);
   });
 });
+
+describe('calendar schema exemption is narrow', () => {
+  it('still flags a real attendee write in the exempted file', () => {
+    const v = scanSources(['src'], {
+      'src/mcp/tools/calendar/writes.ts': "const a = { attendees: guestField };\nconst body = { summary, attendees: [{ email }] };",
+    });
+    expect(v.filter((x) => x.patternId === 'cal-attendees-write').map((x) => x.line)).toEqual([2]);
+  });
+});

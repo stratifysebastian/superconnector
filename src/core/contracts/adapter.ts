@@ -1,4 +1,5 @@
 import type { Account } from './account';
+import type { CalendarAdapter } from './calendar';
 
 /**
  * Everything an adapter needs to make one call for one account. Adapters never hold an access token:
@@ -25,8 +26,7 @@ export interface GoogleHttp {
 }
 // Note: GoogleHttp has no delete verb by design. No adapter can issue one.
 
-/** Each product adds its own interface in its phase, e.g. CalendarAdapter in Phase 1.
- *  Live and mock implementations satisfy the same interface; GOOGLE_MODE picks one. */
+/** One adapter per product. Live and mock implementations satisfy the same interface; GOOGLE_MODE picks one. */
 export interface AdapterFactory {
-  calendar(ctx: AdapterContext): unknown; // narrowed to CalendarAdapter in Phase 1, etc.
+  calendar(ctx: AdapterContext): CalendarAdapter;
 }

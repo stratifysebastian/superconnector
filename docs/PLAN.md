@@ -6,8 +6,8 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 
 | Phase | Status |
 | --- | --- |
-| 0 Foundation | 🟦 mock-complete (639 tests); awaiting deploy approval and live verification |
-| 1 Calendar | ⬜ |
+| 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in check pending |
+| 1 Calendar | 🟦 approved 2026-10-16; building |
 | 2 Gmail | ⬜ |
 | 3 Drive | ⬜ |
 | 4 Docs | ⬜ |
@@ -252,6 +252,8 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 | ✅ **H3** Kill switch and cleanup (from A1) | M2 "Revoke all Claude access" on /connect with confirmation and audit entry; M3 daily `purgeExpired` in the cron | `src/cron/**`, `src/app/connect/**`, `src/components/**`, their tests | Revoke and cleanup tests |
 | ✅ **T0.12** Docs | `README.md`, `docs/RUNBOOK.md` (env vars, deploy, rotating `ENCRYPTION_KEY`, reconnecting an account, reading logs), `docs/GOOGLE_CLOUD_SETUP.md` (the spec's 7 per-org steps, expanded with exact console clicks and the redirect URI) | those three files | Docs review (`engineering:documentation`) |
 
+**Live (2026-10-16):** production on `main` at https://mcp.stratifysoftware.com. Fixes found during live bring-up: accept `SUPABASE_SECRET_KEY`; migration applied to Supabase project `znsqkaxfvawciwppgzve` (ca-central-1, Vercel-integration org); `Referrer-Policy: same-origin` (no-referrer made browsers send `Origin: null`, breaking consent approval). Firewall rate limit on `/register` and `/token` still to do.
+
 **Deploy status (2026-10-07):**
 - Branch `main` created from the spec commit; Phase 0 is in PR stratifysebastian/superconnector#1 (production deploys from `main`).
 - Vercel project `superconnector` (team sebastian-4409's projects, `prj_YWIR9dwMIDkYukJwGuQYxid7WG0a`) is linked to the repo. Domain `mcp.stratifysoftware.com` is added and verified, but the DNS CNAME is still pending.
@@ -276,6 +278,51 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 3. In Claude, add the custom connector at `<domain>/api/mcp` and complete the OAuth sign-in.
 4. Ask Claude to call `list_accounts`. Expect both accounts, active, in the right order, with granted products.
 5. Negative check: a sign-in from a non-allowlisted Google account is refused.
+
+## 4b. Phase 1 — Calendar (approved 2026-10-16; building)
+
+Done when (spec): the morning brief shows events from both accounts, with shared meetings shown once carrying both tags; and `create_event` with attendees is rejected.
+
+**Tools:** `list_calendars`, `list_events`, `search_events`, `get_event`, `suggest_time`, `create_event`, `update_event`.
+- Each takes the built-in input schema (`docs/builtin-tools/calendar.json`) plus `account`.
+- Each returns the built-in shape plus `account`/`accountEmail`; de-duplicated events also carry `accounts`/`sources`.
+- Reads also return `accountErrors` and `nextCursor`.
+
+**Behaviour per tool:**
+
+| Tool | Accounts | Behaviour |
+| --- | --- | --- |
+| `list_calendars` | fan-out | Merged list, each calendar tagged with its account. |
+| `list_events` | fan-out | Merged **earliest first** by start time (Seb, 2026-10-16; deviates from the spec's newest-first, Calendar only). Each account is fetched with `orderBy=startTime` so paging stays exact; the `orderBy` input is accepted but ignored. Events de-duplicated on `iCalUID` + start. |
+| `search_events` | fan-out | Same merge and de-duplication. Uses the Calendar API's keyword `q` on each primary calendar (accepted deviation from the built-in's semantic search). |
+| `get_event` | lookup | Finds the event in whichever account has it. |
+| `suggest_time` | fan-out | Combines free/busy across all of Seb's calendars and the given attendees. Returns free slots. |
+| `create_event` | one account | Account required; otherwise a "which account?" error. Any attendee field is rejected. Sent with `sendUpdates=none`. Audited. |
+| `update_event` | one account | Defaults to the event's own account. Fetches the event first. If it has guests other than Seb, the change is refused and the tool reports what change Seb needs to make himself. Attendee fields rejected, `sendUpdates=none`, audited. |
+
+**Built-in fields:**
+- `notificationLevel` is ignored and always forced to `NONE`.
+- `attendees`, `attendeeEmails`, `addedAttendees`, `addedAttendeeEmails`, `removedAttendeeEmails` and `guestPermissions` are rejected with a plain-language error.
+
+**Tasks** (Sonnet subagents in parallel worktrees, with exclusive files):
+
+| Task | Scope |
+| --- | --- |
+| C1 Fixtures + mock adapter | `fixtures/calendar/{stratify,prime}/`. Includes: the same meeting on both accounts (same `iCalUID`), overlapping dates, multiple pages, `invalid_grant`, 429 and timeout. Plus `src/google/mock/calendar.ts`. |
+| C2 Live adapter + endpoint rules | `src/google/calendar.ts` (`CalendarAdapter`) and `src/google/endpoints/calendar.ts`. Rules are anchored with explicit `allowedQuery`. The writes are `events` POST and `events/{id}` PATCH with `requiredQuery: { sendUpdates: 'none' }`, plus `freeBusy` POST. The orchestrator first adds the `CalendarAdapter` contract and wires `GoogleHttp` and the token manager into `AdapterContext`. |
+| C3 Tool handlers | `src/mcp/tools/calendar/*`, the registry, and `tests/contract/enabled.ts`. |
+| C4 Guardrail and MCP tests | Attendees rejected on create and update. Updates to guest events refused. `sendUpdates=none` on every write. Excluded tools absent. Fan-out, de-duplication and paging through the MCP client in mock mode. |
+| ✅ A3 Audit | A fresh agent reviews the Calendar guardrails and endpoint rules. **Done 2026-10-16.** No bypass of attendees, `sendUpdates=none`, delete/cancel/respond, logging or account isolation. Fixed: `update_event` now also refuses when Google hides guests (`attendeesOmitted`, or we are a guest with `guestsCanSeeOtherGuests=false`) (medium); `eventType` limited to `default`/`workingLocation`, since out-of-office and focus time can auto-decline invitations (low). Open for Seb: events whose only other attendee is a booked room count as guest-free. Info only: cursors are not bound to the query and never expire; an audit-store failure after a successful create reports an error. |
+
+**Live verification (with Seb):**
+1. Ask Claude for this week's events. Both accounts should appear, and a meeting on both calendars should show once with both tags.
+2. Ask it to create an event with an attendee. It must be refused.
+3. Create a guest-free test event on Stratify, and update it.
+4. Try to update an event that has other guests. It must be refused, with the change described.
+
+`suggest_time` shape observed once with Seb's approval (`{ timeSlots: [{ start, end, startTime, endTime, durationMinutes }] }`), recorded in `docs/builtin-tools/calendar.json`.
+
+Orchestrator contract (done): `src/core/contracts/calendar.ts` (`CalendarAdapter`, `GEvent`, `EventWriteBody` with no attendee or notification fields), `AdapterFactory.calendar` narrowed, `ToolContext.adapterContext(account)` wired to a guarded `GoogleHttp` per account.
 
 ## 5. Later phases (detailed per phase after the previous gate)
 
@@ -313,6 +360,7 @@ Known items to raise when each phase starts (not decided here):
 
 - ADR-6 separate admin sign-in client: **approved** (Seb, 2026-10-07).
 - ADR-8 OAuth tables added to the data model: **approved** (Seb, 2026-10-07).
+- Calendar merged order: **earliest first** (Seb, 2026-10-16). C4 found that newest-first merging over Google's ascending `startTime` pages skipped events across pages. Calendar tools negate `dateOf` and always request `orderBy=startTime`. Gmail and Drive stay newest first.
 
 ## 8. Open questions (from the spec), and when they get asked
 

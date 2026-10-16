@@ -1,11 +1,15 @@
 // Composition root (orchestrator-owned). Builds the per-process services every route uses.
 import { randomBytes } from 'node:crypto';
-import type { AdapterFactory } from '@/core/contracts/adapter';
+import type { Account } from '@/core/contracts/account';
+import type { AdapterContext, AdapterFactory } from '@/core/contracts/adapter';
 import type { Cipher } from '@/core/contracts/crypto';
 import type { FanOutEngine } from '@/core/contracts/fanout';
 import type { Store } from '@/core/contracts/store';
 import type { Logger } from '@/core/contracts/tool';
 import { createFanOutEngine } from '@/core/fanout';
+import { createLiveCalendarAdapter } from '@/google/calendar';
+import { createGoogleHttp } from '@/google/http';
+import { createMockCalendarAdapter } from '@/google/mock/calendar';
 import { mockAccessToken } from '@/google/mock/token';
 import { seedMockAccounts } from '@/google/mock/seed';
 import { createTokenManager, type TokenManager } from '@/google/token-manager';
@@ -23,6 +27,7 @@ export interface ServerContext {
   fanout: FanOutEngine;
   tokens: TokenManager;
   adapters: AdapterFactory;
+  adapterContext(account: Account, signal?: AbortSignal): AdapterContext;
 }
 
 const MOCK_BASE_URL = 'http://localhost:3000';
@@ -30,10 +35,6 @@ const MOCK_BASE_URL = 'http://localhost:3000';
 function requireSecret(v: string | undefined): string {
   if (!v) throw new Error('CURSOR_SECRET is required');
   return v;
-}
-
-function notYet(product: string): never {
-  throw new Error(`${product} tools are not available yet`);
 }
 
 export interface CreateServerContextOptions {
@@ -69,10 +70,16 @@ export async function createServerContext(opts: CreateServerContextOptions = {})
     reconnectUrl: `${baseUrl}/connect`,
   });
 
-  // Product adapters arrive phase by phase (Phase 1: calendar).
-  const adapters: AdapterFactory = { calendar: () => notYet('Calendar') };
+  // Product adapters arrive phase by phase. Mock mode never touches Google.
+  const adapters: AdapterFactory = { calendar: mock ? createMockCalendarAdapter : createLiveCalendarAdapter };
 
-  return { env, baseUrl, cipher, store, log, fanout, tokens, adapters };
+  const adapterContext = (account: Account, signal: AbortSignal = new AbortController().signal): AdapterContext => ({
+    account,
+    signal,
+    http: createGoogleHttp({ getAccessToken: () => tokens.getAccessToken(account), signal, log }),
+  });
+
+  return { env, baseUrl, cipher, store, log, fanout, tokens, adapters, adapterContext };
 }
 
 let cached: Promise<ServerContext> | undefined;

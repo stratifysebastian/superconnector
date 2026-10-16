@@ -1,0 +1,67 @@
+{
+  "kind": "calendar#events",
+  "summary": "FAKE prime team",
+  "timeZone": "America/Toronto",
+  "accessRole": "owner",
+  "defaultReminders": [
+    {
+      "method": "popup",
+      "minutes": 10
+    }
+  ],
+  "updated": "2026-10-02T12:00:00.000Z",
+  "items": [
+    {
+      "kind": "calendar#event",
+      "id": "prime-team-001",
+      "iCalUID": "prime-team-001@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime team item",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-team-001",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-20T09:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-20T09:30:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "prime-team-002",
+      "iCalUID": "prime-team-002@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Prime lunch",
+      "htmlLink": "https://calendar.example.test/event?eid=prime-team-002",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@prime.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-22T12:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-22T13:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    }
+  ]
+}
