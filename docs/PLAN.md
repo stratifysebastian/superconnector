@@ -8,7 +8,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | --- | --- |
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
-| 2 Gmail | ⬜ |
+| 2 Gmail | 🟨 plan proposed 2026-10-16 (§4c); awaiting approval |
 | 3 Drive | ⬜ |
 | 4 Docs | ⬜ |
 | 5 Sheets | ⬜ |
@@ -279,7 +279,7 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 4. Ask Claude to call `list_accounts`. Expect both accounts, active, in the right order, with granted products.
 5. Negative check: a sign-in from a non-allowlisted Google account is refused.
 
-## 4b. Phase 1 — Calendar (approved 2026-10-16; building)
+## 4b. Phase 1 — Calendar (✅ live-verified 2026-10-16)
 
 Done when (spec): the morning brief shows events from both accounts, with shared meetings shown once carrying both tags; and `create_event` with attendees is rejected.
 
@@ -323,6 +323,53 @@ Done when (spec): the morning brief shows events from both accounts, with shared
 `suggest_time` shape observed once with Seb's approval (`{ timeSlots: [{ start, end, startTime, endTime, durationMinutes }] }`), recorded in `docs/builtin-tools/calendar.json`.
 
 Orchestrator contract (done): `src/core/contracts/calendar.ts` (`CalendarAdapter`, `GEvent`, `EventWriteBody` with no attendee or notification fields), `AdapterFactory.calendar` narrowed, `ToolContext.adapterContext(account)` wired to a guarded `GoogleHttp` per account.
+
+## 4c. Phase 2 — Gmail (proposed 2026-10-16; awaiting Seb's approval)
+
+**Tools (21):**
+- Reads: `search_threads`, `get_thread`, `get_message`, `list_drafts`, `get_draft` and `list_labels`.
+- Drafts: `create_draft` (new, or a reply when `replyToMessageId` is given) and `update_draft`.
+- Labels: `create_label`, `update_label`, `label_message`, `label_thread`, `unlabel_message`, `unlabel_thread` and `update_message_labels`.
+- Spam: `apply_sensitive_message_label`, `apply_sensitive_thread_label`, `mark_message_spam`, `mark_thread_spam`, `unmark_message_spam` and `unmark_thread_spam`.
+
+Each takes the built-in input schema plus `account`. Input schemas were captured from the built-in connector on 2026-10-16. Output shapes still need one read-only observation each (ask Seb).
+
+**Excluded:** `send_message`, `reply`, `forward`, `trash_*`, `untrash_*`, `delete_draft` and `delete_label`.
+- `create_filter` is not in the current built-in Gmail connector. It also needs the `gmail.settings.basic` scope, which means a reconnect, and it needs the Gmail-settings hard ban loosened. It is on hold until Seb confirms.
+
+**Accounts:**
+
+| Tool | Accounts | Behaviour |
+| --- | --- | --- |
+| `search_threads`, `list_drafts` | fan-out | Merged newest first by the latest message date. Not de-duplicated: the same email in both inboxes is two separate copies, each tagged with its account. |
+| `list_labels` | fan-out | Each label tagged with its account. |
+| `get_thread`, `get_message`, `get_draft` | lookup | Tries accounts in priority order. |
+| Writes | one account | Defaults to the account that holds the message, thread or draft (found by lookup); `create_label` needs an account. Audited. |
+
+**Guardrails:**
+- Runtime endpoint rules cover only: `threads` list/get, `messages` get, `drafts` list/get/create/update, `labels` list/create/patch, and `messages`/`threads` `modify`.
+- Hard bans stay in place: `send`, `insert`, `import`, `watch`, `settings` and every DELETE.
+- Modify body check: neither `addLabelIds` nor `removeLabelIds` may contain `TRASH`, which blocks both trash and untrash. `SPAM` is allowed.
+- `apply_sensitive_*_label` with `TRASH` is refused before any call is made.
+- Drafts are only created or updated, never sent. A reply draft carries the original `threadId` plus `In-Reply-To` and `References` headers, so it sits in the right thread of the right account.
+- Logs and audit entries never contain bodies, subjects, snippets or recipients.
+
+**Tasks:**
+
+| Task | Scope |
+| --- | --- |
+| G1 | Fixtures and mock adapter. Two accounts, including the same email received by both, multiple pages, `invalid_grant`, 429 and timeout. |
+| G2 | Live adapter and endpoint rules: MIME building for drafts, and thread metadata fetches for search. The orchestrator adds the `GmailAdapter` contract first. |
+| G3 | Tool handlers. |
+| G4 | Guardrail and MCP tests. |
+| A4 | Fresh-agent audit of the Gmail guardrails. |
+
+**Live verification (with Seb):**
+1. Search with no account: mail from both accounts, newest first.
+2. Create a reply draft to a real thread on PR1ME. It should sit in that thread, unsent.
+3. Create and rename a test label, and label then unlabel a message.
+4. Ask to trash a message. It must be refused.
+5. Ask to send the draft. Nothing should send it.
 
 ## 5. Later phases (detailed per phase after the previous gate)
 
