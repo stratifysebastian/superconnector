@@ -6,7 +6,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 
 | Phase | Status |
 | --- | --- |
-| 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in check pending |
+| 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | 🟦 approved 2026-10-16; building |
 | 2 Gmail | ⬜ |
 | 3 Drive | ⬜ |
@@ -252,7 +252,7 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 | ✅ **H3** Kill switch and cleanup (from A1) | M2 "Revoke all Claude access" on /connect with confirmation and audit entry; M3 daily `purgeExpired` in the cron | `src/cron/**`, `src/app/connect/**`, `src/components/**`, their tests | Revoke and cleanup tests |
 | ✅ **T0.12** Docs | `README.md`, `docs/RUNBOOK.md` (env vars, deploy, rotating `ENCRYPTION_KEY`, reconnecting an account, reading logs), `docs/GOOGLE_CLOUD_SETUP.md` (the spec's 7 per-org steps, expanded with exact console clicks and the redirect URI) | those three files | Docs review (`engineering:documentation`) |
 
-**Live (2026-10-16):** production on `main` at https://mcp.stratifysoftware.com. Fixes found during live bring-up: accept `SUPABASE_SECRET_KEY`; migration applied to Supabase project `znsqkaxfvawciwppgzve` (ca-central-1, Vercel-integration org); `Referrer-Policy: same-origin` (no-referrer made browsers send `Origin: null`, breaking consent approval). Firewall rate limit on `/register` and `/token` still to do.
+**Live (2026-10-16):** production on `main` at https://mcp.stratifysoftware.com. Fixes found during live bring-up: accept `SUPABASE_SECRET_KEY`; migration applied to Supabase project `znsqkaxfvawciwppgzve` (ca-central-1, Vercel-integration org); `Referrer-Policy: same-origin` (no-referrer made browsers send `Origin: null`, breaking consent approval). Firewall rate limit on `/register` and `/token` still to do: the Vercel API returns 404 "Seawall Config not found" for GET, PATCH and PUT, so Seb adds it in the dashboard (custom rule: path is `/register` or `/token`, rate limit 20 per 60 s per IP, deny).
 
 **Deploy status (2026-10-07):**
 - Branch `main` created from the spec commit; Phase 0 is in PR stratifysebastian/superconnector#1 (production deploys from `main`).
