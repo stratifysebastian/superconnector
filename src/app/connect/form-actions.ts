@@ -26,6 +26,7 @@ export async function saveOrgClientForm(_prev: FormState, data: FormData): Promi
   const id = str(data, 'id');
   const r = await saveOrgClient({
     ...(id ? { id } : {}),
+    provider: str(data, 'provider') === 'intuit' ? 'intuit' : 'google',
     label: str(data, 'label'),
     workspaceDomain: str(data, 'workspaceDomain'),
     clientId: str(data, 'clientId'),

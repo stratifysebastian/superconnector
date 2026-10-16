@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { z } from 'zod';
 import type { ToolContext, ToolDef } from '@/core/contracts/tool';
+import { scopeToolContext } from '@/core/scope';
 import { AccountSelectionError, GuardrailError, ProviderError } from '@/core/errors';
 import { calendarTools } from './tools/calendar';
 import { driveTools } from './tools/drive';
@@ -39,7 +40,9 @@ export function buildServer(ctx: ToolContext, opts: BuildServerOptions): McpServ
         const done = (outcome: string, level: 'info' | 'warn' | 'error' = 'info', extra: object = {}) =>
           ctx.log[level]({ ...base, ...extra, durationMs: Date.now() - started, outcome, msg: 'tool call' });
         try {
-          const result = await def.handler(args as never, ctx);
+          // Provider scoping lives here, once: the handler never sees another provider's accounts.
+          const provider = def.provider ?? 'google';
+          const result = await def.handler(args as never, provider === 'any' ? ctx : scopeToolContext(ctx, provider));
           done('ok');
           // A handler may return `mcpImage` ({data: base64, mimeType}); it becomes an image block, not JSON text.
           const { mcpImage, ...json } = result as { mcpImage?: { data: string; mimeType: string } } & Record<string, unknown>;

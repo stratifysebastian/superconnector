@@ -1,4 +1,4 @@
-import type { Account, AccountError, AccountSelector, Tagged, MultiSource } from './account';
+import type { Account, AccountError, AccountSelector, Provider, Tagged, MultiSource } from './account';
 
 export interface PageRequest {
   pageSize: number;
@@ -21,6 +21,8 @@ export interface FanOutReadSpec<T> {
   /** Per-item native id, kept in `sources` when items collapse. */
   idOf?: (item: T) => { id: string; calendarId?: string };
   timeoutMs?: number; // default 15000
+  /** Only accounts of this provider are considered. Set by the registry's bound view, never by a tool. */
+  provider?: Provider;
 }
 
 export interface FanOutReadResult<T> {
@@ -35,7 +37,12 @@ export interface FanOutEngine {
   lookup<T>(
     selector: AccountSelector,
     fn: (a: Account) => Promise<T | null>,
+    provider?: Provider,
   ): Promise<{ item: Tagged<T> | null; accountErrors: AccountError[] }>;
   /** Writes: exactly one account, or an error asking which one. Never fans out. */
-  resolveWriteAccount(selector: AccountSelector, fallback?: () => Promise<Account | null>): Promise<Account>;
+  resolveWriteAccount(
+    selector: AccountSelector,
+    fallback?: () => Promise<Account | null>,
+    provider?: Provider,
+  ): Promise<Account>;
 }

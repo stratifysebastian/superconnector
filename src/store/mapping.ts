@@ -10,6 +10,8 @@ export interface AccountRow {
   connected_at: string;
   status: Account['status'];
   granted_scopes: string[] | null;
+  realm_id?: string | null;
+  company_name?: string | null;
 }
 
 export function accountFromRow(r: AccountRow): Account {
@@ -23,6 +25,8 @@ export function accountFromRow(r: AccountRow): Account {
     connectedAt: new Date(r.connected_at).toISOString(),
     status: r.status,
     grantedScopes: r.granted_scopes ?? [],
+    ...(r.realm_id ? { realmId: r.realm_id } : {}),
+    ...(r.company_name ? { companyName: r.company_name } : {}),
   };
 }
 
@@ -37,6 +41,8 @@ export function accountToInsertRow(
     priority: a.priority,
     status: a.status,
     granted_scopes: a.grantedScopes,
+    ...(a.realmId !== undefined ? { realm_id: a.realmId } : {}),
+    ...(a.companyName !== undefined ? { company_name: a.companyName } : {}),
   };
 }
 

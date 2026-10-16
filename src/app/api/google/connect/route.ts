@@ -23,7 +23,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const orgId = req.nextUrl.searchParams.get('org');
   const accountId = req.nextUrl.searchParams.get('account') ?? undefined;
   const org = orgId ? await ctx.store.orgClients.get(orgId) : null;
-  if (!orgId || !org) return noStore(NextResponse.json({ error: 'Unknown organisation client' }, { status: 404 }));
+  if (!orgId || !org || org.provider !== 'google' || !org.workspaceDomain) return noStore(NextResponse.json({ error: 'Unknown organisation client' }, { status: 404 }));
 
   let loginHint: string | undefined;
   if (accountId) {
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const url = await startGoogleAuth({
     store: ctx.store,
     orgClientId: orgId,
-    orgClient: org,
+    orgClient: { clientId: org.clientId, workspaceDomain: org.workspaceDomain },
     ...(accountId ? { accountId } : {}),
     ...(loginHint ? { loginHint } : {}),
     redirectUri: `${ctx.baseUrl}/api/google/callback`,

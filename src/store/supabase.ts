@@ -3,7 +3,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Cipher } from '../core/contracts/crypto';
 import type { OrgClient, Store } from '../core/contracts/store';
 import { accountFromRow, accountToInsertRow, isoToMs, msToIso, type AccountRow } from './mapping';
-import { assertLabel, assertSameIdSet, isStratify, truncateDetail, uniqueLabel } from './shared';
+import {
+  assertConnectInput,
+  assertLabel,
+  assertOrgClient,
+  assertSameIdSet,
+  isStratify,
+  truncateDetail,
+  uniqueLabel,
+} from './shared';
+import type { Provider } from '../core/contracts/account';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -33,34 +42,42 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
     orgClients: {
       async list() {
         const rows = ok(
-          await db.from('google_org_clients').select('id,label,client_id,workspace_domain').order('created_at'),
+          await db.from('google_org_clients').select('id,provider,label,client_id,workspace_domain').order('created_at'),
           'orgClients.list',
-        ) as { id: string; label: string; client_id: string; workspace_domain: string }[];
+        ) as { id: string; provider: Provider; label: string; client_id: string; workspace_domain: string | null }[];
         return rows.map((r) => ({
           id: r.id,
+          provider: r.provider,
           label: r.label,
           clientId: r.client_id,
-          workspaceDomain: r.workspace_domain,
+          ...(r.workspace_domain ? { workspaceDomain: r.workspace_domain } : {}),
         }));
       },
       async get(id): Promise<OrgClient | null> {
         const r = ok(
           await db.from('google_org_clients').select('*').eq('id', id).maybeSingle(),
           'orgClients.get',
-        ) as { id: string; label: string; client_id: string; client_secret_enc: string; workspace_domain: string } | null;
+        ) as { id: string; provider: Provider; label: string; client_id: string; client_secret_enc: string; workspace_domain: string | null } | null;
         if (!r) return null;
         return {
           id: r.id,
+          provider: r.provider,
           label: r.label,
           clientId: r.client_id,
           clientSecret: cipher.decrypt(r.client_secret_enc),
-          workspaceDomain: r.workspace_domain,
+          ...(r.workspace_domain ? { workspaceDomain: r.workspace_domain } : {}),
         };
       },
       async upsert(c) {
         const id = c.id ?? randomUUID();
+        const provider = c.provider ?? 'google';
+        const current = ok(
+          await db.from('google_org_clients').select('provider').eq('id', id).maybeSingle(),
+          'orgClients.upsert',
+        ) as { provider: Provider } | null;
+        assertOrgClient(provider, c.workspaceDomain, current?.provider);
         const clash = ok(
-          await db.from('google_org_clients').select('id').eq('label', c.label).neq('id', id).limit(1),
+          await db.from('google_org_clients').select('id').eq('provider', provider).eq('label', c.label).neq('id', id).limit(1),
           'orgClients.upsert',
         ) as { id: string }[];
         if (clash.length > 0) throw new Error('Org client label already in use');
@@ -68,10 +85,11 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
         ok(
           await db.from('google_org_clients').upsert({
             id,
+            provider,
             label: c.label,
             client_id: c.clientId,
             client_secret_enc: cipher.encrypt(c.clientSecret),
-            workspace_domain: c.workspaceDomain,
+            workspace_domain: c.workspaceDomain ?? null,
             updated_at: new Date().toISOString(),
           }),
           'orgClients.upsert',
@@ -84,15 +102,28 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
         return (await listAccountRows()).map(accountFromRow);
       },
       async upsertOnConnect(a) {
+        assertConnectInput(a);
+        const org = ok(
+          await db.from('google_org_clients').select('provider').eq('id', a.orgClientId).maybeSingle(),
+          'accounts.org',
+        ) as { provider: Provider } | null;
+        if (!org) throw new Error('Unknown org client');
+        if (org.provider !== a.provider) throw new Error('Org client belongs to a different provider');
+        const same = db.from('accounts').select('*').eq('provider', a.provider);
         const existing = ok(
-          await db.from('accounts').select('*').eq('provider', a.provider).eq('email', a.email).maybeSingle(),
+          await (a.provider === 'intuit' ? same.eq('realm_id', a.realmId!) : same.eq('email', a.email)).maybeSingle(),
           'accounts.find',
         ) as AccountRow | null;
         if (existing) {
           const row = ok(
             await db
               .from('accounts')
-              .update({ granted_scopes: a.grantedScopes, org_client_id: a.orgClientId, status: 'active' })
+              .update({
+                granted_scopes: a.grantedScopes,
+                org_client_id: a.orgClientId,
+                status: 'active',
+                ...(a.companyName !== undefined ? { company_name: a.companyName } : {}),
+              })
               .eq('id', existing.id)
               .select()
               .single(),
@@ -101,9 +132,9 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
           return accountFromRow(row);
         }
         const all = await listAccountRows();
-        const label = uniqueLabel(a.label, new Set(all.map((x) => x.label)));
+        const label = uniqueLabel(a.label, new Set(all.filter((x) => x.provider === a.provider).map((x) => x.label)));
         let priority = 0;
-        if (isStratify(a.label)) {
+        if (a.provider === 'google' && isStratify(a.label)) {
           for (const x of all) {
             ok(await db.from('accounts').update({ priority: x.priority + 1 }).eq('id', x.id), 'accounts.shift');
           }
@@ -122,6 +153,8 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
                 priority,
                 status: 'active',
                 grantedScopes: a.grantedScopes,
+                ...(a.realmId !== undefined ? { realmId: a.realmId } : {}),
+                ...(a.companyName !== undefined ? { companyName: a.companyName } : {}),
               }),
             )
             .select()
@@ -141,8 +174,13 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
       },
       async setLabel(id, label) {
         assertLabel(label);
+        const acct = ok(
+          await db.from('accounts').select('provider').eq('id', id).maybeSingle(),
+          'accounts.setLabel',
+        ) as { provider: Provider } | null;
+        if (!acct) throw new Error('Account not found');
         const clash = ok(
-          await db.from('accounts').select('id').eq('label', label).neq('id', id).limit(1),
+          await db.from('accounts').select('id').eq('provider', acct.provider).eq('label', label).neq('id', id).limit(1),
           'accounts.setLabel',
         ) as { id: string }[];
         if (clash.length > 0) throw new Error('Label already in use');
@@ -165,6 +203,24 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
             .upsert({ account_id: id, refresh_token_enc: cipher.encrypt(token), updated_at: new Date().toISOString() }),
           'tokens.setRefresh',
         );
+      },
+      async swapRefreshToken(id, expected, next) {
+        const cur = ok(
+          await db.from('account_tokens').select('refresh_token_enc').eq('account_id', id).maybeSingle(),
+          'tokens.swapRefresh',
+        ) as { refresh_token_enc: string | null } | null;
+        if (!cur?.refresh_token_enc || cipher.decrypt(cur.refresh_token_enc) !== expected) return false;
+        // Atomic: the update only matches while the row still holds the exact ciphertext we just read.
+        const rows = ok(
+          await db
+            .from('account_tokens')
+            .update({ refresh_token_enc: cipher.encrypt(next), updated_at: new Date().toISOString() })
+            .eq('account_id', id)
+            .eq('refresh_token_enc', cur.refresh_token_enc)
+            .select('account_id'),
+          'tokens.swapRefresh',
+        ) as { account_id: string }[];
+        return rows.length === 1;
       },
       async getCachedAccess(id) {
         const r = ok(

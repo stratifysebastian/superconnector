@@ -71,18 +71,22 @@ describe('/api/mcp handler', () => {
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 
-  it('list_accounts returns stratify then prime with all products', async () => {
+  it('list_accounts returns every provider with the provider shown', async () => {
     const client = await connect();
     const { accounts } = await callListAccounts(client);
     expect(accounts.map((a) => [a.label, a.priority, a.status])).toEqual([
       ['stratify', 1, 'active'],
       ['prime', 2, 'active'],
+      ['stratify-ca', 3, 'active'],
     ]);
     for (const a of accounts) {
-      expect(a.products).toEqual(['calendar', 'gmail', 'drive', 'docs', 'sheets', 'slides']);
+      expect(a.products).toEqual(
+        a.provider === 'intuit' ? ['quickbooks'] : ['calendar', 'gmail', 'drive', 'docs', 'sheets', 'slides'],
+      );
       expect(a.missingProducts).toEqual([]);
       expect(a).not.toHaveProperty('reconnectUrl');
     }
+    expect(accounts.map((a) => a.provider)).toEqual(['google', 'google', 'intuit']);
   });
 
   it('flags a needs_reconnect account with a reconnect URL', async () => {

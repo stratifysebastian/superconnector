@@ -1,4 +1,4 @@
-import type { Account } from '../core/contracts/account';
+import type { Account, Provider } from '../core/contracts/account';
 
 export const LABEL_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
 export const AUDIT_DETAIL_MAX = 200;
@@ -23,6 +23,25 @@ export function uniqueLabel(base: string, taken: Set<string>): string {
     const candidate = b.slice(0, 32 - suffix.length) + suffix;
     if (!taken.has(candidate)) return candidate;
   }
+}
+
+/** An Intuit client has no Workspace domain; a Google client must have one. A client's provider never changes. */
+export function assertOrgClient(provider: Provider, workspaceDomain: string | undefined, existing: Provider | undefined): void {
+  if (provider !== 'google' && provider !== 'intuit') throw new Error('Unsupported org client provider');
+  if (existing !== undefined && existing !== provider) throw new Error('Org client provider cannot change');
+  if (provider === 'google' && !workspaceDomain) throw new Error('A Google org client needs a workspace domain');
+}
+
+/** Intuit accounts need their realmId (the company); other providers must not carry one. */
+export function assertConnectInput(a: Pick<Account, 'provider' | 'realmId'>): void {
+  if (a.provider === 'intuit' && !a.realmId) throw new Error('An Intuit account needs a realmId');
+  if (a.provider !== 'intuit' && a.realmId !== undefined) throw new Error('realmId is only for Intuit accounts');
+}
+
+/** Same account on reconnect: Google by email, Intuit by company (realmId). */
+export function sameAccount(x: Pick<Account, 'provider' | 'email' | 'realmId'>, a: Pick<Account, 'provider' | 'email' | 'realmId'>): boolean {
+  if (x.provider !== a.provider) return false;
+  return a.provider === 'intuit' ? x.realmId === a.realmId : x.email === a.email;
 }
 
 export function truncateDetail(detail: string | undefined): string | undefined {

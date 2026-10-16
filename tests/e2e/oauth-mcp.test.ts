@@ -200,6 +200,7 @@ describe('OAuth 2.1 + MCP end to end (mock mode)', () => {
     expect(accounts.map((a) => [a.label, a.priority, a.status])).toEqual([
       ['stratify', 1, 'active'],
       ['prime', 2, 'active'],
+      ['stratify-ca', 3, 'active'],
     ]);
   });
 

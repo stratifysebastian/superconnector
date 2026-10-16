@@ -160,5 +160,17 @@ describe('Supabase server key aliases', () => {
   it('still fails in live mode when neither is set, naming the variable', () => {
     expect(() => parseEnv(base)).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
   });
-});
 
+  it('INTUIT_ENV defaults to production and accepts sandbox, nothing else', () => {
+    expect(parseEnv({}).INTUIT_ENV).toBe('production');
+    expect(parseEnv({ INTUIT_ENV: '' }).INTUIT_ENV).toBe('production');
+    expect(parseEnv({ INTUIT_ENV: 'sandbox' }).INTUIT_ENV).toBe('sandbox');
+    expect(parseEnv({ ...liveEnv(), INTUIT_ENV: 'sandbox' }).INTUIT_ENV).toBe('sandbox');
+    expect(() => parseEnv({ INTUIT_ENV: 'staging' })).toThrow(/INTUIT_ENV/);
+  });
+
+  it('has no place for Intuit client credentials: they live in the org-clients table', () => {
+    const env = parseEnv({ ...liveEnv(), INTUIT_CLIENT_ID: 'x', INTUIT_CLIENT_SECRET: 'y' });
+    expect(Object.keys(env).filter((k) => /INTUIT/.test(k))).toEqual(['INTUIT_ENV']);
+  });
+});

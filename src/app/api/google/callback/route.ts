@@ -33,7 +33,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (sp.get('error') || !code) return fail('denied');
 
   const org = await ctx.store.orgClients.get(stored.orgClientId);
-  if (!org) return fail('state');
+  if (!org || org.provider !== 'google' || !org.workspaceDomain) return fail('state');
+  const workspaceDomain = org.workspaceDomain;
 
   try {
     const tokens = await exchangeCode({
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       redirectUri: `${ctx.baseUrl}/api/google/callback`,
     });
     if (!tokens.id_token) return fail('invalid_token', org.label, 'no id_token');
-    const who = readIdToken(tokens.id_token, org);
+    const who = readIdToken(tokens.id_token, { clientId: org.clientId, workspaceDomain });
 
     if (stored.accountId) {
       const existing = (await ctx.store.accounts.list()).find((a) => a.id === stored.accountId);

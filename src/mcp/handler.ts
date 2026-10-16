@@ -29,7 +29,7 @@ export async function handleMcpRequest(req: Request, deps: McpDeps = {}): Promis
     );
   }
   const server = buildServer(
-    { store: ctx.store, fanout: ctx.fanout, adapters: ctx.adapters, adapterContext: ctx.adapterContext, log: ctx.log },
+    { store: ctx.store, fanout: ctx.fanout, adapters: ctx.adapters, adapterContext: ctx.adapterContext, quickbooksContext: ctx.quickbooksContext, log: ctx.log },
     { baseUrl: ctx.baseUrl, subject: identity.subject, ...(deps.defs ? { defs: deps.defs } : {}) },
   );
   const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });

@@ -1,21 +1,24 @@
-import type { Account } from './account';
+import type { Account, Provider } from './account';
 
 export interface OrgClient {
   id: string;
+  provider: Provider; // 'google' | 'intuit'; labels are unique per provider
   label: string;
   clientId: string;
   clientSecret: string; // decrypted in memory only
-  workspaceDomain: string;
+  workspaceDomain?: string; // required for google, absent for intuit
 }
 
 export interface Store {
   orgClients: {
     list(): Promise<Omit<OrgClient, 'clientSecret'>[]>;
     get(id: string): Promise<OrgClient | null>;
-    upsert(c: Omit<OrgClient, 'id'> & { id?: string }): Promise<string>;
+    /** `provider` defaults to 'google'. A Google client needs workspaceDomain. */
+    upsert(c: Omit<OrgClient, 'id' | 'provider'> & { id?: string; provider?: Provider }): Promise<string>;
   };
   accounts: {
     list(): Promise<Account[]>; // priority order
+    /** Reconnect matches google by (provider, email) and intuit by (provider, realmId). Labels are unique per provider. */
     upsertOnConnect(a: Omit<Account, 'id' | 'priority' | 'connectedAt' | 'status'>): Promise<Account>;
     setStatus(id: string, s: Account['status']): Promise<void>;
     reorder(idsInOrder: string[]): Promise<void>;
@@ -26,6 +29,11 @@ export interface Store {
     setRefreshToken(accountId: string, token: string): Promise<void>; // encrypted at rest
     getCachedAccess(accountId: string): Promise<{ token: string; expiresAt: number } | null>;
     setCachedAccess(accountId: string, token: string, expiresAt: number): Promise<void>;
+    /**
+     * Compare-and-set for rotating refresh tokens (Intuit): stores `next` only if the stored token is still
+     * `expected`. True only for the caller that swapped it, so two concurrent refreshes cannot overwrite each other.
+     */
+    swapRefreshToken(accountId: string, expected: string, next: string): Promise<boolean>;
   };
   oauth: {
     createClient(c: { redirectUris: string[]; clientName?: string }): Promise<{ clientId: string }>;

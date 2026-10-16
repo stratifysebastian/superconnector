@@ -196,6 +196,110 @@ export function runStoreConformance(name: string, makeStore: () => StoreHarness)
       });
     });
 
+    describe('providers (google and intuit)', () => {
+      let qb: string;
+      beforeEach(async () => {
+        qb = await s.orgClients.upsert({ provider: 'intuit', label: 'stratify-ca', clientId: 'qb-id', clientSecret: 'qb-secret' });
+      });
+      const company = (label: string, realmId: string, email = `realm-${realmId}@intuit.local`, orgClientId = qb) =>
+        s.accounts.upsertOnConnect({ provider: 'intuit', email, label, orgClientId, grantedScopes: ['qb'], realmId });
+
+      it('org client labels are unique per provider, and an Intuit client needs no workspace domain', async () => {
+        const other = await s.orgClients.upsert({ provider: 'intuit', label: 'prime', clientId: 'c', clientSecret: 's' });
+        expect((await s.orgClients.get(other))).toMatchObject({ provider: 'intuit', label: 'prime' });
+        expect((await s.orgClients.get(other))?.workspaceDomain).toBeUndefined();
+        // 'prime' exists for google already: the same label under another provider is fine, within a provider it is not.
+        await expect(s.orgClients.upsert({ provider: 'intuit', label: 'prime', clientId: 'c', clientSecret: 's' })).rejects.toThrow();
+        await expect(s.orgClients.upsert({ id: qb, provider: 'intuit', label: 'prime', clientId: 'c', clientSecret: 's' })).rejects.toThrow();
+        expect((await s.orgClients.list()).map((c) => [c.provider, c.label])).toEqual([
+          ['google', 'prime'], ['intuit', 'stratify-ca'], ['intuit', 'prime'],
+        ]);
+      });
+
+      it('a Google client needs a workspace domain, and a client never changes provider', async () => {
+        await expect(s.orgClients.upsert({ label: 'nodomain', clientId: 'c', clientSecret: 's' } as never)).rejects.toThrow();
+        await expect(s.orgClients.upsert({ id: qb, provider: 'google', label: 'x', clientId: 'c', clientSecret: 's', workspaceDomain: 'd' })).rejects.toThrow();
+      });
+
+      it('account labels are unique per provider: stratify (google) and stratify (intuit) coexist', async () => {
+        const g = await connect('stratify', 'g@x.test');
+        const q = await company('stratify', 'r1');
+        expect(g.label).toBe('stratify');
+        expect(q.label).toBe('stratify');
+        // A second Intuit company with the same label is suffixed within its own provider only.
+        expect((await company('stratify', 'r2')).label).toBe('stratify-2');
+        expect((await connect('stratify', 'h@x.test')).label).toBe('stratify-2');
+      });
+
+      it('an Intuit stratify label does not jump ahead of Google accounts', async () => {
+        await connect('prime', 'a@x.test');
+        const q = await company('stratify', 'r1');
+        expect(q.priority).toBe(1);
+        expect((await s.accounts.list()).map((x) => x.label)).toEqual(['prime', 'stratify']);
+      });
+
+      it('setLabel is unique within a provider only', async () => {
+        const g = await connect('prime', 'a@x.test');
+        const q1 = await company('books', 'r1');
+        const q2 = await company('ledger', 'r2');
+        await s.accounts.setLabel(q1.id, 'prime'); // google already has 'prime'
+        await expect(s.accounts.setLabel(q2.id, 'prime')).rejects.toThrow(/in use/);
+        await expect(s.accounts.setLabel(g.id, 'prime')).resolves.toBeUndefined();
+      });
+
+      it('an Intuit account needs a realmId; other providers cannot carry one', async () => {
+        await expect(s.accounts.upsertOnConnect({ provider: 'intuit', email: 'e@x.test', label: 'q', orgClientId: qb, grantedScopes: [] })).rejects.toThrow();
+        await expect(
+          s.accounts.upsertOnConnect({ provider: 'google', email: 'e@x.test', label: 'q', orgClientId: org, grantedScopes: [], realmId: 'r1' }),
+        ).rejects.toThrow();
+        expect(await s.accounts.list()).toHaveLength(0);
+      });
+
+      it('reconnect matches the company by realmId, whatever the email; two companies may share an email', async () => {
+        const a = await company('ca', 'r1', 'owner@x.test');
+        const b = await company('us', 'r2', 'owner@x.test');
+        expect(b.id).not.toBe(a.id);
+        const again = await company('other', 'r1', 'changed@x.test');
+        expect(again.id).toBe(a.id);
+        expect(again.label).toBe('ca');
+        expect(again.realmId).toBe('r1');
+        expect(await s.accounts.list()).toHaveLength(2);
+      });
+
+      it('keeps realmId and companyName on the account', async () => {
+        const a = await s.accounts.upsertOnConnect({
+          provider: 'intuit', email: 'e@x.test', label: 'q', orgClientId: qb, grantedScopes: ['qb'], realmId: 'r9', companyName: 'Acme Ltd',
+        });
+        expect(a).toMatchObject({ provider: 'intuit', realmId: 'r9', companyName: 'Acme Ltd' });
+        expect((await s.accounts.list())[0]).toMatchObject({ realmId: 'r9', companyName: 'Acme Ltd' });
+      });
+
+      it('an account must use an org client of its own provider', async () => {
+        await expect(company('q', 'r1', 'e@x.test', org)).rejects.toThrow(/provider/);
+        await expect(
+          s.accounts.upsertOnConnect({ provider: 'google', email: 'e@x.test', label: 'g', orgClientId: qb, grantedScopes: [] }),
+        ).rejects.toThrow(/provider/);
+      });
+
+      it('swapRefreshToken is compare-and-set and stores the new token encrypted', async () => {
+        const q = await company('q', 'r1');
+        expect(await s.tokens.swapRefreshToken(q.id, 'old', 'new')).toBe(false); // nothing stored yet
+        await s.tokens.setRefreshToken(q.id, 'rt-one');
+        expect(await s.tokens.swapRefreshToken(q.id, 'stale', 'rt-two')).toBe(false);
+        expect(await s.tokens.getRefreshToken(q.id)).toBe('rt-one');
+        expect(await s.tokens.swapRefreshToken(q.id, 'rt-one', 'rt-two')).toBe(true);
+        expect(await s.tokens.getRefreshToken(q.id)).toBe('rt-two');
+        if (h.dump) expect(JSON.stringify(h.dump())).not.toContain('rt-two');
+      });
+
+      it('concurrent swaps from the same token have exactly one winner', async () => {
+        const q = await company('q', 'r1');
+        await s.tokens.setRefreshToken(q.id, 'rt-one');
+        const wins = await Promise.all(['a', 'b', 'c'].map((n) => s.tokens.swapRefreshToken(q.id, 'rt-one', `rt-${n}`)));
+        expect(wins.filter(Boolean)).toHaveLength(1);
+      });
+    });
+
     describe('tokens', () => {
       it('round-trips refresh and cached access tokens', async () => {
         const a = await connect('prime', 'a@x.test');

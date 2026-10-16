@@ -28,7 +28,7 @@ const SESSION = { email: 'admin@stratify.example', expiresAt: Date.now() + 60_00
 let ctx: ServerContext;
 
 async function labels() {
-  return (await ctx.store.accounts.list()).map((a) => a.label);
+  return (await ctx.store.accounts.list()).filter((a) => a.provider === 'google').map((a) => a.label);
 }
 
 beforeEach(async () => {
@@ -155,7 +155,7 @@ describe('saveOrgClient', () => {
       label: 'prime', workspaceDomain: 'dup.example', clientId: 'id', clientSecret: 's',
     });
     expect(r).toEqual({ ok: false, error: 'That org client label is already in use.' });
-    expect((await ctx.store.orgClients.list()).length).toBe(2);
+    expect((await ctx.store.orgClients.list()).filter((o) => o.provider === 'google').length).toBe(2);
   });
 
   it('rejects an unknown id', async () => {

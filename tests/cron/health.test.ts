@@ -30,12 +30,13 @@ async function setup(tokensOrFactory: TokenManager | ((s: Store) => TokenManager
 const healthy: TokenManager = { getAccessToken: async () => 'fake-access-token' };
 
 describe('runHealthCheck', () => {
-  it('reports both accounts ok', async () => {
+  it('reports every account ok', async () => {
     const { ctx } = await setup(healthy);
     const s = await runHealthCheck(ctx);
     expect(s.results).toEqual([
       { label: 'stratify', status: 'ok' },
       { label: 'prime', status: 'ok' },
+      { label: 'stratify-ca', status: 'ok' },
     ]);
     expect(Number.isNaN(Date.parse(s.checkedAt))).toBe(false);
   });
@@ -55,9 +56,10 @@ describe('runHealthCheck', () => {
     expect(s.results).toEqual([
       { label: 'stratify', status: 'ok' },
       { label: 'prime', status: 'needs_reconnect', kind: 'needs_reconnect' },
+      { label: 'stratify-ca', status: 'ok' },
     ]);
     const statuses = Object.fromEntries((await store.accounts.list()).map((a) => [a.label, a.status]));
-    expect(statuses).toEqual({ stratify: 'active', prime: 'needs_reconnect' });
+    expect(statuses).toEqual({ stratify: 'active', prime: 'needs_reconnect', 'stratify-ca': 'active' });
     expect(JSON.stringify(r.logs)).not.toContain('prime.example');
   });
 
@@ -100,7 +102,7 @@ describe('runHealthCheck', () => {
     const prime = (await store.accounts.list()).find((a) => a.label === 'prime')!;
     await store.accounts.setStatus(prime.id, 'needs_reconnect');
     const s = await runHealthCheck(ctx);
-    expect(called).toEqual(['stratify']);
+    expect(called).toEqual(['stratify', 'stratify-ca']);
     expect(s.results[1]).toEqual({ label: 'prime', status: 'needs_reconnect', kind: 'needs_reconnect' });
   });
 });
@@ -127,7 +129,7 @@ describe('GET /api/cron/health handler', () => {
     const res = await handleHealthRequest(req(`Bearer ${SECRET}`), ctx);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.results.map((r: { status: string }) => r.status)).toEqual(['ok', 'ok']);
+    expect(body.results.map((r: { status: string }) => r.status)).toEqual(['ok', 'ok', 'ok']);
     expect(JSON.stringify(logs)).not.toContain(SECRET);
     expect(JSON.stringify(body)).not.toContain(SECRET);
   });
@@ -153,6 +155,7 @@ describe('runHealthCheck refresh behaviour', () => {
     expect(calls).toEqual([
       { label: 'stratify', force: true },
       { label: 'prime', force: true },
+      { label: 'stratify-ca', force: true },
     ]);
   });
 });
@@ -184,7 +187,7 @@ describe('daily maintenance cleanup', () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.results.map((r: { status: string }) => r.status)).toEqual(['ok', 'ok']);
+    expect(body.results.map((r: { status: string }) => r.status)).toEqual(['ok', 'ok', 'ok']);
     expect(body.cleanup).toEqual({ error: 'failed' });
     expect(JSON.stringify(body)).not.toContain('fake-secret-detail');
     expect((await runDailyMaintenance(ctx)).cleanup).toEqual({ error: 'failed' });
