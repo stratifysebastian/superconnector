@@ -465,8 +465,9 @@ describe('GoogleHttp guardrails: rejections never reach fetch', () => {
     expect(tokenCalls).toBe(0);
   });
 
-  it('denies everything with the default (empty) rule set', async () => {
-    expect(ENDPOINT_RULES).toEqual([]);
+  it('denies everything not covered by the default rule set', async () => {
+    // Phase 1 adds Calendar rules only; these test URLs match none of them.
+    expect(ENDPOINT_RULES.every((r) => r.product === 'calendar')).toBe(true);
     const calls: unknown[] = [];
     const http = createGoogleHttp({
       getAccessToken: async () => TOKEN,
@@ -475,8 +476,10 @@ describe('GoogleHttp guardrails: rejections never reach fetch', () => {
         return res(200);
       }) as unknown as typeof fetch,
     });
-    await expect(http.json(get)).rejects.toBeInstanceOf(GuardrailError);
     await expect(http.json({ method: 'GET', url: URL_WRITE })).rejects.toMatchObject({ rule: 'no-matching-rule' });
+    await expect(
+      http.json({ method: 'POST', url: 'https://gmail.googleapis.com/gmail/v1/users/me/drafts', body: {} }),
+    ).rejects.toMatchObject({ rule: 'no-matching-rule' });
     expect(calls).toHaveLength(0);
   });
 

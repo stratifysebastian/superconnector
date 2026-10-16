@@ -190,7 +190,7 @@ describe('computeFreeSlots', () => {
     });
     const days = slots.map((s) => new Date(s.start + 11 * 3600000).toISOString().slice(0, 10));
     expect(days).toEqual(['2026-10-22', '2026-10-23', '2026-10-26']);
-    expect(new Date(slots[0]!.start).toISOString()).toBe('2026-10-21T22:00:00.000Z');
+    expect(new Date(slots[0]!.start).toISOString()).toBe('2026-10-22T00:00:00.000Z'); // clipped to the window start (11:00 Sydney)
     expect(slots[1]!.end - slots[1]!.start).toBe(8 * 3600000);
   });
   it('respects the limit', () => {

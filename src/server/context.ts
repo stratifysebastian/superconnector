@@ -7,7 +7,9 @@ import type { FanOutEngine } from '@/core/contracts/fanout';
 import type { Store } from '@/core/contracts/store';
 import type { Logger } from '@/core/contracts/tool';
 import { createFanOutEngine } from '@/core/fanout';
+import { createLiveCalendarAdapter } from '@/google/calendar';
 import { createGoogleHttp } from '@/google/http';
+import { createMockCalendarAdapter } from '@/google/mock/calendar';
 import { mockAccessToken } from '@/google/mock/token';
 import { seedMockAccounts } from '@/google/mock/seed';
 import { createTokenManager, type TokenManager } from '@/google/token-manager';
@@ -33,10 +35,6 @@ const MOCK_BASE_URL = 'http://localhost:3000';
 function requireSecret(v: string | undefined): string {
   if (!v) throw new Error('CURSOR_SECRET is required');
   return v;
-}
-
-function notYet(product: string): never {
-  throw new Error(`${product} tools are not available yet`);
 }
 
 export interface CreateServerContextOptions {
@@ -72,8 +70,8 @@ export async function createServerContext(opts: CreateServerContextOptions = {})
     reconnectUrl: `${baseUrl}/connect`,
   });
 
-  // Product adapters arrive phase by phase (Phase 1: calendar).
-  const adapters: AdapterFactory = { calendar: () => notYet('Calendar') };
+  // Product adapters arrive phase by phase. Mock mode never touches Google.
+  const adapters: AdapterFactory = { calendar: mock ? createMockCalendarAdapter : createLiveCalendarAdapter };
 
   const adapterContext = (account: Account, signal: AbortSignal = new AbortController().signal): AdapterContext => ({
     account,
