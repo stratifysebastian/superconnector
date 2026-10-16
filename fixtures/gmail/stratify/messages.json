@@ -1,0 +1,562 @@
+{
+ "messages": [
+  {
+   "id": "18f2a0000001",
+   "threadId": "18f2a0000001",
+   "internalDate": "1791979200000",
+   "sender": "ana@vendor.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD",
+    "Label_2"
+   ],
+   "subject": "FAKE stratify Alpha kickoff",
+   "snippet": "FAKE Can we kick off Alpha on Monday?",
+   "plaintextBody": "FAKE Can we kick off Alpha on Monday?",
+   "rfcMessageId": "<alpha-1@vendor.example>"
+  },
+  {
+   "id": "18f2a0000002",
+   "threadId": "18f2a0000001",
+   "internalDate": "1791982800000",
+   "sender": "seb@stratify.example",
+   "toRecipients": [
+    "ana@vendor.example"
+   ],
+   "labelIds": [
+    "SENT",
+    "Label_2"
+   ],
+   "subject": "Re: FAKE stratify Alpha kickoff",
+   "snippet": "FAKE Monday works.",
+   "plaintextBody": "FAKE Monday works.",
+   "rfcMessageId": "<alpha-2@stratify.example>",
+   "inReplyTo": "<alpha-1@vendor.example>",
+   "references": "<alpha-1@vendor.example>"
+  },
+  {
+   "id": "18f2a0000003",
+   "threadId": "18f2a0000001",
+   "internalDate": "1791986400000",
+   "sender": "ana@vendor.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD",
+    "Label_2"
+   ],
+   "subject": "Re: FAKE stratify Alpha kickoff",
+   "snippet": "FAKE Great, invite coming.",
+   "plaintextBody": "FAKE Great, invite coming.",
+   "htmlBody": "<p>FAKE Great, invite coming.</p>",
+   "rfcMessageId": "<alpha-3@vendor.example>",
+   "inReplyTo": "<alpha-2@stratify.example>",
+   "references": "<alpha-2@stratify.example>"
+  },
+  {
+   "id": "18f2a0000004",
+   "threadId": "18f2a0000004",
+   "internalDate": "1791892800000",
+   "sender": "carla@partner.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "IMPORTANT"
+   ],
+   "subject": "FAKE Shared launch notice",
+   "snippet": "FAKE The launch is on Friday. Sent to both inboxes.",
+   "plaintextBody": "FAKE The launch is on Friday. Sent to both inboxes.",
+   "htmlBody": "<p>FAKE The launch is on Friday.</p>",
+   "rfcMessageId": "<shared-launch-notice-001@partner.example>"
+  },
+  {
+   "id": "18f2a0000005",
+   "threadId": "18f2a0000005",
+   "internalDate": "1791745920000",
+   "sender": "dev@tools.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD"
+   ],
+   "subject": "FAKE stratify Contract draft #3",
+   "snippet": "FAKE body 3 for stratify: contract draft.",
+   "plaintextBody": "FAKE body 3 for stratify: contract draft.",
+   "rfcMessageId": "<stratify-18f2a0000005@mail.example>"
+  },
+  {
+   "id": "18f2a0000006",
+   "threadId": "18f2a0000006",
+   "internalDate": "1791668160000",
+   "sender": "billing@saas.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "Label_2"
+   ],
+   "subject": "FAKE stratify Weekly digest #4",
+   "snippet": "FAKE body 4 for stratify: weekly digest.",
+   "plaintextBody": "FAKE body 4 for stratify: weekly digest.",
+   "rfcMessageId": "<stratify-18f2a0000006@mail.example>"
+  },
+  {
+   "id": "18f2a0000007",
+   "threadId": "18f2a0000007",
+   "internalDate": "1791590400000",
+   "sender": "news@letters.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "Label_3"
+   ],
+   "subject": "FAKE stratify Onboarding checklist #5",
+   "snippet": "FAKE body 5 for stratify: onboarding checklist.",
+   "plaintextBody": "FAKE body 5 for stratify: onboarding checklist.",
+   "htmlBody": "<p>FAKE with attachments</p>",
+   "attachments": [
+    {
+     "id": "att-stratify-1",
+     "filename": "FAKE-report.pdf",
+     "mimeType": "application/pdf",
+     "size": 20480
+    },
+    {
+     "id": "att-stratify-2",
+     "filename": "FAKE-chart.png",
+     "mimeType": "image/png",
+     "size": 5120
+    }
+   ],
+   "rfcMessageId": "<stratify-18f2a0000007@mail.example>"
+  },
+  {
+   "id": "18f2a0000008",
+   "threadId": "18f2a0000008",
+   "internalDate": "1791512640000",
+   "sender": "ana@vendor.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD"
+   ],
+   "subject": "FAKE stratify Support ticket update #6",
+   "snippet": "FAKE body 6 for stratify: support ticket update.",
+   "plaintextBody": "FAKE body 6 for stratify: support ticket update.",
+   "rfcMessageId": "<stratify-18f2a0000008@mail.example>"
+  },
+  {
+   "id": "18f2a0000009",
+   "threadId": "18f2a0000009",
+   "internalDate": "1791434880000",
+   "sender": "bob@client.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Budget question #7",
+   "snippet": "FAKE body 7 for stratify: budget question.",
+   "plaintextBody": "FAKE body 7 for stratify: budget question.",
+   "rfcMessageId": "<stratify-18f2a0000009@mail.example>"
+  },
+  {
+   "id": "18f2a000000a",
+   "threadId": "18f2a000000a",
+   "internalDate": "1791357120000",
+   "sender": "carla@partner.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "Label_2"
+   ],
+   "subject": "FAKE stratify Travel plans #8",
+   "snippet": "FAKE body 8 for stratify: travel plans.",
+   "plaintextBody": "FAKE body 8 for stratify: travel plans.",
+   "rfcMessageId": "<stratify-18f2a000000a@mail.example>"
+  },
+  {
+   "id": "18f2a000000b",
+   "threadId": "18f2a000000b",
+   "internalDate": "1791279360000",
+   "sender": "dev@tools.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD"
+   ],
+   "subject": "FAKE stratify Design feedback #9",
+   "snippet": "FAKE body 9 for stratify: design feedback.",
+   "plaintextBody": "FAKE body 9 for stratify: design feedback.",
+   "rfcMessageId": "<stratify-18f2a000000b@mail.example>"
+  },
+  {
+   "id": "18f2a000000c",
+   "threadId": "18f2a000000c",
+   "internalDate": "1791201600000",
+   "sender": "billing@saas.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "Label_3"
+   ],
+   "subject": "FAKE stratify Roadmap review #10",
+   "snippet": "FAKE body 10 for stratify: roadmap review.",
+   "plaintextBody": "FAKE body 10 for stratify: roadmap review.",
+   "rfcMessageId": "<stratify-18f2a000000c@mail.example>"
+  },
+  {
+   "id": "18f2a000000d",
+   "threadId": "18f2a000000d",
+   "internalDate": "1791123840000",
+   "sender": "news@letters.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Invoice reminder #11",
+   "snippet": "FAKE body 11 for stratify: invoice reminder.",
+   "plaintextBody": "FAKE body 11 for stratify: invoice reminder.",
+   "rfcMessageId": "<stratify-18f2a000000d@mail.example>"
+  },
+  {
+   "id": "18f2a000000e",
+   "threadId": "18f2a000000e",
+   "internalDate": "1791046080000",
+   "sender": "ana@vendor.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD",
+    "Label_2"
+   ],
+   "subject": "FAKE stratify Meeting notes #12",
+   "snippet": "FAKE body 12 for stratify: meeting notes.",
+   "plaintextBody": "FAKE body 12 for stratify: meeting notes.",
+   "rfcMessageId": "<stratify-18f2a000000e@mail.example>"
+  },
+  {
+   "id": "18f2a000000f",
+   "threadId": "18f2a000000f",
+   "internalDate": "1790968320000",
+   "sender": "bob@client.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Contract draft #13",
+   "snippet": "FAKE body 13 for stratify: contract draft.",
+   "plaintextBody": "FAKE body 13 for stratify: contract draft.",
+   "rfcMessageId": "<stratify-18f2a000000f@mail.example>"
+  },
+  {
+   "id": "18f2a0000010",
+   "threadId": "18f2a0000010",
+   "internalDate": "1790890560000",
+   "sender": "carla@partner.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Weekly digest #14",
+   "snippet": "FAKE body 14 for stratify: weekly digest.",
+   "plaintextBody": "FAKE body 14 for stratify: weekly digest.",
+   "rfcMessageId": "<stratify-18f2a0000010@mail.example>"
+  },
+  {
+   "id": "18f2a0000011",
+   "threadId": "18f2a0000011",
+   "internalDate": "1790812800000",
+   "sender": "dev@tools.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD",
+    "Label_3"
+   ],
+   "subject": "FAKE stratify Onboarding checklist #15",
+   "snippet": "FAKE body 15 for stratify: onboarding checklist.",
+   "plaintextBody": "FAKE body 15 for stratify: onboarding checklist.",
+   "rfcMessageId": "<stratify-18f2a0000011@mail.example>"
+  },
+  {
+   "id": "18f2a0000012",
+   "threadId": "18f2a0000012",
+   "internalDate": "1790735040000",
+   "sender": "billing@saas.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "Label_2"
+   ],
+   "subject": "FAKE stratify Support ticket update #16",
+   "snippet": "FAKE body 16 for stratify: support ticket update.",
+   "plaintextBody": "FAKE body 16 for stratify: support ticket update.",
+   "rfcMessageId": "<stratify-18f2a0000012@mail.example>"
+  },
+  {
+   "id": "18f2a0000013",
+   "threadId": "18f2a0000013",
+   "internalDate": "1790657280000",
+   "sender": "news@letters.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Budget question #17",
+   "snippet": "FAKE body 17 for stratify: budget question.",
+   "plaintextBody": "FAKE body 17 for stratify: budget question.",
+   "rfcMessageId": "<stratify-18f2a0000013@mail.example>"
+  },
+  {
+   "id": "18f2a0000014",
+   "threadId": "18f2a0000014",
+   "internalDate": "1790579520000",
+   "sender": "ana@vendor.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD"
+   ],
+   "subject": "FAKE stratify Travel plans #18",
+   "snippet": "FAKE body 18 for stratify: travel plans.",
+   "plaintextBody": "FAKE body 18 for stratify: travel plans.",
+   "rfcMessageId": "<stratify-18f2a0000014@mail.example>"
+  },
+  {
+   "id": "18f2a0000015",
+   "threadId": "18f2a0000015",
+   "internalDate": "1790501760000",
+   "sender": "bob@client.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Design feedback #19",
+   "snippet": "FAKE body 19 for stratify: design feedback.",
+   "plaintextBody": "FAKE body 19 for stratify: design feedback.",
+   "rfcMessageId": "<stratify-18f2a0000015@mail.example>"
+  },
+  {
+   "id": "18f2a0000016",
+   "threadId": "18f2a0000016",
+   "internalDate": "1790424000000",
+   "sender": "carla@partner.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "Label_2",
+    "Label_3"
+   ],
+   "subject": "FAKE stratify Roadmap review #20",
+   "snippet": "FAKE body 20 for stratify: roadmap review.",
+   "plaintextBody": "FAKE body 20 for stratify: roadmap review.",
+   "rfcMessageId": "<stratify-18f2a0000016@mail.example>"
+  },
+  {
+   "id": "18f2a0000017",
+   "threadId": "18f2a0000017",
+   "internalDate": "1790346240000",
+   "sender": "dev@tools.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD"
+   ],
+   "subject": "FAKE stratify Invoice reminder #21",
+   "snippet": "FAKE body 21 for stratify: invoice reminder.",
+   "plaintextBody": "FAKE body 21 for stratify: invoice reminder.",
+   "rfcMessageId": "<stratify-18f2a0000017@mail.example>"
+  },
+  {
+   "id": "18f2a0000018",
+   "threadId": "18f2a0000018",
+   "internalDate": "1790268480000",
+   "sender": "billing@saas.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Meeting notes #22",
+   "snippet": "FAKE body 22 for stratify: meeting notes.",
+   "plaintextBody": "FAKE body 22 for stratify: meeting notes.",
+   "rfcMessageId": "<stratify-18f2a0000018@mail.example>"
+  },
+  {
+   "id": "18f2a0000019",
+   "threadId": "18f2a0000019",
+   "internalDate": "1790190720000",
+   "sender": "news@letters.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Contract draft #23",
+   "snippet": "FAKE body 23 for stratify: contract draft.",
+   "plaintextBody": "FAKE body 23 for stratify: contract draft.",
+   "rfcMessageId": "<stratify-18f2a0000019@mail.example>"
+  },
+  {
+   "id": "18f2a000001a",
+   "threadId": "18f2a000001a",
+   "internalDate": "1790112960000",
+   "sender": "ana@vendor.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "UNREAD",
+    "Label_2"
+   ],
+   "subject": "FAKE stratify Weekly digest #24",
+   "snippet": "FAKE body 24 for stratify: weekly digest.",
+   "plaintextBody": "FAKE body 24 for stratify: weekly digest.",
+   "rfcMessageId": "<stratify-18f2a000001a@mail.example>"
+  },
+  {
+   "id": "18f2a000001b",
+   "threadId": "18f2a000001b",
+   "internalDate": "1790035200000",
+   "sender": "bob@client.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX",
+    "Label_3"
+   ],
+   "subject": "FAKE stratify Onboarding checklist #25",
+   "snippet": "FAKE body 25 for stratify: onboarding checklist.",
+   "plaintextBody": "FAKE body 25 for stratify: onboarding checklist.",
+   "rfcMessageId": "<stratify-18f2a000001b@mail.example>"
+  },
+  {
+   "id": "18f2a000001c",
+   "threadId": "18f2a000001c",
+   "internalDate": "1789957440000",
+   "sender": "carla@partner.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "INBOX"
+   ],
+   "subject": "FAKE stratify Support ticket update #26",
+   "snippet": "FAKE body 26 for stratify: support ticket update.",
+   "plaintextBody": "FAKE body 26 for stratify: support ticket update.",
+   "rfcMessageId": "<stratify-18f2a000001c@mail.example>"
+  },
+  {
+   "id": "18f2a000001d",
+   "threadId": "18f2a000001d",
+   "internalDate": "1789879680000",
+   "sender": "win@prize.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "SPAM"
+   ],
+   "subject": "FAKE spam offer #27",
+   "snippet": "FAKE body 27 for stratify: budget question.",
+   "plaintextBody": "FAKE body 27 for stratify: budget question.",
+   "rfcMessageId": "<stratify-18f2a000001d@mail.example>"
+  },
+  {
+   "id": "18f2a000001e",
+   "threadId": "18f2a000001e",
+   "internalDate": "1789801920000",
+   "sender": "win@prize.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "SPAM"
+   ],
+   "subject": "FAKE spam offer #28",
+   "snippet": "FAKE body 28 for stratify: travel plans.",
+   "plaintextBody": "FAKE body 28 for stratify: travel plans.",
+   "rfcMessageId": "<stratify-18f2a000001e@mail.example>"
+  },
+  {
+   "id": "18f2a000001f",
+   "threadId": "18f2a000001f",
+   "internalDate": "1789724160000",
+   "sender": "win@prize.test",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "SPAM"
+   ],
+   "subject": "FAKE spam offer #29",
+   "snippet": "FAKE body 29 for stratify: design feedback.",
+   "plaintextBody": "FAKE body 29 for stratify: design feedback.",
+   "rfcMessageId": "<stratify-18f2a000001f@mail.example>"
+  },
+  {
+   "id": "18f2a0000020",
+   "threadId": "18f2a0000020",
+   "internalDate": "1789646400000",
+   "sender": "ana@vendor.example",
+   "toRecipients": [
+    "seb@stratify.example"
+   ],
+   "labelIds": [
+    "TRASH"
+   ],
+   "subject": "FAKE trashed note #30",
+   "snippet": "FAKE body 30 for stratify: roadmap review.",
+   "plaintextBody": "FAKE body 30 for stratify: roadmap review.",
+   "rfcMessageId": "<stratify-18f2a0000020@mail.example>"
+  }
+ ]
+}

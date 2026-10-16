@@ -8,8 +8,10 @@ import type { Store } from '@/core/contracts/store';
 import type { Logger } from '@/core/contracts/tool';
 import { createFanOutEngine } from '@/core/fanout';
 import { createLiveCalendarAdapter } from '@/google/calendar';
+import { createLiveGmailAdapter } from '@/google/gmail';
 import { createGoogleHttp } from '@/google/http';
 import { createMockCalendarAdapter } from '@/google/mock/calendar';
+import { createMockGmailAdapter } from '@/google/mock/gmail';
 import { mockAccessToken } from '@/google/mock/token';
 import { seedMockAccounts } from '@/google/mock/seed';
 import { createTokenManager, type TokenManager } from '@/google/token-manager';
@@ -71,7 +73,10 @@ export async function createServerContext(opts: CreateServerContextOptions = {})
   });
 
   // Product adapters arrive phase by phase. Mock mode never touches Google.
-  const adapters: AdapterFactory = { calendar: mock ? createMockCalendarAdapter : createLiveCalendarAdapter };
+  const adapters: AdapterFactory = {
+    calendar: mock ? createMockCalendarAdapter : createLiveCalendarAdapter,
+    gmail: mock ? createMockGmailAdapter : createLiveGmailAdapter,
+  };
 
   const adapterContext = (account: Account, signal: AbortSignal = new AbortController().signal): AdapterContext => ({
     account,

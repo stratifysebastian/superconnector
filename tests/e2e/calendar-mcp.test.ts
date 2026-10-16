@@ -198,7 +198,7 @@ describe('Calendar MCP end to end (mock mode)', () => {
   it('lists exactly the enabled tools', async () => {
     const names = (await client.listTools()).tools.map((t) => t.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(names).toHaveLength(8);
+    expect(names).toHaveLength(29);
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
 

@@ -1,0 +1,76 @@
+{
+ "labels": [
+  {
+   "labelId": "INBOX",
+   "name": "INBOX",
+   "labelType": "SYSTEM",
+   "labelListVisibility": "LABEL_SHOW",
+   "messageListVisibility": "SHOW"
+  },
+  {
+   "labelId": "SENT",
+   "name": "SENT",
+   "labelType": "SYSTEM"
+  },
+  {
+   "labelId": "DRAFT",
+   "name": "DRAFT",
+   "labelType": "SYSTEM"
+  },
+  {
+   "labelId": "SPAM",
+   "name": "SPAM",
+   "labelType": "SYSTEM"
+  },
+  {
+   "labelId": "TRASH",
+   "name": "TRASH",
+   "labelType": "SYSTEM"
+  },
+  {
+   "labelId": "UNREAD",
+   "name": "UNREAD",
+   "labelType": "SYSTEM"
+  },
+  {
+   "labelId": "STARRED",
+   "name": "STARRED",
+   "labelType": "SYSTEM"
+  },
+  {
+   "labelId": "IMPORTANT",
+   "name": "IMPORTANT",
+   "labelType": "SYSTEM"
+  },
+  {
+   "labelId": "CATEGORY_UPDATES",
+   "name": "CATEGORY_UPDATES",
+   "labelType": "SYSTEM"
+  },
+  {
+   "labelId": "Label_1",
+   "name": "Projects",
+   "labelType": "USER",
+   "labelListVisibility": "LABEL_SHOW",
+   "messageListVisibility": "SHOW"
+  },
+  {
+   "labelId": "Label_2",
+   "name": "Projects/Alpha",
+   "labelType": "USER",
+   "labelListVisibility": "LABEL_SHOW",
+   "messageListVisibility": "SHOW",
+   "color": {
+    "backgroundColor": "#16a765",
+    "textColor": "#ffffff"
+   }
+  },
+  {
+   "labelId": "Label_3",
+   "name": "Receipts",
+   "labelType": "USER",
+   "labelListVisibility": "LABEL_SHOW_IF_UNREAD",
+   "messageListVisibility": "SHOW"
+  }
+ ]
+}

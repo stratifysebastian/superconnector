@@ -4,6 +4,7 @@ import type { z } from 'zod';
 import type { ToolContext, ToolDef } from '@/core/contracts/tool';
 import { AccountSelectionError, GuardrailError, ProviderError } from '@/core/errors';
 import { calendarTools } from './tools/calendar';
+import { gmailTools } from './tools/gmail';
 import { createListAccountsTool } from './tools/list_accounts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,7 +12,7 @@ export type AnyToolDef = ToolDef<z.ZodObject<any>>;
 
 /** Every enabled tool. Excluded tools are never listed here. */
 export function getToolDefs(baseUrl: string): AnyToolDef[] {
-  return [createListAccountsTool(baseUrl), ...calendarTools()];
+  return [createListAccountsTool(baseUrl), ...calendarTools(), ...gmailTools()];
 }
 
 function errorResult(message: string): CallToolResult {

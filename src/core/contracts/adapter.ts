@@ -1,5 +1,6 @@
 import type { Account } from './account';
 import type { CalendarAdapter } from './calendar';
+import type { GmailAdapter } from './gmail';
 
 /**
  * Everything an adapter needs to make one call for one account. Adapters never hold an access token:
@@ -29,4 +30,5 @@ export interface GoogleHttp {
 /** One adapter per product. Live and mock implementations satisfy the same interface; GOOGLE_MODE picks one. */
 export interface AdapterFactory {
   calendar(ctx: AdapterContext): CalendarAdapter;
+  gmail(ctx: AdapterContext): GmailAdapter;
 }
