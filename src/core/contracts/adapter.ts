@@ -2,6 +2,7 @@ import type { Account } from './account';
 import type { CalendarAdapter } from './calendar';
 import type { DriveAdapter } from './drive';
 import type { GmailAdapter } from './gmail';
+import type { QuickBooksAdapter } from './quickbooks';
 
 /**
  * Everything an adapter needs to make one call for one account. Adapters never hold an access token:
@@ -47,9 +48,23 @@ export interface GoogleHttp {
 }
 // Note: GoogleHttp has no delete verb by design. No adapter can issue one.
 
+/** Same idea for QuickBooks: `http` is bound to the company's token and its own realmId. */
+export interface QuickBooksAdapterContext {
+  account: Account;
+  http: IntuitHttp;
+  signal: AbortSignal;
+}
+
+/** The only way to reach QuickBooks. Deny by default (src/intuit/endpoints); there is no write verb in Q0. */
+export interface IntuitHttp {
+  /** `path` starts with `/v3/company/{realmId}/`; the realmId must be the account's own or the request is denied. */
+  json<T>(req: { method: 'GET'; path: string; query?: Record<string, string | number | boolean | undefined> }): Promise<T>;
+}
+
 /** One adapter per product. Live and mock implementations satisfy the same interface; GOOGLE_MODE picks one. */
 export interface AdapterFactory {
   calendar(ctx: AdapterContext): CalendarAdapter;
   gmail(ctx: AdapterContext): GmailAdapter;
   drive(ctx: AdapterContext): DriveAdapter;
+  quickbooks(ctx: QuickBooksAdapterContext): QuickBooksAdapter;
 }

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import type { Provider } from './contracts/account';
 import { AccountSelectionError } from './errors';
 
 export type CursorState = Record<string, { pageToken?: string; offset: number }>;
@@ -13,12 +14,13 @@ function sign(payload: string, secret: string): string {
   return createHmac('sha256', secret).update(payload).digest('base64url');
 }
 
-export function encodeCursor(state: CursorState, secret: string): string {
-  const payload = Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
+/** The signed payload is `{provider, state}`, so a cursor only works for the provider that minted it. Old (bare-state) cursors are invalid. */
+export function encodeCursor(state: CursorState, secret: string, provider: Provider): string {
+  const payload = Buffer.from(JSON.stringify({ provider, state }), 'utf8').toString('base64url');
   return `${payload}.${sign(payload, secret)}`;
 }
 
-export function decodeCursor(cursor: string, secret: string): CursorState {
+export function decodeCursor(cursor: string, secret: string, provider: Provider): CursorState {
   try {
     const parts = cursor.split('.');
     if (parts.length !== 2) throw new Error('shape');
@@ -26,7 +28,9 @@ export function decodeCursor(cursor: string, secret: string): CursorState {
     const expected = Buffer.from(sign(payload, secret));
     const given = Buffer.from(sig);
     if (expected.length !== given.length || !timingSafeEqual(expected, given)) throw new Error('sig');
-    const parsed: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    const env = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { provider?: unknown; state?: unknown } | null;
+    if (typeof env !== 'object' || env === null || env.provider !== provider) throw new Error('provider');
+    const parsed = env.state;
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('state');
     const out: CursorState = {};
     for (const [label, v] of Object.entries(parsed)) {

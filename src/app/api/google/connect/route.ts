@@ -23,19 +23,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const orgId = req.nextUrl.searchParams.get('org');
   const accountId = req.nextUrl.searchParams.get('account') ?? undefined;
   const org = orgId ? await ctx.store.orgClients.get(orgId) : null;
-  if (!orgId || !org) return noStore(NextResponse.json({ error: 'Unknown organisation client' }, { status: 404 }));
+  if (!orgId || !org || org.provider !== 'google' || !org.workspaceDomain) return noStore(NextResponse.json({ error: 'Unknown organisation client' }, { status: 404 }));
 
   let loginHint: string | undefined;
   if (accountId) {
     const acct = (await ctx.store.accounts.list()).find((a) => a.id === accountId);
-    if (!acct) return noStore(NextResponse.json({ error: 'Unknown account' }, { status: 404 }));
+    if (!acct || acct.provider !== 'google') return noStore(NextResponse.json({ error: 'Unknown account' }, { status: 404 }));
     loginHint = acct.email;
   }
 
   const url = await startGoogleAuth({
     store: ctx.store,
     orgClientId: orgId,
-    orgClient: org,
+    orgClient: { clientId: org.clientId, workspaceDomain: org.workspaceDomain },
     ...(accountId ? { accountId } : {}),
     ...(loginHint ? { loginHint } : {}),
     redirectUri: `${ctx.baseUrl}/api/google/callback`,

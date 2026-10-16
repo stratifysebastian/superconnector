@@ -57,17 +57,17 @@ describe('resolveAccounts', () => {
 describe('cursor', () => {
   it('round trips', () => {
     const s = { stratify: { pageToken: 'abc', offset: 2 }, prime: { offset: 0 } };
-    expect(decodeCursor(encodeCursor(s, SECRET), SECRET)).toEqual(s);
+    expect(decodeCursor(encodeCursor(s, SECRET, 'google'), SECRET, 'google')).toEqual(s);
   });
   it('rejects tampering, wrong secret and garbage', () => {
-    const c = encodeCursor({ stratify: { offset: 1 } }, SECRET);
+    const c = encodeCursor({ stratify: { offset: 1 } }, SECRET, 'google');
     const [p, sig] = c.split('.') as [string, string];
     const forged = Buffer.from(JSON.stringify({ prime: { offset: 1 } })).toString('base64url');
-    expect(() => decodeCursor(`${forged}.${sig}`, SECRET)).toThrow(InvalidCursorError);
-    expect(() => decodeCursor(c, 'other')).toThrow(InvalidCursorError);
-    expect(() => decodeCursor('garbage', SECRET)).toThrow(InvalidCursorError);
-    expect(() => decodeCursor(`${p}.`, SECRET)).toThrow(InvalidCursorError);
-    expect(() => decodeCursor('', SECRET)).toThrow(AccountSelectionError);
+    expect(() => decodeCursor(`${forged}.${sig}`, SECRET, 'google')).toThrow(InvalidCursorError);
+    expect(() => decodeCursor(c, 'other', 'google')).toThrow(InvalidCursorError);
+    expect(() => decodeCursor('garbage', SECRET, 'google')).toThrow(InvalidCursorError);
+    expect(() => decodeCursor(`${p}.`, SECRET, 'google')).toThrow(InvalidCursorError);
+    expect(() => decodeCursor('', SECRET, 'google')).toThrow(AccountSelectionError);
   });
 });
 
@@ -213,7 +213,7 @@ describe('read: paging', () => {
     });
     expect(fetch.mock.calls.filter((c) => c[0].label === 'stratify')).toHaveLength(4); // 1 + 3 extra
     expect(r.items.map((i) => i.id)).toEqual(['s0', 's1', 's2', 's3', 'p0']);
-    expect(decodeCursor(r.nextCursor!, SECRET)).toEqual({ stratify: { pageToken: '4', offset: 0 } });
+    expect(decodeCursor(r.nextCursor!, SECRET, 'google')).toEqual({ stratify: { pageToken: '4', offset: 0 } });
   });
   it('throws a programmer error when dedupeKey is set without idOf', async () => {
     await expect(
@@ -250,7 +250,7 @@ describe('read: paging', () => {
   });
   it('rejects a cursor with accounts outside the selector', async () => {
     const engine = engineFor([stratify, prime]);
-    const cursor = encodeCursor({ prime: { offset: 0 } }, SECRET);
+    const cursor = encodeCursor({ prime: { offset: 0 } }, SECRET, 'google');
     await expect(
       engine.read({
         selector: 'stratify',
@@ -278,7 +278,7 @@ describe('read: paging', () => {
     });
     const r = await engine.read({ selector: undefined, page: { pageSize: 5 }, fetch, dateOf: (i) => i.t });
     expect(r.nextCursor).toBeDefined();
-    expect(decodeCursor(r.nextCursor!, SECRET)).toEqual({ prime: { offset: 0 } });
+    expect(decodeCursor(r.nextCursor!, SECRET, 'google')).toEqual({ prime: { offset: 0 } });
     fetch.mockClear();
     await engine.read({ selector: undefined, page: { pageSize: 5, cursor: r.nextCursor }, fetch, dateOf: (i) => i.t });
     expect(fetch.mock.calls.map((c) => c[0].label)).toEqual(['prime']);
@@ -424,5 +424,30 @@ describe('resolveWriteAccount', () => {
     await expect(e.resolveWriteAccount(undefined, async () => mk('prime', 1, 'needs_reconnect'))).rejects.toBeInstanceOf(
       ProviderError,
     );
+  });
+});
+
+describe('email selector ambiguity (M1) and cursor provider binding (L1)', () => {
+  const co = (label: string, priority: number): Account => ({ ...mk(label, priority), provider: 'intuit', email: 'books@acme.com', realmId: label });
+  it('throws naming the labels when an email matches two accounts', () => {
+    const accts = [co('co-b', 1), co('co-a', 0)];
+    expect(() => resolveAccounts('books@acme.com', accts)).toThrow(/co-a, co-b/);
+    expect(() => resolveAccounts('books@acme.com', accts)).toThrow(AccountSelectionError);
+    expect(resolveAccounts('co-b', accts).map((a) => a.label)).toEqual(['co-b']);
+  });
+  it('rejects a cursor minted for another provider', () => {
+    const c = encodeCursor({ stratify: { offset: 1 } }, SECRET, 'google');
+    expect(decodeCursor(c, SECRET, 'google')).toEqual({ stratify: { offset: 1 } });
+    expect(() => decodeCursor(c, SECRET, 'intuit')).toThrow(InvalidCursorError);
+  });
+  it('a google-minted cursor is not accepted by an intuit read with the same label', async () => {
+    const q: Account = { ...mk('stratify', 0), provider: 'intuit', realmId: 'r' };
+    const engine = engineFor([mk('stratify', 0), q]);
+    const g = await engine.read<Item>({ provider: 'google', selector: undefined, page: { pageSize: 1 }, dateOf: (i) => i.t, fetch: async () => ({ items: [{ id: 'a', t: 1 }], nextPageToken: 'G' }) });
+    const fetch = vi.fn(async () => ({ items: [] as Item[] }));
+    await expect(
+      engine.read<Item>({ provider: 'intuit', selector: undefined, page: { pageSize: 1, cursor: g.nextCursor! }, dateOf: (i) => i.t, fetch }),
+    ).rejects.toThrow(InvalidCursorError);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

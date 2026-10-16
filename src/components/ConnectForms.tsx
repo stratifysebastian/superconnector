@@ -48,22 +48,30 @@ export function RenameForm({ accountId, label }: { accountId: string; label: str
 
 export function OrgClientForm({
   id,
+  provider = 'google',
   defaults,
 }: {
   id?: string;
-  defaults: { label: string; workspaceDomain: string; clientId: string };
+  provider?: 'google' | 'intuit';
+  defaults: { label: string; workspaceDomain?: string; clientId: string };
 }) {
   const [state, action, pending] = useActionState(saveOrgClientForm, idle);
-  const p = `org-${id ?? 'new'}`;
+  const intuit = provider === 'intuit';
+  const p = `org-${id ?? `new-${provider}`}`;
   return (
     <form action={action} className={styles.form}>
       {id ? <input type="hidden" name="id" value={id} /> : null}
+      <input type="hidden" name="provider" value={provider} />
       <label htmlFor={`${p}-label`} className={styles.lbl}>Label</label>
       <input id={`${p}-label`} name="label" defaultValue={defaults.label} required maxLength={32}
         pattern="[a-z0-9][a-z0-9\-]{0,31}" autoComplete="off" spellCheck={false} className={styles.input} />
-      <label htmlFor={`${p}-domain`} className={styles.lbl}>Workspace domain</label>
-      <input id={`${p}-domain`} name="workspaceDomain" defaultValue={defaults.workspaceDomain} required
-        placeholder="example.com…" autoComplete="off" spellCheck={false} className={styles.input} />
+      {intuit ? null : (
+        <>
+          <label htmlFor={`${p}-domain`} className={styles.lbl}>Workspace domain</label>
+          <input id={`${p}-domain`} name="workspaceDomain" defaultValue={defaults.workspaceDomain} required
+            placeholder="example.com…" autoComplete="off" spellCheck={false} className={styles.input} />
+        </>
+      )}
       <label htmlFor={`${p}-cid`} className={styles.lbl}>Client ID</label>
       <input id={`${p}-cid`} name="clientId" defaultValue={defaults.clientId} required autoComplete="off" spellCheck={false}
         className={`${styles.input} ${styles.mono}`} />
@@ -73,7 +81,7 @@ export function OrgClientForm({
       <p id={`${p}-secret-help`} className={styles.muted}>
         {id ? 'Leave blank to keep the stored secret. It is never displayed.' : 'Stored encrypted. It is never displayed again.'}
       </p>
-      <button type="submit" className={styles.btnPrimary} disabled={pending}>{id ? 'Save changes' : 'Add org client'}</button>
+      <button type="submit" className={styles.btnPrimary} disabled={pending}>{id ? 'Save changes' : intuit ? 'Add Intuit app' : 'Add org client'}</button>
       <Message id={`${p}-msg`} state={state} />
     </form>
   );

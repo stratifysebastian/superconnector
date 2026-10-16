@@ -1,4 +1,4 @@
-import type { Account, AccountError, AccountSelector, Tagged } from './contracts/account';
+import type { Account, AccountError, AccountSelector, Provider, Tagged } from './contracts/account';
 import type { AccountPage, FanOutEngine, FanOutReadResult, FanOutReadSpec } from './contracts/fanout';
 import { byPriority, resolveAccounts } from './accounts';
 import { decodeCursor, encodeCursor, type CursorState } from './cursor';
@@ -44,7 +44,12 @@ interface AcctState<T> {
 const MAX_EXTRA_FETCHES = 3;
 
 export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
-  const { listAccounts, cursorSecret, reconnectUrl } = opts;
+  const { cursorSecret, reconnectUrl } = opts;
+  /** The one place a provider limit is applied: every selector below is resolved against this list only. */
+  const listAccounts = async (provider?: Provider): Promise<Account[]> => {
+    const all = await opts.listAccounts();
+    return provider ? all.filter((a) => a.provider === provider) : all;
+  };
 
   const disconnected = (a: Account): AccountError => ({
     account: a.label,
@@ -92,14 +97,14 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
     if (spec.dedupeKey && !spec.idOf) {
       throw new Error('FanOutReadSpec.idOf is required when dedupeKey is set (programmer error).');
     }
-    const resolved = resolveAccounts(spec.selector, await listAccounts());
+    const resolved = resolveAccounts(spec.selector, await listAccounts(spec.provider));
     const timeoutMs = spec.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const pageSize = spec.page.pageSize;
 
     let cursorState: CursorState | undefined;
     let targets = resolved;
     if (spec.page.cursor) {
-      const state = decodeCursor(spec.page.cursor, cursorSecret);
+      const state = decodeCursor(spec.page.cursor, cursorSecret, spec.provider ?? 'google');
       cursorState = state;
       const labels = new Set(resolved.map((a) => a.label));
       const outside = Object.keys(state).filter((l) => !labels.has(l));
@@ -236,15 +241,16 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
 
     const accountErrors = errorsByOrder.sort((x, y) => x.order - y.order || x.seq - y.seq).map((e) => e.error);
     const result: FanOutReadResult<T> = { items, accountErrors };
-    if (Object.keys(nextState).length > 0) result.nextCursor = encodeCursor(nextState, cursorSecret);
+    if (Object.keys(nextState).length > 0) result.nextCursor = encodeCursor(nextState, cursorSecret, spec.provider ?? 'google');
     return result;
   }
 
   async function lookup<T>(
     selector: AccountSelector,
     fn: (a: Account) => Promise<T | null>,
+    provider?: Provider,
   ): Promise<{ item: Tagged<T> | null; accountErrors: AccountError[] }> {
-    const accounts = resolveAccounts(selector, await listAccounts());
+    const accounts = resolveAccounts(selector, await listAccounts(provider));
     const accountErrors: AccountError[] = [];
     for (const a of accounts) {
       if (a.status === 'needs_reconnect') {
@@ -267,8 +273,9 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
   async function resolveWriteAccount(
     selector: AccountSelector,
     fallback?: () => Promise<Account | null>,
+    provider?: Provider,
   ): Promise<Account> {
-    const all = byPriority(await listAccounts());
+    const all = byPriority(await listAccounts(provider));
     const which = () =>
       new AccountSelectionError(
         `Writes need exactly one account. Which one: ${all.map((a) => a.label).join(' or ')}?`,
@@ -282,7 +289,8 @@ export function createFanOutEngine(opts: FanOutOptions): FanOutEngine {
       if (resolved.length !== 1) throw which();
       account = resolved[0];
     }
-    if (!account) throw which();
+    // A fallback may name any account; it still has to belong to this provider.
+    if (!account || (provider && account.provider !== provider)) throw which();
     if (account.status === 'needs_reconnect') {
       throw new ProviderError(
         'needs_reconnect',

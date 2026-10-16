@@ -538,7 +538,13 @@ Reports fan out across companies, with results tagged per company (reports aren'
 
 Writes need exactly one company. Every send and delete is audited and goes only to the company named.
 
-**Testing rule:** mock mode, then Intuit's sandbox company. I never send or delete anything in a live company. Seb does any live send or delete himself.
+**Additions from Intuit's app questionnaire (Seb, 2026-10-16), built in Q1:**
+- record Intuit's `intuit_tid` response header on every call;
+- write each failed QuickBooks call to `audit_log`: tool, company, HTTP status, Intuit error code and `intuit_tid`, with no amounts or customer data;
+- a missing-plan-feature error (classes, locations, recurring transactions) becomes a plain message;
+- sandbox tests that deliberately send malformed and invalid requests.
+
+**Testing rule:** mock mode, then Intuit's Canadian sandbox company. I never send or delete anything in a live company. Seb does any live send or delete himself.
 
 **Seb's setup steps (Q0):**
 - Create an app at developer.intuit.com with the Accounting scope, and add the redirect URI `https://mcp.stratifysoftware.com/api/intuit/callback`.

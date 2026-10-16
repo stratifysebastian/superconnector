@@ -11,7 +11,7 @@ export const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 export const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 export const STATE_TTL_MS = 10 * 60 * 1000;
 
-export type OAuthOrgClient = Pick<OrgClient, 'clientId' | 'workspaceDomain'>;
+export type OAuthOrgClient = Pick<OrgClient, 'clientId'> & { workspaceDomain: string };
 
 /** Reason is plain language; never contains tokens, codes or the response body. */
 export class GoogleOAuthError extends Error {

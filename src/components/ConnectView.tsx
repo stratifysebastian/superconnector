@@ -1,4 +1,4 @@
-import type { AccountView, ConnectData, Flash, OrgClientView } from '@/app/connect/logic';
+import type { AccountView, ConnectData, Flash, OrgClientView, QuickBooksAccountView, QuickBooksClientView } from '@/app/connect/logic';
 import { moveAccountForm } from '@/app/connect/form-actions';
 import { OrgClientForm, RenameForm, RevokeAllForm } from './ConnectForms';
 import styles from './connect.module.css';
@@ -58,6 +58,46 @@ function OrgCard({ o }: { o: OrgClientView }) {
       <details className={styles.details}>
         <summary>{`Edit ${o.label}`}</summary>
         <OrgClientForm id={o.id} defaults={{ label: o.label, workspaceDomain: o.workspaceDomain, clientId: o.clientId }} />
+      </details>
+    </li>
+  );
+}
+
+function QuickBooksRow({ a }: { a: QuickBooksAccountView }) {
+  const needs = a.status === 'needs_reconnect';
+  const reconnect = `/api/intuit/connect?org=${enc(a.orgClientId)}&account=${enc(a.id)}`;
+  return (
+    <tr>
+      <th scope="row" data-label="Label"><strong>{a.label}</strong></th>
+      <td data-label="Company">{a.companyName}</td>
+      <td data-label="Realm ID" className={styles.mono}>{a.realmMasked}</td>
+      <td data-label="Status">
+        <span className={needs ? styles.badgeWarn : styles.badgeOk}>{needs ? 'Needs reconnect' : 'Active'}</span>
+      </td>
+      <td data-label="Actions">
+        <div className={styles.actions}>
+          <a href={reconnect} aria-label={`Reconnect ${a.label}`} className={needs ? styles.btnPrimary : styles.btn}>Reconnect</a>
+        </div>
+        <RenameForm accountId={a.id} label={a.label} />
+      </td>
+    </tr>
+  );
+}
+
+function IntuitCard({ o }: { o: QuickBooksClientView }) {
+  return (
+    <li className={styles.card}>
+      <h3>{o.label}</h3>
+      <dl className={styles.dl}>
+        <dt>Client ID</dt>
+        <dd className={styles.mono}>{o.clientId}</dd>
+        <dt>Client secret</dt>
+        <dd>Stored encrypted (never shown)</dd>
+      </dl>
+      <a href={`/api/intuit/connect?org=${enc(o.id)}`} aria-label={`Connect QuickBooks company for ${o.label}`} className={styles.btnPrimary}>Connect QuickBooks company</a>
+      <details className={styles.details}>
+        <summary>{`Edit ${o.label}`}</summary>
+        <OrgClientForm id={o.id} provider="intuit" defaults={{ label: o.label, clientId: o.clientId }} />
       </details>
     </li>
   );
@@ -129,6 +169,49 @@ export function ConnectView({ data, flash }: { data: ConnectData; flash: Flash[]
       <section aria-labelledby="add-h">
         <h2 id="add-h">Add an org client</h2>
         <OrgClientForm defaults={{ label: '', workspaceDomain: '', clientId: '' }} />
+      </section>
+
+      <section aria-labelledby="qb-h">
+        <h2 id="qb-h">QuickBooks companies</h2>
+        {data.quickbooks.accounts.length === 0 ? (
+          <p>No QuickBooks companies connected yet. Add an Intuit app below, then connect a company.</p>
+        ) : (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <caption className={styles.srOnly}>Connected QuickBooks companies</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Label</th>
+                  <th scope="col">Company</th>
+                  <th scope="col">Realm ID (last 4 shown)</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.quickbooks.accounts.map((a) => <QuickBooksRow key={a.id} a={a} />)}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="intuit-h">
+        <h2 id="intuit-h">Intuit apps</h2>
+        <p className={styles.muted}>
+          At developer.intuit.com, create an app with the Accounting scope and add this exact redirect URI.
+        </p>
+        <label htmlFor="intuit-redirect-uri" className={styles.lbl}>Redirect URI</label>
+        <input id="intuit-redirect-uri" className={`${styles.input} ${styles.mono}`} readOnly value={data.quickbooks.redirectUri} />
+        {data.quickbooks.clients.length === 0 ? (
+          <p>No Intuit apps yet.</p>
+        ) : (
+          <ul className={styles.cards}>
+            {data.quickbooks.clients.map((o) => <IntuitCard key={o.id} o={o} />)}
+          </ul>
+        )}
+        <h3>Add an Intuit app</h3>
+        <OrgClientForm provider="intuit" defaults={{ label: '', clientId: '' }} />
       </section>
 
       <section aria-labelledby="access-h">

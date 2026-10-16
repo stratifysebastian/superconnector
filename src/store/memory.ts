@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { Cipher } from '../core/contracts/crypto';
-import type { Account } from '../core/contracts/account';
+import type { Account, Provider } from '../core/contracts/account';
 import type { OrgClient, Store } from '../core/contracts/store';
 import {
+  assertConnectInput,
   assertLabel,
+  assertOrgClient,
   assertSameIdSet,
+  sameAccount,
   compareAccounts,
   isStratify,
   truncateDetail,
@@ -13,13 +16,15 @@ import {
 
 interface OrgRow {
   id: string;
+  provider: Provider;
   label: string;
   clientId: string;
   clientSecretEnc: string;
-  workspaceDomain: string;
+  workspaceDomain?: string;
 }
 interface TokenRow {
   refreshEnc?: string;
+  leaseUntil?: number;
   accessEnc?: string;
   accessExpiresAt?: number;
 }
@@ -71,11 +76,12 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
   return {
     orgClients: {
       async list() {
-        return [...orgs.values()].map(({ id, label, clientId, workspaceDomain }) => ({
+        return [...orgs.values()].map(({ id, provider, label, clientId, workspaceDomain }) => ({
           id,
+          provider,
           label,
           clientId,
-          workspaceDomain,
+          ...(workspaceDomain !== undefined ? { workspaceDomain } : {}),
         }));
       },
       async get(id): Promise<OrgClient | null> {
@@ -83,23 +89,27 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         if (!r) return null;
         return {
           id: r.id,
+          provider: r.provider,
           label: r.label,
           clientId: r.clientId,
           clientSecret: cipher.decrypt(r.clientSecretEnc),
-          workspaceDomain: r.workspaceDomain,
+          ...(r.workspaceDomain !== undefined ? { workspaceDomain: r.workspaceDomain } : {}),
         };
       },
       async upsert(c) {
         const id = c.id ?? randomUUID();
-        if ([...orgs.values()].some((o) => o.id !== id && o.label === c.label)) {
+        const provider = c.provider ?? 'google';
+        assertOrgClient(provider, c.workspaceDomain, orgs.get(id)?.provider);
+        if ([...orgs.values()].some((o) => o.id !== id && o.provider === provider && o.label === c.label)) {
           throw new Error('Org client label already in use');
         }
         orgs.set(id, {
           id,
+          provider,
           label: c.label,
           clientId: c.clientId,
           clientSecretEnc: cipher.encrypt(c.clientSecret),
-          workspaceDomain: c.workspaceDomain,
+          ...(c.workspaceDomain !== undefined ? { workspaceDomain: c.workspaceDomain } : {}),
         });
         return id;
       },
@@ -109,18 +119,24 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         return sorted().map(copy);
       },
       async upsertOnConnect(a) {
-        const existing = [...accounts.values()].find((x) => x.provider === a.provider && x.email === a.email);
+        assertConnectInput(a);
+        const org = orgs.get(a.orgClientId);
+        if (!org) throw new Error('Unknown org client');
+        if (org.provider !== a.provider) throw new Error('Org client belongs to a different provider');
+        const existing = [...accounts.values()].find((x) => sameAccount(x, a));
         if (existing) {
-          if (!orgs.has(a.orgClientId)) throw new Error('Unknown org client');
-        existing.grantedScopes = [...a.grantedScopes];
+          existing.grantedScopes = [...a.grantedScopes];
+          if (a.companyName !== undefined) existing.companyName = a.companyName;
           existing.orgClientId = a.orgClientId;
           existing.status = 'active';
           return copy(existing);
         }
-        if (!orgs.has(a.orgClientId)) throw new Error('Unknown org client');
-        const label = uniqueLabel(a.label, new Set([...accounts.values()].map((x) => x.label)));
+        const label = uniqueLabel(
+          a.label,
+          new Set([...accounts.values()].filter((x) => x.provider === a.provider).map((x) => x.label)),
+        );
         let priority = 0;
-        if (isStratify(a.label)) {
+        if (a.provider === 'google' && isStratify(a.label)) {
           for (const x of accounts.values()) x.priority += 1;
         } else if (accounts.size > 0) {
           priority = Math.max(...[...accounts.values()].map((x) => x.priority)) + 1;
@@ -135,6 +151,8 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
           connectedAt: new Date().toISOString(),
           status: 'active',
           grantedScopes: [...a.grantedScopes],
+          ...(a.realmId !== undefined ? { realmId: a.realmId } : {}),
+          ...(a.companyName !== undefined ? { companyName: a.companyName } : {}),
         };
         accounts.set(created.id, created);
         return copy(created);
@@ -154,7 +172,7 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         assertLabel(label);
         const a = accounts.get(id);
         if (!a) throw new Error('Account not found');
-        if ([...accounts.values()].some((x) => x.id !== id && x.label === label)) {
+        if ([...accounts.values()].some((x) => x.id !== id && x.provider === a.provider && x.label === label)) {
           throw new Error('Label already in use');
         }
         a.label = label;
@@ -172,6 +190,22 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
         const r = tokens.get(id);
         if (r?.accessEnc === undefined || r.accessExpiresAt === undefined) return null;
         return { token: cipher.decrypt(r.accessEnc), expiresAt: r.accessExpiresAt };
+      },
+      async swapRefreshToken(id, expected, next) {
+        const cur = tokens.get(id)?.refreshEnc;
+        if (cur === undefined || cipher.decrypt(cur) !== expected) return false;
+        tokens.set(id, { ...tokens.get(id), refreshEnc: cipher.encrypt(next) });
+        return true;
+      },
+      async acquireRefreshLease(id, ms) {
+        const row = tokens.get(id);
+        if (!row || (row.leaseUntil !== undefined && row.leaseUntil > Date.now())) return false;
+        tokens.set(id, { ...row, leaseUntil: Date.now() + ms });
+        return true;
+      },
+      async releaseRefreshLease(id) {
+        const row = tokens.get(id);
+        if (row) tokens.set(id, { ...row, leaseUntil: undefined });
       },
       async setCachedAccess(id, token, expiresAt) {
         tokens.set(id, { ...tokens.get(id), accessEnc: cipher.encrypt(token), accessExpiresAt: expiresAt });

@@ -126,6 +126,20 @@ describe('connect route', () => {
     const res = await connectGET(new NextRequest(`${BASE}/api/google/connect?org=nope`));
     expect(res.status).toBe(404);
   });
+  it('404s for a reconnect of an Intuit account', async () => {
+    const qb = await store.orgClients.upsert({ provider: 'intuit', label: 'qb', clientId: 'c', clientSecret: 's' });
+    const q = await store.accounts.upsertOnConnect({ provider: 'intuit', email: 'q@x.example', label: 'qb', orgClientId: qb, grantedScopes: [], realmId: '1' });
+    const res = await connectGET(new NextRequest(`${BASE}/api/google/connect?org=${orgId}&account=${q.id}`));
+    expect(res.status).toBe(404);
+  });
+  it('the Google token manager refuses an Intuit account', async () => {
+    const qb = await store.orgClients.upsert({ provider: 'intuit', label: 'qb', clientId: 'c', clientSecret: 's' });
+    const q = await store.accounts.upsertOnConnect({ provider: 'intuit', email: 'q@x.example', label: 'qb', orgClientId: qb, grantedScopes: [], realmId: '1' });
+    await store.tokens.setRefreshToken(q.id, 'rt');
+    const fetchImpl = vi.fn();
+    await expect(createTokenManager({ store, fetchImpl: fetchImpl as never }).getAccessToken(q)).rejects.toThrow(ProviderError);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
   it('stores only the state hash and redirects to Google, no-store', async () => {
     const res = await connectGET(new NextRequest(`${BASE}/api/google/connect?org=${orgId}`));
     expect(res.status).toBe(302);

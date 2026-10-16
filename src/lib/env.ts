@@ -42,6 +42,8 @@ export type Env = {
   SUPABASE_SERVICE_ROLE_KEY?: string;
   PUBLIC_BASE_URL?: string;
   CRON_SECRET?: string;
+  /** 'sandbox' sends QuickBooks calls to Intuit's sandbox host instead of the live one. */
+  INTUIT_ENV: 'production' | 'sandbox';
 };
 
 const mode = z.enum(['mock', 'live']);
@@ -68,6 +70,7 @@ function buildSchema(live: boolean) {
     SUPABASE_SERVICE_ROLE_KEY: req(nonEmpty),
     PUBLIC_BASE_URL: live ? httpsOrigin : z.string().url().optional(),
     CRON_SECRET: live ? secret32 : nonEmpty.optional(),
+    INTUIT_ENV: z.enum(['production', 'sandbox']).default('production'),
   });
 }
 
@@ -98,6 +101,7 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
     'SUPABASE_SERVICE_ROLE_KEY',
     'PUBLIC_BASE_URL',
     'CRON_SECRET',
+    'INTUIT_ENV',
   ];
   const input: Record<string, string | undefined> = {
     GOOGLE_MODE: googleMode,

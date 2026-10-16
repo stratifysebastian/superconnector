@@ -11,7 +11,7 @@ describe('createServerContext (mock mode)', () => {
     const store = createMemoryStore(createCipher(Buffer.alloc(32, 7).toString('base64')));
     const ctx = await createServerContext({ env, store, log: { info() {}, warn() {}, error() {} } });
     const accounts = await ctx.store.accounts.list();
-    expect(accounts.map((a) => a.label)).toEqual(['stratify', 'prime']);
+    expect(accounts.map((a) => a.label)).toEqual(['stratify', 'prime', 'stratify-ca']);
     expect(await ctx.tokens.getAccessToken(accounts[0]!)).toBe('mock-access-stratify');
     expect(ctx.baseUrl).toBe('http://localhost:3000');
   });
@@ -22,7 +22,7 @@ describe('createServerContext (mock mode)', () => {
     const log = { info() {}, warn() {}, error() {} };
     await createServerContext({ env, store, log });
     await createServerContext({ env, store, log });
-    expect((await store.accounts.list()).length).toBe(2);
+    expect((await store.accounts.list()).length).toBe(3);
   });
 
   it('two mock contexts without secrets get different session and cursor secrets', async () => {

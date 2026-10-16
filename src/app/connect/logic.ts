@@ -1,5 +1,5 @@
 // Testable /connect logic: (ctx, session, input) -> result. No Next.js imports here.
-import type { Account, Product } from '@/core/contracts/account';
+import type { Account, Product, Provider } from '@/core/contracts/account';
 import { PRODUCTS, grantedProducts, missingProducts } from '@/core/products';
 import type { ServerContext } from '@/server/context';
 
@@ -30,14 +30,22 @@ export async function reorderAccounts(
 ): Promise<Result> {
   if (!session) return UNAUTHORISED;
   if (input.direction !== 'up' && input.direction !== 'down') return fail('Unknown direction.');
-  const ids = (await ctx.store.accounts.list()).map((a) => a.id);
-  const i = ids.indexOf(input.accountId);
-  if (i < 0) return fail('Account not found.');
+  const all = await ctx.store.accounts.list();
+  const target = all.find((a) => a.id === input.accountId);
+  if (!target) return fail('Account not found.');
+  // Order is per provider: swap within the account's own provider and leave the other provider's slots alone.
+  const slots = all.map((a, k) => (a.provider === target.provider ? k : -1)).filter((k) => k >= 0);
+  const mine = slots.map((k) => all[k]!.id);
+  const i = mine.indexOf(input.accountId);
   const j = input.direction === 'up' ? i - 1 : i + 1;
-  if (j < 0 || j >= ids.length) {
+  if (j < 0 || j >= mine.length) {
     return fail(input.direction === 'up' ? 'Already first.' : 'Already last.');
   }
-  [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+  [mine[i], mine[j]] = [mine[j]!, mine[i]!];
+  const ids = all.map((a) => a.id);
+  slots.forEach((k, n) => {
+    ids[k] = mine[n]!;
+  });
   try {
     await ctx.store.accounts.reorder(ids);
   } catch {
@@ -94,8 +102,10 @@ export async function revokeAllAccess(
 
 export interface OrgClientInput {
   id?: string;
+  /** New clients only; an existing client keeps its provider. Default 'google'. */
+  provider?: 'google' | 'intuit';
   label: string;
-  workspaceDomain: string;
+  workspaceDomain?: string;
   clientId: string;
   clientSecret: string;
 }
@@ -107,24 +117,32 @@ export async function saveOrgClient(
 ): Promise<Result> {
   if (!session) return UNAUTHORISED;
   const label = input.label.trim();
-  const workspaceDomain = input.workspaceDomain.trim().toLowerCase();
+  const workspaceDomain = (input.workspaceDomain ?? '').trim().toLowerCase();
   const clientId = input.clientId.trim();
   let clientSecret = input.clientSecret.trim();
   if (!isValidLabel(label)) return fail(`Invalid label. ${LABEL_RULE}`);
-  if (!DOMAIN_PATTERN.test(workspaceDomain)) return fail('Enter a Workspace domain such as example.com.');
   if (!clientId) return fail('Client ID is required.');
 
   const id = input.id?.trim() || undefined;
-  if (id) {
-    const existing = await ctx.store.orgClients.get(id);
-    if (!existing) return fail('Org client not found.');
+  const existing = id ? await ctx.store.orgClients.get(id) : null;
+  if (id && !existing) return fail('Org client not found.');
+  const provider = existing?.provider ?? (input.provider === 'intuit' ? 'intuit' : 'google');
+  if (provider === 'google' && !DOMAIN_PATTERN.test(workspaceDomain)) return fail('Enter a Workspace domain such as example.com.');
+  if (id && existing) {
     // Keep the stored secret when none is supplied; it never leaves the server.
     if (!clientSecret) clientSecret = existing.clientSecret;
   } else if (!clientSecret) {
     return fail('Client secret is required for a new org client.');
   }
   try {
-    await ctx.store.orgClients.upsert({ ...(id ? { id } : {}), label, workspaceDomain, clientId, clientSecret });
+    await ctx.store.orgClients.upsert({
+      ...(id ? { id } : {}),
+      provider,
+      label,
+      ...(provider === 'google' ? { workspaceDomain } : {}),
+      clientId,
+      clientSecret,
+    });
   } catch (e) {
     if (e instanceof Error && /label/i.test(e.message) && /in use/i.test(e.message)) {
       return fail('That org client label is already in use.');
@@ -152,18 +170,55 @@ export interface OrgClientView {
   clientId: string;
   workspaceDomain: string;
 }
+export interface QuickBooksAccountView {
+  id: string;
+  label: string;
+  companyName: string;
+  /** Masked: only the last 4 characters are shown. */
+  realmMasked: string;
+  status: Account['status'];
+  orgClientId: string;
+}
+export interface QuickBooksClientView {
+  id: string;
+  label: string;
+  clientId: string;
+}
 export interface ConnectData {
   email: string;
   redirectUri: string;
   accounts: AccountView[];
   orgClients: OrgClientView[];
+  quickbooks: { redirectUri: string; accounts: QuickBooksAccountView[]; clients: QuickBooksClientView[] };
 }
 
+/** Everything but the last 4 characters becomes `*`; a short id is fully masked. */
+export function maskRealm(realmId: string): string {
+  return realmId.length <= 4 ? '*'.repeat(realmId.length) : '*'.repeat(realmId.length - 4) + realmId.slice(-4);
+}
+
+const providerOf = <T extends { provider: Provider }>(rows: T[], p: Provider): T[] => rows.filter((r) => r.provider === p);
+
 export async function loadConnectData(ctx: ServerContext, session: Session): Promise<ConnectData> {
-  const [accounts, orgClients] = await Promise.all([ctx.store.accounts.list(), ctx.store.orgClients.list()]);
+  const [allAccounts, allClients] = await Promise.all([ctx.store.accounts.list(), ctx.store.orgClients.list()]);
+  const accounts = providerOf(allAccounts, 'google');
+  const orgClients = providerOf(allClients, 'google');
   return {
     email: session.email,
     redirectUri: `${ctx.baseUrl}/api/google/callback`,
+    quickbooks: {
+      redirectUri: `${ctx.baseUrl}/api/intuit/callback`,
+      accounts: providerOf(allAccounts, 'intuit').map((a) => ({
+        id: a.id,
+        label: a.label,
+        companyName: a.companyName ?? '(name not available)',
+        realmMasked: maskRealm(a.realmId ?? ''),
+        status: a.status,
+        orgClientId: a.orgClientId,
+      })),
+      // Explicitly pick fields so a secret can never ride along.
+      clients: providerOf(allClients, 'intuit').map((o) => ({ id: o.id, label: o.label, clientId: o.clientId })),
+    },
     accounts: accounts.map((a, i) => ({
       id: a.id,
       priority: i + 1,
@@ -179,7 +234,7 @@ export async function loadConnectData(ctx: ServerContext, session: Session): Pro
       id: o.id,
       label: o.label,
       clientId: o.clientId,
-      workspaceDomain: o.workspaceDomain,
+      workspaceDomain: o.workspaceDomain ?? '',
     })),
   };
 }
@@ -195,7 +250,11 @@ const ERROR_TEXT: Record<string, string> = {
     'You signed in with a different Google account than the one being reconnected. Try again with the right one.',
   no_refresh_token:
     'Google did not return a refresh token. Remove this app from your Google account permissions, then connect again.',
-  denied: 'Access was declined in Google, so nothing was connected.',
+  denied: 'Access was declined, so nothing was connected.',
+  wrong_company:
+    'You connected a different QuickBooks company than the one being reconnected. Try again and choose the same company.',
+  no_realm: 'QuickBooks did not say which company was connected. Please try again.',
+  company_info: 'Connected to QuickBooks but could not read the company details, so nothing was saved. Please try again.',
 };
 const UNKNOWN_ERROR = 'Something went wrong while connecting. Please try again.';
 

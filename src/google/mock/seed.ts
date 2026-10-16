@@ -19,7 +19,7 @@ const SEEDS = [
 /** Creates the two fake org clients and connected accounts. Safe to call repeatedly. */
 export async function seedMockAccounts(store: Store): Promise<void> {
   for (const s of SEEDS) {
-    const existing = (await store.orgClients.list()).find((c) => c.label === s.label);
+    const existing = (await store.orgClients.list()).find((c) => c.provider !== 'intuit' && c.label === s.label);
     const orgClientId = await store.orgClients.upsert({
       ...(existing ? { id: existing.id } : {}),
       label: s.label,

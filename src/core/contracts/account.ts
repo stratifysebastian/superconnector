@@ -1,6 +1,6 @@
-export type Provider = 'google' | 'microsoft';
+export type Provider = 'google' | 'microsoft' | 'intuit';
 export type AccountStatus = 'active' | 'needs_reconnect';
-export type Product = 'calendar' | 'gmail' | 'drive' | 'docs' | 'sheets' | 'slides';
+export type Product = 'calendar' | 'gmail' | 'drive' | 'docs' | 'sheets' | 'slides' | 'quickbooks';
 
 export interface Account {
   id: string; // uuid
@@ -12,6 +12,10 @@ export interface Account {
   connectedAt: string; // ISO
   status: AccountStatus;
   grantedScopes: string[];
+  /** QuickBooks company id. Required for provider 'intuit', absent otherwise. */
+  realmId?: string;
+  /** QuickBooks company name from CompanyInfo, for display on /connect only. */
+  companyName?: string;
 }
 
 /** Tool argument: label, email, list of either, or 'all'. Omitted = 'all' for reads. */

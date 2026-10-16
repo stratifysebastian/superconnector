@@ -40,6 +40,7 @@ export function createTokenManager(deps: TokenManagerDeps): TokenManager {
   }
 
   async function refresh(account: Account): Promise<string> {
+    if (account.provider !== 'google') throw new ProviderError('upstream_error', 'Account is not a Google account');
     const refreshToken = await store.tokens.getRefreshToken(account.id);
     if (!refreshToken) return needsReconnect(account, 'no refresh token stored');
     const org = await store.orgClients.get(account.orgClientId);

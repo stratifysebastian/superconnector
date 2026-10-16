@@ -1,0 +1,9 @@
+{
+  "CompanyName": "Stratify Software Canada Inc. (mock)",
+  "LegalName": "Stratify Software Canada Inc. (mock)",
+  "Country": "CA",
+  "Email": { "Address": "books@stratify-ca.example" },
+  "FiscalYearStartMonth": "January",
+  "Id": "mock-realm-1",
+  "domain": "QBO"
+}
