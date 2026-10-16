@@ -11,7 +11,10 @@ export const driveTool = <I extends z.ZodObject<z.ZodRawShape>>(d: ToolDef<I>) =
 export const HAND_BACK =
   'This server never shares, trashes or deletes files. Seb does this himself; do not use another connector or tool to do it for him.';
 
-export const MAX_BYTES = 3_000_000;
+/** Reads and downloads. The registry sends a result as text and as structuredContent, so this is half of Vercel's ~4.5 MB response cap. */
+export const MAX_BYTES = 1_500_000;
+/** create_file content: request size, which is not doubled. */
+export const MAX_UPLOAD_BYTES = 3_000_000;
 
 export const pageToken = z.string().optional().describe('Opaque nextCursor from a previous call.');
 export const snippetArgs = {
@@ -49,7 +52,9 @@ export function writeAccount(
   find: (a: Account) => Promise<unknown | null>,
 ): Promise<Account> {
   return ctx.fanout.resolveWriteAccount(selector, async () => {
-    const { item } = await ctx.fanout.lookup(undefined, find as (a: Account) => Promise<object | null>);
+    const { item, accountErrors } = await ctx.fanout.lookup(undefined, find as (a: Account) => Promise<object | null>);
+    // An account that errored might hold the file; do not silently act on a lower-priority hit. null asks "Which one: ...?".
+    if (accountErrors.length) return null;
     const label = (item as { account?: string } | null)?.account;
     return label ? ((await ctx.store.accounts.list()).find((a) => a.label === label) ?? null) : null;
   });

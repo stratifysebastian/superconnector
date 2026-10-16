@@ -4,6 +4,7 @@ import type { DriveAdapter, GFile } from '@/core/contracts/drive';
 import type { ToolContext } from '@/core/contracts/tool';
 import { createFanOutEngine } from '@/core/fanout';
 import { GuardrailError, ProviderError } from '@/core/errors';
+import { z } from 'zod';
 import { getToolDefs, buildServer, type AnyToolDef } from '@/mcp/registry';
 import { translateQuery } from '@/mcp/tools/drive/query';
 import { assertNoExcludedTools } from '../contract/excluded';
@@ -209,13 +210,15 @@ describe('get_file_metadata', () => {
   });
 });
 
-function minimalPdf(text: string): Uint8Array {
+function minimalPdf(text: string, pages = 1): Uint8Array {
+  const stream = `BT /F1 18 Tf 20 50 Td (${text}) Tj ET`;
   const objs = [
     '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
-    `<< /Length ${`BT /F1 18 Tf 20 50 Td (${text}) Tj ET`.length} >>\nstream\nBT /F1 18 Tf 20 50 Td (${text}) Tj ET\nendstream`,
+    `<< /Type /Pages /Kids [${Array.from({ length: pages }, (_, i) => `${i + 6} 0 R`).join(' ')}] /Count ${pages} >>`,
+    '<< >>',
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    ...Array.from({ length: pages }, () => '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>'),
   ];
   let out = '%PDF-1.4\n';
   const offs: number[] = [];
@@ -234,7 +237,7 @@ describe('read_file_content', () => {
     const dl = (fakes.stratify!.download as ReturnType<typeof vi.fn>).mock.calls;
     expect(dl[0]![0].exportMimeType).toBe('text/plain');
     expect(dl[1]![0].exportMimeType).toBe('text/csv');
-    expect(dl[0]![0].maxBytes).toBe(3_000_000);
+    expect(dl[0]![0].maxBytes).toBe(1_500_000);
   });
   it('extracts PDF text', async () => {
     fakes.stratify!.files = [file('pdf1', { mimeType: 'application/pdf' })];
@@ -265,14 +268,64 @@ describe('download_file_content', () => {
   it('returns base64 with id, mimeType and title', async () => {
     fakes.stratify!.files = [file('f1')];
     expect(await call('download_file_content', { fileId: 'f1' })).toMatchObject({ content: Buffer.from('hello').toString('base64'), id: 'f1', mimeType: 'text/plain', title: 'Secret name f1' });
-    expect((fakes.stratify!.download as ReturnType<typeof vi.fn>).mock.calls[0]![0].maxBytes).toBe(3_000_000);
+    expect((fakes.stratify!.download as ReturnType<typeof vi.fn>).mock.calls[0]![0].maxBytes).toBe(1_500_000);
   });
   it('keeps the over-cap error clear', async () => {
     fakes.stratify!.files = [file('big')];
-    (fakes.stratify!.download as ReturnType<typeof vi.fn>).mockRejectedValue(new ProviderError('upstream_error', 'File content is larger than 3 MB, which this server can return'));
+    (fakes.stratify!.download as ReturnType<typeof vi.fn>).mockRejectedValue(new ProviderError('upstream_error', 'File content is larger than 1.5 MB, which this server can return'));
     const r = await call('download_file_content', { fileId: 'big' });
     expect(r.message).toMatch(/could not be read/);
-    expect(r.accountErrors[0].message).toMatch(/larger than 3 MB/);
+    expect(r.accountErrors[0].message).toMatch(/larger than 1.5 MB/);
+  });
+});
+
+describe('F1 to F7 regressions', () => {
+  it.each(['create_file', 'copy_file', 'update_file'])('%s refuses parentId "" at schema level', (name) => {
+    expect(() => tool(name).input.parse({ title: 't', fileId: 'f1', parentId: '', account: 'stratify' })).toThrow();
+  });
+  it('copy of a file whose original sits in a shared folder is refused, with or without the empty-string trick', async () => {
+    fakes.stratify!.files = [file('f1', { parentId: 'SHARED' })];
+    fakes.stratify!.shared.add('SHARED');
+    await expect(call('copy_file', { fileId: 'f1' })).rejects.toThrow(/shared with other people/);
+    expect(writeCalls()).toHaveLength(0);
+  });
+  it('copy sends the checked folder (the original\'s parent) explicitly', async () => {
+    fakes.stratify!.files = [file('f1', { parentId: 'mine' })];
+    await call('copy_file', { fileId: 'f1' });
+    expect(fakes.stratify!.copyFile).toHaveBeenCalledWith({ fileId: 'f1', parentId: 'mine' });
+  });
+  it('write account inference refuses to fall to a lower-priority hit when an account errored', async () => {
+    fakes.prime!.files = [file('f1', { parentId: 'ok' })];
+    (fakes.stratify!.getFile as ReturnType<typeof vi.fn>).mockRejectedValue(new ProviderError('rate_limited', 'slow down'));
+    await expect(call('copy_file', { fileId: 'f1' })).rejects.toThrow(/Which one: stratify or prime\?/);
+    await expect(call('update_file', { fileId: 'f1', title: 'x' })).rejects.toThrow(/Which one/);
+    expect(writeCalls()).toHaveLength(0);
+  });
+  it('refuses a 101-page PDF and a PDF over 1 MB', async () => {
+    fakes.stratify!.files = [file('pdf1', { mimeType: 'application/pdf' })];
+    fakes.stratify!.bytes = minimalPdf('x', 101);
+    expect((await call('read_file_content', { fileId: 'pdf1' })).fileContent).toMatch(/101 pages/);
+    fakes.stratify!.bytes = new Uint8Array(1_000_001);
+    expect((await call('read_file_content', { fileId: 'pdf1' })).fileContent).toMatch(/larger than 1 MB.*download_file_content/);
+  });
+  it('registry drops an invalid mcpImage but keeps the text result', async () => {
+    const run = async (mcpImage: unknown) => {
+      const def = { name: 'img', description: 'd', input: z.object({}), kind: 'read', handler: async () => ({ ok: 1, mcpImage }) } as unknown as AnyToolDef;
+      const server = buildServer(ctx, { defs: [def], baseUrl: 'http://x' }) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      return (await server._registeredTools.img.handler({}, {})).content.map((c: { type: string }) => c.type);
+    };
+    expect(await run({ data: 'AAAA', mimeType: 'image/png' })).toEqual(['text', 'image']);
+    expect(await run({ data: 'AAAA', mimeType: 'image/svg+xml' })).toEqual(['text']);
+    expect(await run({ data: 'not base64!', mimeType: 'image/png' })).toEqual(['text']);
+    expect(await run({ data: 'A'.repeat(2_000_004), mimeType: 'image/jpeg' })).toEqual(['text']);
+  });
+  it('refuses a deeply nested not chain cleanly and an over-long query', () => {
+    expect(() => translateQuery(`${'not '.repeat(200000)}title = 'a'`)).toThrow(GuardrailError);
+    expect(() => tool('search_files').input.parse({ query: 'x'.repeat(2001) })).toThrow();
+  });
+  it('create_file with a non-native mimeType and no content is refused before any adapter call', async () => {
+    await expect(call('create_file', { title: 't', account: 'stratify', mimeType: 'text/plain' })).rejects.toThrow(/Google type/);
+    expect(writeCalls()).toHaveLength(0);
   });
 });
 
@@ -332,7 +385,7 @@ describe('copy_file and update_file', () => {
     fakes.prime!.files = [file('f1', { parentId: 'ok' })];
     const r = await call('copy_file', { fileId: 'f1', title: 'Copy' });
     expect(r).toMatchObject({ id: 'copy-1', account: 'prime' });
-    expect(fakes.prime!.copyFile).toHaveBeenCalledWith({ fileId: 'f1', title: 'Copy' });
+    expect(fakes.prime!.copyFile).toHaveBeenCalledWith({ fileId: 'f1', title: 'Copy', parentId: 'ok' });
     expect(audit).toEqual([{ tool: 'copy_file', account: 'prime', targetId: 'copy-1', outcome: 'ok' }]);
   });
   it('update refuses a move into a shared folder but allows a rename of a file already in one', async () => {

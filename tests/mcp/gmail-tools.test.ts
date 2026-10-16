@@ -158,6 +158,12 @@ describe('writes', () => {
     expect(fakes.prime!.updateDraft).toHaveBeenCalledWith({ draftId: 'r-5', subject: 'private' });
   });
 
+  it('does not silently use a lower-priority account when a higher one errored', async () => {
+    (fakes.stratify!.getMessage as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new ProviderError('rate_limited', 'slow'));
+    await expect(call('label_message', { messageId: 'pm', labelIds: ['STARRED'] })).rejects.toThrow(/Which one: stratify or prime\?/);
+    expect(fakes.prime!.modifyMessage).not.toHaveBeenCalled();
+  });
+
   it('label tools find the holder account and call modify', async () => {
     await call('label_message', { messageId: 'pm', labelIds: ['STARRED'] });
     expect(fakes.prime!.modifyMessage).toHaveBeenCalledWith({ messageId: 'pm', add: ['STARRED'] });

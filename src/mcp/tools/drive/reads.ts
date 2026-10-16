@@ -1,4 +1,4 @@
-import { extractText, getDocumentProxy } from 'unpdf';
+import { getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
 import type { GFile, RecentOrder } from '@/core/contracts/drive';
 import { resolveAccounts } from '@/core/accounts';
@@ -12,7 +12,7 @@ const ms = (s: string | undefined) => {
 const SNIPPET_NOTE = 'excludeContentSnippets and snippetVerbosity are accepted and ignored here: this tool returns no content snippets (use get_file_metadata).';
 
 const searchInput = z.object({
-  query: z.string().optional().describe("Structured query: `term operator 'value'` joined with and/or/not and parentheses. Terms: title (contains, =, !=), fullText (contains), mimeType (contains, =, !=), modifiedTime/viewedByMeTime/createdTime (<=, <, =, !=, >, >= with RFC 3339), parentId (=, !=; 'root' is My Drive), owner (=, !=; 'me'), sharedWithMe and starred (= or != true/false). Escape quotes as \\'."),
+  query: z.string().max(2000).optional().describe("Structured query: `term operator 'value'` joined with and/or/not and parentheses. Terms: title (contains, =, !=), fullText (contains), mimeType (contains, =, !=), modifiedTime/viewedByMeTime/createdTime (<=, <, =, !=, >, >= with RFC 3339), parentId (=, !=; 'root' is My Drive), owner (=, !=; 'me'), sharedWithMe and starred (= or != true/false). Escape quotes as \\'."),
   pageSize: z.number().int().min(1).max(100).optional().describe('Default 20, max 100.'),
   pageToken,
   ...snippetArgs,
@@ -115,13 +115,18 @@ export const getPermissionsTool = driveTool({
 });
 
 const NATIVE = 'application/vnd.google-apps.';
+const PDF_MAX_BYTES = 1_000_000;
+const PDF_MAX_PAGES = 100;
+const PDF_MAX_CHARS = 200_000;
+// isEvalSupported is a real pdf.js option missing from unpdf's types; a variable skips the excess-property check.
+const PDF_OPTIONS = { verbosity: 0, isEvalSupported: false, disableFontFace: true };
 const TEXTUAL = (m: string) => m.startsWith('text/') || m === 'application/json';
 
 export const readFileTool = driveTool({
   name: 'read_file_content',
   description:
     'Reads a file as text, trying accounts in priority order unless `account` is given. Google Docs/Slides are exported as text, Sheets as CSV, PDFs have their text extracted, PNG and JPEG are returned as image content. ' +
-    'Office and other types return a message pointing to download_file_content. Files over 3 MB are refused. includeComments is accepted and ignored (comments are not returned).',
+    'Office and other types return a message pointing to download_file_content. Files over 1.5 MB are refused (PDFs over 1 MB or 100 pages are not extracted). includeComments is accepted and ignored (comments are not returned).',
   input: z.object({ fileId: z.string(), includeComments: z.boolean().optional(), account: accountField }),
   kind: 'lookup',
   handler: (input, ctx) =>
@@ -144,9 +149,17 @@ export const readFileTool = driveTool({
       if (!got) return null;
       if (isImage) return out(`Image file (${mime}); shown as image content.`, { mcpImage: { data: Buffer.from(got.bytes).toString('base64'), mimeType: mime === 'image/png' ? 'image/png' : 'image/jpeg' } });
       if (mime === 'application/pdf') {
+        if (got.bytes.length > PDF_MAX_BYTES) return out('This PDF is larger than 1 MB, which is too large to extract text from here. Use download_file_content to fetch its bytes.');
         try {
-          const pdf = await getDocumentProxy(new Uint8Array(got.bytes));
-          return out((await extractText(pdf, { mergePages: true })).text);
+          // shortcut: pdf.js runs in-process, so a decompression bomb under 1 MB can still use a lot of memory; upgrade is a worker with a hard timeout.
+          const pdf = await getDocumentProxy(new Uint8Array(got.bytes), PDF_OPTIONS);
+          if (pdf.numPages > PDF_MAX_PAGES) return out(`This PDF has ${pdf.numPages} pages, more than the ${PDF_MAX_PAGES} this server reads. Use download_file_content to fetch its bytes.`);
+          let text = '';
+          for (let i = 1; i <= pdf.numPages && text.length < PDF_MAX_CHARS; i++) {
+            const page = await pdf.getPage(i);
+            text += (await page.getTextContent()).items.map((it) => ('str' in it ? it.str + (it.hasEOL ? '\n' : '') : '')).join('') + '\n';
+          }
+          return out(text.slice(0, PDF_MAX_CHARS));
         } catch {
           return out('The PDF text could not be extracted. Use download_file_content to fetch its bytes.');
         }
@@ -158,7 +171,7 @@ export const readFileTool = driveTool({
 export const downloadFileTool = driveTool({
   name: 'download_file_content',
   description:
-    'Downloads a file as base64 ({content, id, mimeType, title}), trying accounts in priority order unless `account` is given. Google-native files are exported (exportMimeType, default a text type). Files over 3 MB are refused.',
+    'Downloads a file as base64 ({content, id, mimeType, title}), trying accounts in priority order unless `account` is given. Google-native files are exported (exportMimeType, default a text type). Files over 1.5 MB are refused.',
   input: z.object({ fileId: z.string(), exportMimeType: z.string().optional(), revisionId: z.string().optional(), account: accountField }),
   kind: 'lookup',
   handler: (input, ctx) =>

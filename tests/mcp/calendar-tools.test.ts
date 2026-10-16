@@ -340,6 +340,11 @@ describe('update_event', () => {
     expect(fakes.stratify!.patchEvent).not.toHaveBeenCalled();
     expect(audit[0]).toMatchObject({ account: 'prime', outcome: 'ok' });
   });
+  it('asks which account when an account errored while looking for the event', async () => {
+    (fakes.stratify!.getEvent as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new ProviderError('rate_limited', 'slow'));
+    await expect(call('update_event', { eventId: 'solo', location: 'Cafe' })).rejects.toThrow(/Which one: stratify or prime\?/);
+    expect(fakes.prime!.patchEvent).not.toHaveBeenCalled();
+  });
   it('asks which account when the event is nowhere', async () => {
     await expect(call('update_event', { eventId: 'nope', summary: 'x' })).rejects.toThrow(/Which one/);
   });

@@ -132,20 +132,37 @@ describe('download', () => {
 });
 
 describe('isSharedFolder', () => {
-  const shared = (perms: unknown[]) => setup(() => json({ permissions: perms })).adapter.isSharedFolder({ folderId: 'd1' });
+  const FOLDER = 'application/vnd.google-apps.folder';
+  const owner = { role: 'owner', type: 'user', emailAddress: 'me@x.com' };
+  // meta is the folder metadata; permissions is the list; root is My Drive's real id.
+  const shared = (perms: unknown, meta: object = { id: 'd1', mimeType: FOLDER }, rootId = 'ROOT') =>
+    setup((c) => {
+      if (c.url.pathname.endsWith('/permissions')) return json(perms as object);
+      return json(c.url.pathname.endsWith('/files/root') ? { id: rootId } : meta);
+    }).adapter.isSharedFolder({ folderId: 'd1' });
   it('treats root as private without a request', async () => {
     const { adapter, calls } = setup();
     expect(await adapter.isSharedFolder({ folderId: 'root' })).toBe(false);
     expect(calls).toHaveLength(0);
   });
-  it('is private with only the owner', async () => expect(await shared([{ role: 'owner', type: 'user', emailAddress: 'me@x.com' }])).toBe(false));
+  it('is private with only the owner', async () => expect(await shared({ permissions: [owner] })).toBe(false));
   it('is shared with another user, a domain, anyone, or an unreadable folder', async () => {
-    const owner = { role: 'owner', type: 'user', emailAddress: 'me@x.com' };
-    expect(await shared([owner, { role: 'reader', type: 'user', emailAddress: 'b@x.com' }])).toBe(true);
-    expect(await shared([owner, { role: 'reader', type: 'domain' }])).toBe(true);
-    expect(await shared([owner, { role: 'reader', type: 'anyone' }])).toBe(true);
-    expect(await shared([{ role: 'writer', type: 'user', emailAddress: 'me@x.com' }])).toBe(true);
+    expect(await shared({ permissions: [owner, { role: 'reader', type: 'user', emailAddress: 'b@x.com' }] })).toBe(true);
+    expect(await shared({ permissions: [owner, { role: 'reader', type: 'domain' }] })).toBe(true);
+    expect(await shared({ permissions: [owner, { role: 'reader', type: 'anyone' }] })).toBe(true);
+    expect(await shared({ permissions: [{ role: 'writer', type: 'user', emailAddress: 'me@x.com' }] })).toBe(true);
     expect(await setup(() => json({}, 404)).adapter.isSharedFolder({ folderId: 'd1' })).toBe(true);
+  });
+  it('fails closed on an empty or missing permission list', async () => {
+    expect(await shared({ permissions: [] })).toBe(true);
+    expect(await shared({})).toBe(true);
+  });
+  it('counts a shared drive and a non-folder (shortcut) as shared', async () => {
+    expect(await shared({ permissions: [owner] }, { id: 'd1', mimeType: FOLDER, driveId: 'SD' })).toBe(true);
+    expect(await shared({ permissions: [owner] }, { id: 'd1', mimeType: 'application/vnd.google-apps.shortcut' })).toBe(true);
+  });
+  it('treats My Drive\'s real root id as private even when its permissions look empty', async () => {
+    expect(await shared({ permissions: [] }, { id: 'REAL', mimeType: FOLDER }, 'REAL')).toBe(false);
   });
 });
 
@@ -154,7 +171,8 @@ describe('writes', () => {
     const { adapter, calls } = setup(() => json(raw()));
     await adapter.createFile({ title: 'n', parentId: 'p', content: { bytes: new TextEncoder().encode('a,b'), contentType: 'text/csv' }, convert: true });
     expect(calls[0]!.url.href.startsWith(`${UPLOAD}/files?`)).toBe(true);
-    expect(q(calls[0]!.url)).toMatchObject({ uploadType: 'multipart', supportsAllDrives: 'true' });
+    expect(q(calls[0]!.url)).toMatchObject({ uploadType: 'multipart' });
+    expect(q(calls[0]!.url).supportsAllDrives).toBeUndefined();
     expect(calls[0]!.body).toContain('{"name":"n","mimeType":"application/vnd.google-apps.spreadsheet","parents":["p"]}');
     expect(calls[0]!.body).toContain('\r\n\r\na,b\r\n');
     await adapter.createFile({ title: 'n', content: { bytes: new Uint8Array(1), contentType: 'text/csv' }, convert: false });
@@ -166,6 +184,21 @@ describe('writes', () => {
     await adapter.createFile({ title: 'F', mimeType: 'application/vnd.google-apps.folder', parentId: 'p', convert: false });
     expect(calls[0]!.url.href.startsWith(`${API}/files?`)).toBe(true);
     expect(JSON.parse(calls[0]!.body!)).toEqual({ name: 'F', mimeType: 'application/vnd.google-apps.folder', parents: ['p'] });
+  });
+
+  it('sends no supportsAllDrives on any write', async () => {
+    const { adapter, calls } = setup((c) => (c.method === 'GET' ? json({ parents: ['o'] }) : json(raw())));
+    await adapter.createFile({ title: 'n', content: { bytes: new Uint8Array(1), contentType: 'text/plain' }, convert: false });
+    await adapter.createFile({ title: 'F', mimeType: 'application/vnd.google-apps.folder', convert: false });
+    await adapter.copyFile({ fileId: 'f1', parentId: 'p' });
+    await adapter.updateFile({ fileId: 'f1', title: 'T', parentId: 'new' });
+    expect(calls.filter((c) => c.method !== 'GET').map((c) => q(c.url).supportsAllDrives)).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  it('does not map prototype keys to a Google type', async () => {
+    const { adapter, calls } = setup(() => json(raw()));
+    await expect(adapter.createFile({ title: 'n', content: { bytes: new Uint8Array(1), contentType: 'constructor/x' }, convert: true })).resolves.toBeDefined();
+    expect(calls[0]!.body).toContain('{"name":"n"}');
   });
 
   it('copies with name and parent only', async () => {

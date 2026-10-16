@@ -304,7 +304,7 @@ export function createMockDriveAdapter(ctx: AdapterContext): DriveAdapter {
       run(() => {
         if (folderId === 'root') return false;
         const f = find(folderId);
-        if (!f) return false;
+        if (!f) return true; // unknown folder: fail closed, like the live adapter
         return (s().perms[folderId] ?? []).some((x) => x.role !== 'owner');
       }),
 

@@ -89,7 +89,10 @@ export function translateQuery(src: string | undefined): TranslatedQuery {
   function not(): string {
     if (isWord(peek(), 'not')) {
       p++;
-      return `(not ${not()})`;
+      if (++depth > 40) bad('too deeply nested');
+      const inner = not();
+      depth--;
+      return `(not ${inner})`;
     }
     return primary();
   }

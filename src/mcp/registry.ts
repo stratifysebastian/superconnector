@@ -43,10 +43,12 @@ export function buildServer(ctx: ToolContext, opts: BuildServerOptions): McpServ
           done('ok');
           // A handler may return `mcpImage` ({data: base64, mimeType}); it becomes an image block, not JSON text.
           const { mcpImage, ...json } = result as { mcpImage?: { data: string; mimeType: string } } & Record<string, unknown>;
+          // Only png/jpeg, valid base64, at most 2,000,000 characters; anything else is dropped and the text result stays.
+          const okImage = mcpImage && /^image\/(png|jpeg)$/.test(mcpImage.mimeType) && mcpImage.data.length <= 2_000_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(mcpImage.data);
           return {
             content: [
               { type: 'text', text: JSON.stringify(json) },
-              ...(mcpImage ? [{ type: 'image' as const, data: mcpImage.data, mimeType: mcpImage.mimeType }] : []),
+              ...(okImage ? [{ type: 'image' as const, data: mcpImage.data, mimeType: mcpImage.mimeType }] : []),
             ],
             structuredContent: json,
           };

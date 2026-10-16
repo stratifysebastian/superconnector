@@ -56,10 +56,10 @@ export const DRIVE_RULES: EndpointRule[] = [
   rule('files.export', 'GET', new RegExp(`${F}/${ID}/export$`), ['mimeType'], { transport: 'download' }),
   rule('revisions.media', 'GET', new RegExp(`${F}/${ID}/revisions/${ID}$`), ['supportsAllDrives'], media),
   rule('permissions.list', 'GET', PERMISSIONS_LIST_PATH, ['fields', 'pageSize', 'pageToken', 'supportsAllDrives']),
-  rule('files.upload', 'POST', /^\/upload\/drive\/v3\/files$/, ['fields', 'supportsAllDrives'], {
+  rule('files.upload', 'POST', /^\/upload\/drive\/v3\/files$/, ['fields'], {
     requiredQuery: { uploadType: 'multipart' }, checkBody: checkCreate(false), transport: 'upload',
   }),
-  rule('files.create', 'POST', new RegExp(`${F}$`), ['fields', 'supportsAllDrives'], { checkBody: checkCreate(true) }),
-  rule('files.copy', 'POST', new RegExp(`${F}/${ID}/copy$`), ['fields', 'supportsAllDrives'], { checkBody: checkCopy }),
-  rule('files.update', 'PATCH', new RegExp(`${F}/${ID}$`), ['addParents', 'removeParents', 'fields', 'supportsAllDrives'], { checkBody: checkPatch }),
+  rule('files.create', 'POST', new RegExp(`${F}$`), ['fields'], { checkBody: checkCreate(true) }),
+  rule('files.copy', 'POST', new RegExp(`${F}/${ID}/copy$`), ['fields'], { checkBody: checkCopy }),
+  rule('files.update', 'PATCH', new RegExp(`${F}/${ID}$`), ['addParents', 'removeParents', 'fields'], { checkBody: checkPatch }),
 ];

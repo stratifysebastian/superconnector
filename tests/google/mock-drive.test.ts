@@ -129,6 +129,7 @@ describe('mock drive reads', () => {
     expect(await a.isSharedFolder({ folderId: 'root' })).toBe(false);
     expect(await a.isSharedFolder({ folderId: 's-fld-shared' })).toBe(true);
     expect(await a.isSharedFolder({ folderId: 's-fld-private' })).toBe(false);
+    expect(await a.isSharedFolder({ folderId: 'no-such-folder' })).toBe(true);
     expect((await a.getPermissions({ fileId: 's-fld-shared' }))?.some((x) => x.emailAddress === 'someone@outside.example')).toBe(true);
   });
 });

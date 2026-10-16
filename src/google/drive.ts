@@ -18,6 +18,7 @@ interface RawFile {
   sharedWithMeTime?: string;
   owners?: { emailAddress?: string }[];
   parents?: string[];
+  driveId?: string;
   capabilities?: { canAddChildren?: boolean };
   webViewLink?: string;
 }
@@ -36,6 +37,7 @@ const ORDER: Record<RecentOrder, string> = {
   lastModifiedByMe: 'modifiedByMeTime desc',
 };
 
+const FOLDER = `${NATIVE}folder`;
 const CONVERT: Record<string, string> = {
   'text/plain': `${NATIVE}document`,
   'text/html': `${NATIVE}document`,
@@ -123,7 +125,7 @@ export function createLiveDriveAdapter(ctx: AdapterContext): DriveAdapter {
       const meta = await getRaw(p.fileId, 'id,name,mimeType,size,webViewLink');
       if (!meta) return null;
       if (meta.size !== undefined && Number(meta.size) > p.maxBytes) {
-        throw new ProviderError('upstream_error', `File content is larger than ${Math.floor(p.maxBytes / 1_000_000)} MB, which this server can return`);
+        throw new ProviderError('upstream_error', `File content is larger than ${p.maxBytes / 1_000_000} MB, which this server can return`);
       }
       const sourceMimeType = meta.mimeType ?? 'application/octet-stream';
       let mimeType = sourceMimeType;
@@ -145,19 +147,23 @@ export function createLiveDriveAdapter(ctx: AdapterContext): DriveAdapter {
 
     async isSharedFolder(p) {
       if (p.folderId === 'root') return false;
+      // Fail closed: unreadable, a shared drive, or not a folder (e.g. a shortcut) counts as shared.
+      const m = await getRaw(p.folderId, 'id,mimeType,driveId');
+      if (!m || m.driveId || m.mimeType !== FOLDER) return true;
+      // My Drive's real root id is private, however Drive reports its permissions.
+      if ((await getRaw('root', 'id'))?.id === m.id) return false;
       const perms = await readPermissions(http, p.folderId);
-      // Fail closed: a folder we cannot read the permissions of counts as shared. Any grant beyond the single owner
-      // (another user, group, domain or anyone-with-link) makes it shared.
-      return perms === null || perms.some((x) => x.role !== 'owner' || x.type !== 'user');
+      // Any grant beyond the single owner (another user, group, domain or anyone-with-link) makes it shared; an empty list is unknown.
+      return perms === null || perms.length === 0 || perms.some((x) => x.role !== 'owner' || x.type !== 'user');
     },
 
     async createFile(p) {
-      const query = { fields: FILE_FIELDS, supportsAllDrives: true };
+      const query = { fields: FILE_FIELDS };
       const parents = p.parentId ? [p.parentId] : undefined;
       let raw: RawFile;
       if (p.content || !p.mimeType) {
         const content = p.content ?? { bytes: new Uint8Array(0), contentType: 'text/plain' };
-        const target = p.convert ? CONVERT[content.contentType] : undefined;
+        const target = p.convert && Object.hasOwn(CONVERT, content.contentType) ? CONVERT[content.contentType] : undefined;
         raw = await http.upload<RawFile>({
           url: driveUploadUrl('/files'),
           query: { ...query, uploadType: 'multipart' },
@@ -179,7 +185,7 @@ export function createLiveDriveAdapter(ctx: AdapterContext): DriveAdapter {
     async copyFile(p) {
       const body = { ...(p.title !== undefined ? { name: p.title } : {}), ...(p.parentId ? { parents: [p.parentId] } : {}) };
       return mapFile(
-        await http.json<RawFile>({ method: 'POST', url: driveUrl(`${filePath(p.fileId)}/copy`), query: { fields: FILE_FIELDS, supportsAllDrives: true }, body }),
+        await http.json<RawFile>({ method: 'POST', url: driveUrl(`${filePath(p.fileId)}/copy`), query: { fields: FILE_FIELDS }, body }),
       );
     },
 
@@ -198,7 +204,7 @@ export function createLiveDriveAdapter(ctx: AdapterContext): DriveAdapter {
         await http.json<RawFile>({
           method: 'PATCH',
           url: driveUrl(filePath(p.fileId)),
-          query: { fields: FILE_FIELDS, supportsAllDrives: true, addParents: add, removeParents: remove },
+          query: { fields: FILE_FIELDS, addParents: add, removeParents: remove },
           body,
         }),
       );
