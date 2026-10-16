@@ -9,7 +9,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
 | 2 Gmail | ✅ live-verified 2026-10-16 (PR #4): search across both accounts, reply draft in the right PR1ME thread, label create/rename/apply/remove, trash and send refused |
-| 3 Drive | 🟦 approved 2026-10-16; D0 done (media transport, contract, unpdf 1.8.1); D1–D3 running |
+| 3 Drive | 🟦 approved 2026-10-16; D0–D3 on the branch (9 tools, 887 tests green); D4 e2e and A5 audit running |
 | 4 Docs | ⬜ |
 | 5 Sheets | ⬜ |
 | 6 Slides | ⬜ |
