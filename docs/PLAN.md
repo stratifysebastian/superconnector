@@ -426,7 +426,7 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 3. Create a text file on Stratify, rename it and move it to another of your folders.
 4. Ask to share it, or to trash it. Both must be refused.
 
-## 4e. `send_self_report` (approved 2026-10-16; built, audit A6 running)
+## 4e. `send_self_report` (built and audited 2026-10-16; awaiting Seb's first live send)
 
 Source: `docs/MIGRATION.md`, Part 1, Option B. This tool is a **deliberate, owner-approved exception** to the spec's "never send". The invariant it keeps: **this server cannot email anyone other than the account's own address.** Docs, Sheets and Slides are paused until it ships.
 
@@ -460,6 +460,17 @@ Source: `docs/MIGRATION.md`, Part 1, Option B. This tool is a **deliberate, owne
 There are also policy tests showing that hand-built raw MIME with a different `To`, or with an added `Bcc`, is denied.
 
 **Testing rule:** mock only. Nothing is ever sent by me; Seb sends the first live one.
+
+**Audit A6 (2026-10-16):** no way found to reach anyone but the account itself.
+- Probed with a 120-message hostile-content fuzz through the real path, checked by an independent strict MIME parser, plus a policy matrix of 2 hosts × 19 paths × 4 transports × 4 methods. Exactly one combination passes.
+- The reserve-then-count cap held under 20 parallel calls.
+- Fixed:
+  - (low) the checker now requires CRLF-only line breaks, so a stray CR can't end its header block early;
+  - (info) the size cap counts bytes.
+- Not fixed:
+  - (low) an admin rename resets that day's count; this needs the admin session (shortcut comment in code);
+  - (low) the cap lives in the tool handler, but no other caller of `sendToSelf` exists;
+  - (low) refused calls past the cap still add audit rows.
 
 **Decisions (Seb, 2026-10-16):**
 - Design approved.

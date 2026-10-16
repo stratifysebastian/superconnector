@@ -52,6 +52,8 @@ describe('policy: the self-send rule', () => {
   denied('a From that differs', withHeaders([`From: other@stratify.example`, `To: ${SELF}`]));
   denied('a missing From', withHeaders([`To: ${SELF}`]));
   denied('a bare-CR line break before a Bcc', { body: { raw: b64(`From: ${SELF}\rTo: ${SELF}\rBcc: x@evil.test\r\rhi`) } });
+  denied('a CR-only blank line that ends headers early (A6 F1)', { body: { raw: b64(`From: ${SELF}\r\nTo: ${SELF}\r\r\nBcc: victim@evil.test\r\n\r\nhi`) } });
+  denied('an LF-CR-LF blank line (A6 F1)', { body: { raw: b64(`From: ${SELF}\r\nTo: ${SELF}\n\r\nBcc: victim@evil.test\r\n\r\nhi`) } });
   denied('a message with no header/body separator', { body: { raw: b64(`From: ${SELF}\r\nTo: ${SELF}`) } });
   denied('threadId in the body', { body: { raw: b64(msg(GOOD)), threadId: 't1' } });
   denied('another body key', { body: { raw: b64(msg(GOOD)), to: 'x@evil.test' } });

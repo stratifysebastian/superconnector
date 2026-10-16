@@ -25,6 +25,8 @@ export function checkSelfRaw(raw: string, selfEmail: string | undefined): string
   if (!isPlainAddress(selfEmail)) return 'the account address is missing or is not a plain address';
   if (!/^[A-Za-z0-9_-]+={0,2}$/.test(raw)) return 'raw must be base64url';
   const text = Buffer.from(raw, 'base64url').toString('latin1');
+  // CRLF only: a stray CR or LF could end the header block for this checker but not for Gmail (A6 F1).
+  if (/\r(?!\n)|(?<!\r)\n/.test(text)) return 'line breaks must be CRLF';
   // Any CR or LF is a line break (a stricter reader than Gmail's, so nothing hides behind a bare CR).
   const lines = text.split(/\r\n|\r|\n/);
   const end = lines.indexOf('');

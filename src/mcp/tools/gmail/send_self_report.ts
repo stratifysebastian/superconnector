@@ -70,10 +70,11 @@ export function createSendSelfReportTool(now: () => Date = () => new Date()) {
       if (body.includes('<')) {
         await reject('plain_text_body', 'body is plain text and must not contain "<". Put HTML in htmlBody and keep body as plain prose.');
       }
-      if (subject.length + body.length + (htmlBody?.length ?? 0) > MAX_CHARS) {
-        await reject('too_large', 'subject, body and htmlBody together are over 1,500,000 characters. Send a shorter report.');
+      if (Buffer.byteLength(subject + body + (htmlBody ?? '')) > MAX_CHARS) {
+        await reject('too_large', 'subject, body and htmlBody together are over 1.5 MB. Send a shorter report.');
       }
 
+      // shortcut: the cap is keyed by account label, so an admin rename at /connect resets that day's count (admin-only, A6 F2); key on account id if that ever matters.
       // Reserve first, then count: concurrent calls each see each other's reservation, so the cap can only err low.
       const at = now();
       await ctx.store.audit.write({ tool: TOOL, account: account.label, outcome: 'ok', detail: 'reserved' });
