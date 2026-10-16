@@ -478,7 +478,7 @@ There are also policy tests showing that hand-built raw MIME with a different `T
 - Seb sends the first live report himself.
 - The edits to the trigger prompts and the Drive config in `docs/MIGRATION.md` Parts 2–5 are drafted as diffs for Seb's OK after the tool is live, then applied in one pass.
 
-## 4f. QuickBooks Online (approved 2026-10-16; Q0 building)
+## 4f. QuickBooks Online (approved 2026-10-16; Q0 ✅ live 2026-10-16; Q1 next)
 
 **Decisions (Seb, 2026-10-16):**
 - **Scope:** the built-in QuickBooks connector's tools that Intuit's public QuickBooks Online Accounting API supports. Payroll (27 tools), lending (6), Money onboarding (2), industry benchmarks, recommendations and health widgets (~7) use Intuit-internal services and stay with the built-in connector, which remains attached.
@@ -522,6 +522,11 @@ There are also policy tests showing that hand-built raw MIME with a different `T
    - Intuit rotates the refresh token on every refresh. The new one is saved with compare-and-set. An `invalid_grant` marks the company `needs_reconnect`.
 4. **`IntuitHttp`:** the same deny-by-default endpoint policy as `GoogleHttp`, on host `quickbooks.api.intuit.com` (plus the sandbox host in mock and dev only). Paths are `/v3/company/{realmId}/…` with the account's own `realmId` forced. Query text (`SELECT … FROM …`) is built only by our code, with escaped values. Logs hold no amounts, names or emails.
 5. **`/connect`:** an Intuit app client form (client ID and secret, write-only) and a Connect QuickBooks button.
+
+**Q0 live (2026-10-16):**
+- Stratify Software Canada Inc. is connected in production as `stratify-ca`, with Production keys and `INTUIT_ENV=production`.
+- The first attempts got a 403 because the keys and `INTUIT_ENV` didn't match. PR #9 now logs `intuit_tid` and Intuit's error code.
+- Seb chose production over the sandbox (2026-10-16). Create, send and delete are therefore tested in mock mode only, and Seb's live checks are the first real writes.
 
 **Q1 — reads and contacts:**
 - `company_info`;
