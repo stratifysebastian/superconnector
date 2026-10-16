@@ -351,6 +351,17 @@ export function runStoreConformance(name: string, makeStore: () => StoreHarness)
         await s.audit.write({ tool: 'create_draft', account: 'prime', targetId: 'd1', outcome: 'ok', detail: 'x'.repeat(500) });
         await s.audit.write({ tool: 'create_event', account: 'prime', outcome: 'rejected' });
       });
+
+      it('countToday counts only ok rows for the tool and account since the cutoff', async () => {
+        const since = new Date(Date.now() - 1000);
+        await s.audit.write({ tool: 'count_t', account: 'a1', outcome: 'ok', detail: 'reserved' });
+        await s.audit.write({ tool: 'count_t', account: 'a1', outcome: 'ok', detail: 'reserved' });
+        await s.audit.write({ tool: 'count_t', account: 'a1', outcome: 'rejected' });
+        await s.audit.write({ tool: 'count_t', account: 'a2', outcome: 'ok' });
+        await s.audit.write({ tool: 'count_other', account: 'a1', outcome: 'ok' });
+        expect(await s.audit.countToday({ tool: 'count_t', account: 'a1', since })).toBe(2);
+        expect(await s.audit.countToday({ tool: 'count_t', account: 'a1', since: new Date(Date.now() + 60_000) })).toBe(0);
+      });
     });
 
     describe('encryption at rest', () => {

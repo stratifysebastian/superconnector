@@ -223,7 +223,7 @@ describe('Drive MCP end to end (mock mode)', () => {
   it('1. lists exactly the enabled tools and none of the excluded ones', async () => {
     const names = (await client.listTools()).tools.map((t) => t.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(names).toHaveLength(38);
+    expect(names).toHaveLength(39);
     expect(() => assertNoExcludedTools(names)).not.toThrow();
     for (const n of ['share_file', 'trash_file', 'delete_file', 'untrash_file', 'empty_trash']) expect(names).not.toContain(n);
   });

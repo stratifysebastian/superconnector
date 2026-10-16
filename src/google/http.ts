@@ -3,6 +3,7 @@ import type { GoogleHttp } from '@/core/contracts/adapter';
 import type { Logger } from '@/core/contracts/tool';
 import { GuardrailError, ProviderError } from '@/core/errors';
 import { ENDPOINT_RULES } from './endpoints';
+import { buildSelfMime, isPlainAddress, SELF_SEND_URL } from './endpoints/gmail-self-send';
 import { checkRequest, type EndpointRule, type Transport } from './endpoints/policy';
 import { mapAuthError } from './errors';
 
@@ -20,6 +21,8 @@ export interface GoogleHttpOptions {
   log?: Logger;
   /** Endpoint allowlist. Defaults to ENDPOINT_RULES; a request matching no rule is rejected. */
   rules?: EndpointRule[];
+  /** The account's own address (from the stored account, never caller input). Required by sendToSelf; the policy checks the message against it. */
+  selfEmail?: string;
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -92,7 +95,7 @@ export function createGoogleHttp(opts: GoogleHttpOptions): GoogleHttp {
 
   async function send<T>(out: Outgoing, onOk: (res: Response) => Promise<T>): Promise<T> {
     const { method, url, query, payload, contentType, accept, transport } = out;
-    const verdict = checkRequest(rules, { method, url, query, body: out.policyBody, transport });
+    const verdict = checkRequest(rules, { method, url, query, body: out.policyBody, transport, selfEmail: opts.selfEmail });
     if (!verdict.ok) return block(verdict.rule, verdict.reason);
 
     const parsed = new URL(url);
@@ -253,6 +256,24 @@ export function createGoogleHttp(opts: GoogleHttpOptions): GoogleHttp {
         { method: 'POST', url, query, policyBody: parsed, payload, contentType: `multipart/related; boundary=${boundary}`, accept: 'application/json', transport: 'upload' },
         readJson,
       );
+    },
+
+    async sendToSelf(req: { subject: string; body: string; htmlBody?: string }): Promise<{ id: string; threadId?: string }> {
+      const { subject, body, htmlBody } = req;
+      const self = opts.selfEmail;
+      if (!isPlainAddress(self)) return block('self-send/no-address', 'the account address is missing or is not a plain address');
+      if (typeof subject !== 'string' || typeof body !== 'string' || (htmlBody !== undefined && typeof htmlBody !== 'string')) {
+        return block('self-send/input', 'subject, body and htmlBody must be strings');
+      }
+      // From and To are both `self`. The recipient is not an input, and the policy re-checks the finished message.
+      const raw = Buffer.from(buildSelfMime(self, { subject, body, ...(htmlBody !== undefined ? { htmlBody } : {}) })).toString('base64url');
+      const { json, parsed } = snapshotJson({ raw });
+      const sent = await send<{ id?: unknown; threadId?: unknown }>(
+        { method: 'POST', url: SELF_SEND_URL, query: {}, policyBody: parsed, payload: json, contentType: 'application/json', accept: 'application/json', transport: 'self-send' },
+        readJson,
+      );
+      if (typeof sent.id !== 'string') throw new ProviderError('upstream_error', 'Google returned an unreadable response');
+      return { id: sent.id, ...(typeof sent.threadId === 'string' ? { threadId: sent.threadId } : {}) };
     },
 
     async download(req: { url: string; query?: Query; maxBytes: number }): Promise<{ bytes: Uint8Array; contentType: string }> {

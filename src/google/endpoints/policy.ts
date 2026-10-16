@@ -13,12 +13,13 @@ export interface EndpointRule {
   allowedQuery: string[];
   requiredQuery?: Record<string, string>;
   /** Returns a violation reason, or null if the body is fine. For uploads this is the metadata part. */
-  checkBody?: (body: unknown) => string | null;
+  checkBody?: (body: unknown, ctx: { selfEmail?: string }) => string | null;
   /** Which GoogleHttp method may use this rule. Default 'json'; media rules must opt in. */
   transport?: Transport;
 }
 
-export type Transport = 'json' | 'upload' | 'download';
+/** 'self-send' is used only by GoogleHttp.sendToSelf; only the self-send rule has this transport. */
+export type Transport = 'json' | 'upload' | 'download' | 'self-send';
 
 /** Already-snapshotted request. `query` values are strings; `body` is plain parsed JSON (or undefined). */
 export interface PolicyRequest {
@@ -27,6 +28,8 @@ export interface PolicyRequest {
   query?: Record<string, string>;
   body?: unknown;
   transport?: Transport;
+  /** The account's own address, from GoogleHttp (never caller input). Only the self-send rule reads it. */
+  selfEmail?: string;
 }
 
 export type PolicyResult = { ok: true } | { ok: false; reason: string; rule: string };
@@ -93,7 +96,7 @@ export function checkRequest(rules: readonly EndpointRule[], req: PolicyRequest)
 
   const q = queryBan(query);
   if (q) return deny(q.rule, q.reason);
-  const p = pathBan(method, pathname, query);
+  const p = pathBan(method, pathname, query, req.transport === 'self-send');
   if (p) return deny(p.rule, p.reason);
   if (req.body !== undefined) {
     if (method === 'GET') return deny('body/get', 'GET requests must not have a body');
@@ -120,7 +123,7 @@ export function checkRequest(rules: readonly EndpointRule[], req: PolicyRequest)
     if (query[k] !== v) return deny(rule.id, `query "${k}" must be "${v}"`);
   }
   if (rule.checkBody) {
-    const why = rule.checkBody(req.body);
+    const why = rule.checkBody(req.body, { selfEmail: req.selfEmail });
     if (why) return deny(rule.id, why);
   }
   return { ok: true };

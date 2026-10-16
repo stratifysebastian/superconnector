@@ -49,6 +49,11 @@ export function resetMockGmail(): void {
   states.clear();
 }
 
+/** Test hook: the reports "sent" by this mock account (kept in memory; nothing is fetched or sent). */
+export function mockSentMessages(label: string): Msg[] {
+  return stateFor(label).messages.filter((m) => m.labelIds.includes('SENT') && m.rfcMessageId?.startsWith('<mock-self-report-'));
+}
+
 function stateFor(label: string): State {
   let s = states.get(label);
   if (!s) {
@@ -273,6 +278,26 @@ export function createMockGmailAdapter(ctx: AdapterContext): GmailAdapter {
         if (!d) throw new ProviderError('not_found', 'Draft not found');
         applyDraft(d, content);
         return toDraft(d, 'FULL', email, email);
+      }),
+
+    sendSelfReport: ({ subject, body, htmlBody }) =>
+      run(() => {
+        const st = s();
+        const id = hex(st, mockPrefix);
+        st.messages.push({
+          id,
+          threadId: id,
+          internalDate: String(Date.now()),
+          sender: email,
+          toRecipients: [email],
+          labelIds: ['SENT'],
+          subject,
+          snippet: body.slice(0, 80),
+          plaintextBody: body,
+          ...(htmlBody !== undefined ? { htmlBody } : {}),
+          rfcMessageId: `<mock-self-report-${id}@mock.invalid>`,
+        });
+        return { id, threadId: id, to: email };
       }),
 
     listLabels: () =>

@@ -84,7 +84,7 @@ export async function createServerContext(opts: CreateServerContextOptions = {})
   const adapterContext = (account: Account, signal: AbortSignal = new AbortController().signal): AdapterContext => ({
     account,
     signal,
-    http: createGoogleHttp({ getAccessToken: () => tokens.getAccessToken(account), signal, log }),
+    http: createGoogleHttp({ getAccessToken: () => tokens.getAccessToken(account), signal, log, selfEmail: account.email }),
   });
 
   return { env, baseUrl, cipher, store, log, fanout, tokens, adapters, adapterContext };

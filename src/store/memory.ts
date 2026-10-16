@@ -263,6 +263,10 @@ export function createMemoryStore(cipher: Cipher): MemoryStore {
           detail: truncateDetail(e.detail),
         });
       },
+      async countToday(p) {
+        const since = p.since.getTime();
+        return audit.filter((r) => r.outcome === 'ok' && r.tool === p.tool && r.account === p.account && Date.parse(r.at) >= since).length;
+      },
     },
     /** Test hook: raw internal state (ciphertext only for secrets). */
     _dump() {

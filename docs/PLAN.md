@@ -426,7 +426,7 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 3. Create a text file on Stratify, rename it and move it to another of your folders.
 4. Ask to share it, or to trash it. Both must be refused.
 
-## 4e. `send_self_report` (approved 2026-10-16; building)
+## 4e. `send_self_report` (approved 2026-10-16; built, audit A6 running)
 
 Source: `docs/MIGRATION.md`, Part 1, Option B. This tool is a **deliberate, owner-approved exception** to the spec's "never send". The invariant it keeps: **this server cannot email anyone other than the account's own address.** Docs, Sheets and Slides are paused until it ships.
 

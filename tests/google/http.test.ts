@@ -199,8 +199,8 @@ describe('createGoogleHttp', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('has no escape hatch beyond json(), upload() and download()', () => {
-    expect(Object.keys(setup([]).http)).toEqual(['json', 'upload', 'download']);
+  it('has no escape hatch beyond json(), upload(), download() and sendToSelf() (account-only send, PLAN 4e)', () => {
+    expect(Object.keys(setup([]).http)).toEqual(['json', 'upload', 'sendToSelf', 'download']);
   });
 
   it('error messages never leak token, query or body', async () => {

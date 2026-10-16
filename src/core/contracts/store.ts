@@ -84,5 +84,7 @@ export interface Store {
       outcome: 'ok' | 'rejected' | 'error';
       detail?: string;
     }): Promise<void>; // never bodies
+    /** Rows with outcome 'ok' for this tool and account (label) written at or after `since`. */
+    countToday(p: { tool: string; account: string; since: Date }): Promise<number>;
   };
 }

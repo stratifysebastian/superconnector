@@ -244,6 +244,21 @@ describe('allowlist scoping', () => {
     expect(other.map((h) => h.patternId).sort()).toEqual(['cal-send-updates', 'gmail-send']);
   });
 
+  it('the self-send file may hold the one send-path literal, nothing more', () => {
+    const F = 'src/google/endpoints/gmail-self-send.ts';
+    const one = "const SEND_PATH = '/users/me/messages/send';\n";
+    expect(scanSources([], { [F]: one })).toEqual([]);
+    expect(scanSources([], { [F]: `${one}const d = '/users/me/drafts/send';\n` }).map((h) => h.patternId)).toEqual(['gmail-send']);
+    expect(scanSources([], { [F]: "const u = '/users/me/messages/send/x';\n" }).map((h) => h.patternId)).toEqual(['gmail-send']);
+  });
+
+  it('the send-path literal and drafts send are still flagged in every other file', () => {
+    for (const f of ['src/google/gmail.ts', 'src/google/endpoints/gmail.ts', 'src/google/endpoints/gmail-send-copy.ts', 'src/mcp/tools/gmail/send_self_report.ts']) {
+      expect(scanSources([], { [f]: "const u = '/users/me/messages/send';" }).map((h) => h.patternId)).toContain('gmail-send');
+      expect(scanSources([], { [f]: "const u = '/users/me/drafts/send';" }).map((h) => h.patternId)).toContain('gmail-send');
+    }
+  });
+
   it("'DELETE' outside http.ts is still caught", () => {
     expect(scanSources([], { 'src/google/other.ts': "const BLOCKED = ['DELETE'];" }).map((h) => h.patternId)).toEqual(['delete-verb']);
   });
