@@ -316,6 +316,17 @@ describe('update_event', () => {
     expect(fakes.prime!.patchEvent).not.toHaveBeenCalled();
     expect(audit.at(-1)).toMatchObject({ tool: 'update_event', account: 'prime', outcome: 'rejected' });
   });
+  it.each([
+    ['the guest list is truncated', { attendeesOmitted: true }],
+    ['other guests are hidden from us', { attendees: [{ email: 'seb@prime.test', self: true }], guestsCanSeeOtherGuests: false, organizer: { email: 'boss@x.test' } }],
+  ])('refuses when %s', async (_, extra) => {
+    fakes.prime!.events = [ev('h1', '2026-10-20T10:00:00Z', extra as Partial<GEvent>)];
+    await expect(call('update_event', { account: 'prime', eventId: 'h1', summary: 'x' })).rejects.toBeInstanceOf(GuardrailError);
+    expect(fakes.prime!.patchEvent).not.toHaveBeenCalled();
+  });
+  it('rejects event types that can auto-decline invitations', () => {
+    expect(() => tool('create_event').input.parse({ summary: 'x', startTime: 't', endTime: 't', eventType: 'outOfOffice' })).toThrow();
+  });
   it('patches only the provided fields on a solo event', async () => {
     const r = await call('update_event', { account: 'prime', eventId: 'solo', summary: 'Renamed' });
     expect(fakes.prime!.patchEvent).toHaveBeenCalledWith({ calendarId: 'primary', eventId: 'solo', body: { summary: 'Renamed' } });

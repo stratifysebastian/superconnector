@@ -85,6 +85,7 @@ describe('calendar policy', () => {
     const body = { summary: 's', attendees: [{ email: 'x@y.z' }] } as unknown;
     await expect(http.json({ method: 'POST', url: ev, query: none, body })).rejects.toBeInstanceOf(GuardrailError);
     await expect(http.json({ method: 'POST', url: ev, query: none, body: { id: 'custom' } })).rejects.toBeInstanceOf(GuardrailError);
+    await expect(http.json({ method: 'POST', url: ev, query: none, body: { summary: 's', eventType: 'outOfOffice' } })).rejects.toBeInstanceOf(GuardrailError);
     await expect(
       http.json({ method: 'POST', url: `${API}/freeBusy`, body: { timeMin: 'a', timeMax: 'b', items: [{ id: 'x', extra: 1 }] } }),
     ).rejects.toBeInstanceOf(GuardrailError);

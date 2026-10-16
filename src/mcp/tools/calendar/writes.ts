@@ -24,7 +24,8 @@ const shared = {
   colorId: z.string().optional(),
   visibility: z.string().optional(),
   availability: z.enum(['busy', 'free']).optional(),
-  eventType: z.string().optional(),
+  // Out-of-office and focus-time events can auto-decline other people's invitations, so they are not offered.
+  eventType: z.enum(['default', 'workingLocation', 'DEFAULT', 'WORKING_LOCATION']).optional(),
   addGoogleMeetUrl: z.boolean().optional(),
   googleMeetUrl: z.string().optional().describe('Added to the description as text.'),
   overrideReminders: z.array(reminder).optional(),
@@ -74,7 +75,7 @@ function toBody(i: Shared, existingDescription?: string): EventWriteBody {
   if (i.colorId !== undefined) body.colorId = i.colorId;
   if (i.visibility !== undefined) body.visibility = i.visibility;
   if (i.availability) body.transparency = i.availability === 'free' ? 'transparent' : 'opaque';
-  if (i.eventType !== undefined) body.eventType = i.eventType;
+  if (i.eventType !== undefined) body.eventType = i.eventType === 'WORKING_LOCATION' ? 'workingLocation' : i.eventType === 'DEFAULT' ? 'default' : i.eventType;
   if (i.overrideReminders || i.useDefaultReminders !== undefined) {
     body.reminders = {
       useDefault: i.useDefaultReminders ?? !i.overrideReminders,
@@ -179,11 +180,13 @@ export const updateEventTool: ToolDef<typeof updateEventInput> = {
     if (!current) throw new ProviderError('not_found', 'No event with that id was found on that account. Nothing was changed.');
 
     const guests = (current.attendees ?? []).filter((a) => a.self !== true && a.resource !== true).length;
-    if (guests > 0) {
+    // Google hides other guests when the list is truncated, or when we are a guest who can't see the others.
+    const hidden = current.attendeesOmitted === true || (current.guestsCanSeeOtherGuests === false && current.organizer?.self !== true);
+    if (guests > 0 || hidden) {
       await ctx.store.audit.write({ tool: 'update_event', account: account.label, targetId: input.eventId, outcome: 'rejected' });
       throw new GuardrailError(
         'guest_event',
-        `This event has other guests (${guests}), so changing it would notify them. Not changed. To make this change yourself in Google Calendar: ${describeChange(input)}.`,
+        `This event has other guests${guests > 0 ? ` (${guests})` : ''}, so changing it would notify them. Not changed. To make this change yourself in Google Calendar: ${describeChange(input)}.`,
       );
     }
 

@@ -14,7 +14,9 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 function checkEventBody(body: unknown): string | null {
   if (!isObj(body)) return 'event body must be a JSON object';
   const bad = Object.keys(body).find((k) => !EVENT_WRITE_KEYS.includes(k));
-  return bad ? `event field "${bad}" is not allowed` : null;
+  if (bad) return `event field "${bad}" is not allowed`;
+  if (body.eventType !== undefined && body.eventType !== 'default' && body.eventType !== 'workingLocation') return 'eventType must be default or workingLocation';
+  return null;
 }
 
 function checkFreeBusyBody(body: unknown): string | null {
