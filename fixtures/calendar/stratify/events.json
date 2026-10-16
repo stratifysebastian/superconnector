@@ -1,0 +1,356 @@
+{
+  "kind": "calendar#events",
+  "summary": "seb@stratify.example",
+  "timeZone": "America/Toronto",
+  "accessRole": "owner",
+  "defaultReminders": [
+    {
+      "method": "popup",
+      "minutes": 10
+    }
+  ],
+  "updated": "2026-10-02T12:00:00.000Z",
+  "items": [
+    {
+      "kind": "calendar#event",
+      "id": "strat-001",
+      "iCalUID": "strat-001@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Stratify standup",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-001",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-19T09:30:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-19T10:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-002",
+      "iCalUID": "strat-002@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Focus time",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-002",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-19T13:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-19T15:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "eventType": "focusTime"
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-003",
+      "iCalUID": "shared-qsync-001@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Quarterly sync",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-003",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-20T14:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-20T15:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "description": "Fake shared meeting",
+      "location": "Fake Room A",
+      "attendees": [
+        {
+          "email": "seb@stratify.example",
+          "responseStatus": "accepted",
+          "organizer": true,
+          "self": true
+        },
+        {
+          "email": "seb@prime.example",
+          "responseStatus": "accepted"
+        }
+      ]
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-004",
+      "iCalUID": "strat-004@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Roadmap review",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-004",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-20T10:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-20T11:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "location": "Fake Room B"
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-005",
+      "iCalUID": "strat-005@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Client demo",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-005",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-21T11:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-21T12:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "description": "Guest event",
+      "attendees": [
+        {
+          "email": "seb@stratify.example",
+          "responseStatus": "accepted",
+          "organizer": true,
+          "self": true
+        },
+        {
+          "email": "ext@client.example",
+          "responseStatus": "needsAction"
+        }
+      ]
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-006",
+      "iCalUID": "strat-006@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Budget notes",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-006",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-21T15:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-21T16:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-007",
+      "iCalUID": "strat-007@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Write report",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-007",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-22T09:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-22T10:30:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "description": "Solo event, no guests"
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-008",
+      "iCalUID": "strat-008@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Design sync",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-008",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-22T14:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-22T15:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-009",
+      "iCalUID": "strat-009@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Offsite day",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-009",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "date": "2026-10-23"
+      },
+      "end": {
+        "date": "2026-10-24"
+      },
+      "transparency": "transparent"
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-010",
+      "iCalUID": "strat-010@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Weekly wrap",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-010",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-23T10:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-23T11:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-011",
+      "iCalUID": "strat-011@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Hiring check-in",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-011",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-22T11:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-22T11:30:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    },
+    {
+      "kind": "calendar#event",
+      "id": "strat-012",
+      "iCalUID": "strat-012@example.test",
+      "status": "confirmed",
+      "summary": "FAKE Inbox zero",
+      "htmlLink": "https://calendar.example.test/event?eid=strat-012",
+      "created": "2026-10-01T12:00:00.000Z",
+      "updated": "2026-10-02T12:00:00.000Z",
+      "creator": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "organizer": {
+        "email": "seb@stratify.example",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-10-19T16:00:00-04:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2026-10-19T17:00:00-04:00",
+        "timeZone": "America/Toronto"
+      }
+    }
+  ]
+}

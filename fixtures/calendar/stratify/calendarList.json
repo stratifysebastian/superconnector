@@ -1,0 +1,20 @@
+{
+  "kind": "calendar#calendarList",
+  "items": [
+    {
+      "kind": "calendar#calendarListEntry",
+      "id": "seb@stratify.example",
+      "summary": "seb@stratify.example",
+      "timeZone": "America/Toronto",
+      "primary": true,
+      "accessRole": "owner"
+    },
+    {
+      "kind": "calendar#calendarListEntry",
+      "id": "team-stratify@group.calendar.example",
+      "summary": "FAKE stratify team",
+      "timeZone": "America/Toronto",
+      "accessRole": "writer"
+    }
+  ]
+}
