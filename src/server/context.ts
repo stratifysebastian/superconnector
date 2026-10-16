@@ -11,6 +11,7 @@ import { createLiveCalendarAdapter } from '@/google/calendar';
 import { createLiveGmailAdapter } from '@/google/gmail';
 import { createGoogleHttp } from '@/google/http';
 import { createMockCalendarAdapter } from '@/google/mock/calendar';
+import { createMockDriveAdapter } from '@/google/mock/drive';
 import { createMockGmailAdapter } from '@/google/mock/gmail';
 import { mockAccessToken } from '@/google/mock/token';
 import { seedMockAccounts } from '@/google/mock/seed';
@@ -76,10 +77,12 @@ export async function createServerContext(opts: CreateServerContextOptions = {})
   const adapters: AdapterFactory = {
     calendar: mock ? createMockCalendarAdapter : createLiveCalendarAdapter,
     gmail: mock ? createMockGmailAdapter : createLiveGmailAdapter,
-    // shortcut: replaced by the mock and live Drive adapters (D1, D2) in this phase; no Drive tool is registered yet.
-    drive: () => {
-      throw new Error('Drive adapter is not wired yet');
-    },
+    // shortcut: the live Drive adapter (D2) replaces this stub in this phase; no Drive tool is registered yet.
+    drive: mock
+      ? createMockDriveAdapter
+      : () => {
+          throw new Error('Drive live adapter is not wired yet');
+        },
   };
 
   const adapterContext = (account: Account, signal: AbortSignal = new AbortController().signal): AdapterContext => ({

@@ -1,0 +1,224 @@
+{
+ "permissions": {
+  "s-fld-projects": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-fld-private": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-fld-shared": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   },
+   {
+    "displayName": "Someone",
+    "emailAddress": "someone@outside.example",
+    "role": "writer",
+    "type": "user"
+   }
+  ],
+  "s-doc-notes": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-sheet-budget": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-slides-deck": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-pdf-fake": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-png-fake": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-docx-stub": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-doc-private": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-doc-shared": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-01": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-02": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-03": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-04": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-05": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-06": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-07": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-08": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-09": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-10": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-11": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-12": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-13": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "s-misc-14": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   }
+  ],
+  "shared-roadmap-doc": [
+   {
+    "displayName": "Seb",
+    "emailAddress": "seb@stratify.example",
+    "role": "owner",
+    "type": "user"
+   },
+   {
+    "displayName": "Seb Prime",
+    "emailAddress": "seb@prime.example",
+    "role": "writer",
+    "type": "user"
+   }
+  ]
+ }
+}
