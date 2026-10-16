@@ -9,7 +9,7 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
 | 2 Gmail | ✅ live-verified 2026-10-16 (PR #4): search across both accounts, reply draft in the right PR1ME thread, label create/rename/apply/remove, trash and send refused |
-| 3 Drive | 🟨 plan proposed 2026-10-16 (§4d); awaiting approval |
+| 3 Drive | 🟦 approved 2026-10-16; building |
 | 4 Docs | ⬜ |
 | 5 Sheets | ⬜ |
 | 6 Slides | ⬜ |
@@ -371,7 +371,7 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 4. Ask to trash a message. It must be refused.
 5. Ask to send the draft. Nothing should send it.
 
-## 4d. Phase 3 — Drive (proposed 2026-10-16; awaiting Seb's approval)
+## 4d. Phase 3 — Drive (approved 2026-10-16; building)
 
 **Tools (9).** The built-in Drive connector minus `share_file` and `trash_file`. Each takes the built-in input schema (captured 2026-10-16) plus `account`.
 - **Reads:** `search_files`, `list_recent_files`, `get_file_metadata`, `get_file_permissions`, `read_file_content` and `download_file_content`.
@@ -392,6 +392,11 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 - **`upload`:** multipart/related to `upload/drive/v3/files` with `uploadType=multipart`. The metadata part is body-checked like any other JSON body.
 - **`download`:** `files/{id}?alt=media`, and `files/{id}/export` for Google-native files.
 - **Size cap:** Vercel limits a function's request and response to about 4.5 MB, so content is capped at 3 MB raw, which is about 4 MB once base64-encoded. Bigger files get a plain error with the file's Drive link.
+
+**Decisions (Seb, 2026-10-16):**
+- `read_file_content` exports Google-native files as text and parses PDFs with `unpdf` (one new dependency). Images come back as MCP image content. Office files return a plain message pointing to `download_file_content`.
+- `create_file`, `copy_file` and `update_file` refuse a destination folder that is shared with anyone other than the account owner. My Drive root is fine.
+- Output shapes were observed read-only and are recorded in `docs/builtin-tools/drive.json`.
 
 **Snippets.** The Drive API has no content snippets. `excludeContentSnippets` and `snippetVerbosity` are accepted. When snippets are wanted, a Google-native file's snippet is the start of its plain-text export, cut to the verbosity limit; other files get none.
 
