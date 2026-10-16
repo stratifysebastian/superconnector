@@ -279,6 +279,49 @@ Dependency order: **T0.0 →** wave A (T0.1, T0.2, T0.3, T0.4, T0.10 in parallel
 4. Ask Claude to call `list_accounts`. Expect both accounts, active, in the right order, with granted products.
 5. Negative check: a sign-in from a non-allowlisted Google account is refused.
 
+## 4b. Phase 1 — Calendar (proposed, awaiting Seb's approval)
+
+Done when (spec): the morning brief shows events from both accounts, with shared meetings shown once carrying both tags; and `create_event` with attendees is rejected.
+
+**Tools:** `list_calendars`, `list_events`, `search_events`, `get_event`, `suggest_time`, `create_event`, `update_event`.
+- Each takes the built-in input schema (`docs/builtin-tools/calendar.json`) plus `account`.
+- Each returns the built-in shape plus `account`/`accountEmail`; de-duplicated events also carry `accounts`/`sources`.
+- Reads also return `accountErrors` and `nextCursor`.
+
+**Behaviour per tool:**
+
+| Tool | Accounts | Behaviour |
+| --- | --- | --- |
+| `list_calendars` | fan-out | Merged list, each calendar tagged with its account. |
+| `list_events` | fan-out | Merged newest-first. Events de-duplicated on `iCalUID` + start. |
+| `search_events` | fan-out | Same merge and de-duplication. Uses the Calendar API's keyword `q` on each primary calendar (accepted deviation from the built-in's semantic search). |
+| `get_event` | lookup | Finds the event in whichever account has it. |
+| `suggest_time` | fan-out | Combines free/busy across all of Seb's calendars and the given attendees. Returns free slots. |
+| `create_event` | one account | Account required; otherwise a "which account?" error. Any attendee field is rejected. Sent with `sendUpdates=none`. Audited. |
+| `update_event` | one account | Defaults to the event's own account. Fetches the event first. If it has guests other than Seb, the change is refused and the tool reports what change Seb needs to make himself. Attendee fields rejected, `sendUpdates=none`, audited. |
+
+**Built-in fields:**
+- `notificationLevel` is ignored and always forced to `NONE`.
+- `attendees`, `attendeeEmails`, `addedAttendees`, `addedAttendeeEmails`, `removedAttendeeEmails` and `guestPermissions` are rejected with a plain-language error.
+
+**Tasks** (Sonnet subagents in parallel worktrees, with exclusive files):
+
+| Task | Scope |
+| --- | --- |
+| C1 Fixtures + mock adapter | `fixtures/calendar/{stratify,prime}/`. Includes: the same meeting on both accounts (same `iCalUID`), overlapping dates, multiple pages, `invalid_grant`, 429 and timeout. Plus `src/google/mock/calendar.ts`. |
+| C2 Live adapter + endpoint rules | `src/google/calendar.ts` (`CalendarAdapter`) and `src/google/endpoints/calendar.ts`. Rules are anchored with explicit `allowedQuery`. The writes are `events` POST and `events/{id}` PATCH with `requiredQuery: { sendUpdates: 'none' }`, plus `freeBusy` POST. The orchestrator first adds the `CalendarAdapter` contract and wires `GoogleHttp` and the token manager into `AdapterContext`. |
+| C3 Tool handlers | `src/mcp/tools/calendar/*`, the registry, and `tests/contract/enabled.ts`. |
+| C4 Guardrail and MCP tests | Attendees rejected on create and update. Updates to guest events refused. `sendUpdates=none` on every write. Excluded tools absent. Fan-out, de-duplication and paging through the MCP client in mock mode. |
+| A3 Audit | A fresh agent reviews the Calendar guardrails and endpoint rules. |
+
+**Live verification (with Seb):**
+1. Ask Claude for this week's events. Both accounts should appear, and a meeting on both calendars should show once with both tags.
+2. Ask it to create an event with an attendee. It must be refused.
+3. Create a guest-free test event on Stratify, and update it.
+4. Try to update an event that has other guests. It must be refused, with the change described.
+
+**Still open:** the `suggest_time` output shape hasn't been observed. Default plan: mirror the API's `{start, end}` slot list unless Seb lets me call the built-in once.
+
 ## 5. Later phases (detailed per phase after the previous gate)
 
 Each phase follows the same pattern:
