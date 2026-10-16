@@ -478,6 +478,53 @@ There are also policy tests showing that hand-built raw MIME with a different `T
 - Seb sends the first live report himself.
 - The edits to the trigger prompts and the Drive config in `docs/MIGRATION.md` Parts 2–5 are drafted as diffs for Seb's OK after the tool is live, then applied in one pass.
 
+## 4f. QuickBooks Online (requested 2026-10-16; plan drafted, awaiting Seb's approval)
+
+**Decisions (Seb, 2026-10-16):**
+- **Scope:** the built-in QuickBooks connector's tools that Intuit's public QuickBooks Online Accounting API supports. Payroll (27 tools), lending (6), Money onboarding (2), industry benchmarks, recommendations and health widgets (~7) use Intuit-internal services and stay with the built-in connector, which remains attached.
+- **Send and delete:** parity with the built-in connector. `send_invoice`, `send_estimate`, `send_invoice_reminder` and the three `delete_*` tools are included.
+- **Companies:** PR1ME only to start. Stratify stays on the built-in connector. More companies can be added through `/connect`.
+- Tool names and inputs mirror the built-in connector (`docs/builtin-tools/quickbooks.json`), plus `account`.
+
+**Q0 — provider foundation** (orchestrator plus one implementer). The server is Google-only today. In order:
+1. **Supabase migration `0002_intuit.sql`** (Seb approves before it's applied):
+   - add `intuit` to the provider check;
+   - add `realm_id text` to `accounts`;
+   - add `provider` to `google_org_clients` (default `'google'`) and make `workspace_domain` nullable;
+   - change label uniqueness to `unique (provider, label)`, so the PR1ME company can also be called `prime`.
+
+   RLS and grants are unchanged.
+2. **Provider-scoped accounts.** `resolveAccounts` and the fan-out only see accounts of the tool's provider. Google tools never touch a QuickBooks company, and the reverse. `list_accounts` shows the provider.
+3. **Intuit OAuth connect flow** (`/api/intuit/connect`, `/api/intuit/callback`):
+   - Authorization-code grant with a `state` that is CSRF-bound and stored hashed (same as Google), scope `com.intuit.quickbooks.accounting`.
+   - `realmId` is taken from the callback and the company name from CompanyInfo.
+   - Tokens are encrypted at rest, like Google's.
+   - Intuit rotates the refresh token on every refresh. The new one is saved with compare-and-set. An `invalid_grant` marks the company `needs_reconnect`.
+4. **`IntuitHttp`:** the same deny-by-default endpoint policy as `GoogleHttp`, on host `quickbooks.api.intuit.com` (plus the sandbox host in mock and dev only). Paths are `/v3/company/{realmId}/…` with the account's own `realmId` forced. Query text (`SELECT … FROM …`) is built only by our code, with escaped values. Logs hold no amounts, names or emails.
+5. **`/connect`:** an Intuit app client form (client ID and secret, write-only) and a Connect QuickBooks button.
+
+**Q1 — reads and contacts:**
+- `company_info`;
+- the P&L, cash flow and balance sheet tools (`*_quickbooks_account`, `*_text`);
+- the AR and AP aging tools, sales by customer and by product, and the product/service list;
+- `qbo_catalog_search_products`, `qbo_catalog_create_product`, `qbo_contact_search_customer` and `qbo_contact_create_customer`.
+
+Reports fan out across companies, with results tagged per company (reports aren't merged numerically).
+
+**Q2 — sales documents:**
+- invoices, estimates and recurring invoices: get, create, update, duplicate, send and delete;
+- the reminder, `get_transaction_document` (PDF) and `operate_recurring_invoice`;
+- `get_settings` and `update_settings`.
+
+Writes need exactly one company. Every send and delete is audited and goes only to the company named. Payment links (5 tools) are left out unless the public API turns out to support them.
+
+**Testing rule:** mock mode, then Intuit's sandbox company. I never send or delete anything in a live company. Seb does any live send or delete himself.
+
+**Seb's setup steps (Q0):**
+- Create an app at developer.intuit.com with the Accounting scope, and add the redirect URI `https://mcp.stratifysoftware.com/api/intuit/callback`.
+- Complete Intuit's production-keys questionnaire.
+- Enter the client ID and secret at `/connect`.
+
 ## 5. Later phases (detailed per phase after the previous gate)
 
 Each phase follows the same pattern:
