@@ -410,5 +410,11 @@ export function createLiveGmailAdapter(ctx: AdapterContext): GmailAdapter {
       await send('POST', `/threads/${enc(p.threadId)}/modify`, { addLabelIds: p.add, removeLabelIds: p.remove });
       return mapThread(await fetchThread(p.threadId, 'METADATA_ONLY'), 'METADATA_ONLY');
     },
+
+    async sendSelfReport(p) {
+      // GoogleHttp addresses the message to the account's own address (its selfEmail); there is no recipient here.
+      const sent = await ctx.http.sendToSelf(p);
+      return { ...sent, to: ctx.account.email };
+    },
   };
 }

@@ -122,4 +122,9 @@ export interface GmailAdapter {
   /** messages.modify. TRASH may never appear in either list (enforced again by the endpoint policy). */
   modifyMessage(p: { messageId: string; add?: string[]; remove?: string[] }): Promise<GMessage>;
   modifyThread(p: { threadId: string; add?: string[]; remove?: string[] }): Promise<GThread>;
+  /**
+   * Emails the account itself (From and To are both the account's address). There is no recipient input and
+   * no other send in this interface. `to` is the address the message was addressed to.
+   */
+  sendSelfReport(p: { subject: string; body: string; htmlBody?: string }): Promise<{ id: string; threadId?: string; to: string }>;
 }

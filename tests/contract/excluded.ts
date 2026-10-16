@@ -95,6 +95,9 @@ export const ALLOWED_LITERALS: Record<string, Record<string, readonly (string | 
   // The Gmail mock is in-memory and never reaches Google. It names the label only to hide it from search and to
   // refuse it, mirroring the endpoint policy. No other file is exempt.
   'gmail-trash-label': { 'src/google/mock/gmail.ts': ["'TRASH'"] },
+  // send_self_report (PLAN 4e): the one Gmail send path, used only by GoogleHttp.sendToSelf for a message addressed to
+  // the account itself. This single literal in this single file is exempt; a second one, or the drafts variant, is not.
+  'gmail-send': { 'src/google/endpoints/gmail-self-send.ts': ["'/users/me/messages/send'"] },
   // Importing the read-only permissions file names its path; nothing else in these files may mention permissions.
   'drive-permissions': {
     'src/google/drive.ts': [/'\.\/drive\/permissions-read'/g],

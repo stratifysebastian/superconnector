@@ -33,6 +33,7 @@ export const ENABLED_TOOL_NAMES: readonly string[] = [
   'mark_thread_spam',
   'unmark_message_spam',
   'unmark_thread_spam',
+  'send_self_report', // the one deliberate send: only ever to the account's own address (PLAN 4e)
   'search_files',
   'list_recent_files',
   'get_file_metadata',

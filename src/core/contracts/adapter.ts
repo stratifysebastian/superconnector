@@ -39,6 +39,11 @@ export interface GoogleHttp {
     query?: Record<string, string | number | boolean | undefined>;
     maxBytes: number;
   }): Promise<{ bytes: Uint8Array; contentType: string }>;
+  /**
+   * Sends one email from the account to the account itself, and nothing else: there is no recipient input.
+   * GoogleHttp builds the message from its own account address and the policy re-checks it. This is the only send path.
+   */
+  sendToSelf(req: { subject: string; body: string; htmlBody?: string }): Promise<{ id: string; threadId?: string }>;
 }
 // Note: GoogleHttp has no delete verb by design. No adapter can issue one.
 

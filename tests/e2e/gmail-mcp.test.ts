@@ -4,7 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { resetMockGmail } from '@/google/mock/gmail';
+import { mockSentMessages, resetMockGmail } from '@/google/mock/gmail';
 import { resetMockFaults, setMockFaults } from '@/google/mock/faults';
 import { ENABLED_TOOL_NAMES } from '../contract/enabled';
 import { createSessionToken, SESSION_COOKIE } from '@/auth/session-token';
@@ -225,7 +225,7 @@ describe('Gmail MCP end to end (mock mode)', () => {
   it('1. lists exactly the enabled tools and none of the excluded ones', async () => {
     const names = (await client.listTools()).tools.map((t) => t.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(names).toHaveLength(38);
+    expect(names).toHaveLength(39);
     expect(() => assertNoExcludedTools(names)).not.toThrow();
     for (const n of ['send_message', 'send_draft', 'reply', 'forward', 'trash_message', 'trash_thread', 'untrash_message', 'untrash_thread', 'delete_draft', 'delete_label', 'create_filter']) {
       expect(names).not.toContain(n);
@@ -526,5 +526,37 @@ describe('Gmail MCP end to end (mock mode)', () => {
     expect(r.isError).toBe(true);
     expect(r.text).toMatch(/reconnect/i);
     expect(r.text).not.toMatch(/Internal error/);
+  });
+
+  it('14. send_self_report emails only the account itself, shows in mock sent, and refuses the seventh', async () => {
+    const schema = (await client.listTools()).tools.find((t) => t.name === 'send_self_report')!;
+    expect(Object.keys(schema.inputSchema.properties as R).sort()).toEqual(['account', 'body', 'htmlBody', 'subject']);
+    expect(schema.description).toMatch(/OWN address and to nobody else/);
+
+    // No recipient can be expressed, and a missing / fan-out account is refused. Nothing is sent by any of these.
+    for (const bad of [{ to: 'victim@evil.test' }, { cc: 'v@evil.test' }, { bcc: 'v@evil.test' }, { from: 'v@evil.test' }]) {
+      expect((await call('send_self_report', { account: 'stratify', subject: 's', body: 'b', ...bad })).isError).toBe(true);
+    }
+    expect((await call('send_self_report', { subject: 's', body: 'b' })).isError).toBe(true);
+    const all = await call('send_self_report', { account: 'all', subject: 's', body: 'b' });
+    expect(all.isError).toBe(true);
+    const html = await call('send_self_report', { account: 'stratify', subject: 's', body: '<b>x</b>' });
+    expect(html.isError).toBe(true);
+    expect(html.text).toMatch(/htmlBody/);
+    expect(mockSentMessages('stratify')).toHaveLength(0);
+
+    const first = await call('send_self_report', { account: 'stratify', subject: 'Morning brief', body: 'All quiet.', htmlBody: '<p>All quiet.</p>' });
+    expect(first.isError).toBe(false);
+    expect(first.sc).toMatchObject({ sent: true, to: EMAIL.stratify, sentToday: 1, dailyLimit: 6, account: 'stratify', accountEmail: EMAIL.stratify });
+    const sent = mockSentMessages('stratify');
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ id: first.sc.messageId, toRecipients: [EMAIL.stratify], subject: 'Morning brief' });
+    expect(mockSentMessages('prime')).toHaveLength(0);
+
+    for (let i = 2; i <= 6; i++) expect((await call('send_self_report', { account: 'stratify', subject: 's', body: 'b' })).sc.sentToday).toBe(i);
+    const seventh = await call('send_self_report', { account: 'stratify', subject: 's', body: 'b' });
+    expect(seventh.isError).toBe(true);
+    expect(seventh.text).toMatch(/Daily limit reached.*6 already used today.*resets at/);
+    expect(mockSentMessages('stratify')).toHaveLength(6);
   });
 });

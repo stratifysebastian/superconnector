@@ -9,8 +9,8 @@ Status legend: ⬜ not started · 🟦 in progress · ✅ done (merged, tests gr
 | 0 Foundation | ✅ live-verified 2026-10-16 (Claude connector + `list_accounts`: stratify #1, prime #2, both active, 6 products); non-allowlist sign-in refused (2026-10-16: Google blocked a personal Gmail with `org_internal`, because the admin client is Internal to the Stratify Workspace; the `ADMIN_EMAILS` check is covered by tests) |
 | 1 Calendar | ✅ live-verified 2026-10-16 (PR #3): Stratify week (21 events, matched the built-in) and PR1ME week read; create with a guest refused; guest-free test event created and renamed on Stratify; moving a guest event refused with the change described. Not yet seen live: a meeting on both calendars collapsing into one (covered in mock tests). |
 | 2 Gmail | ✅ live-verified 2026-10-16 (PR #4): search across both accounts, reply draft in the right PR1ME thread, label create/rename/apply/remove, trash and send refused |
-| 3 Drive | 🟨 built and audited 2026-10-16 (9 tools, 920 tests); awaiting Seb's live verification |
-| 4 Docs | ⬜ |
+| 3 Drive | ✅ live-verified 2026-10-16 (PR #5): recent files across both accounts, Doc and PDF read, create/rename/move into a private folder, move into a shared folder refused, share and trash refused |
+| 4 Docs | ⏸ paused by Seb (2026-10-16) for `send_self_report` (§4e). Also blocked on the built-in Docs schemas. |
 | 5 Sheets | ⬜ |
 | 6 Slides | ⬜ |
 | 7 Microsoft 365 | out of scope until a separate spec round |
@@ -371,7 +371,7 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 4. Ask to trash a message. It must be refused.
 5. Ask to send the draft. Nothing should send it.
 
-## 4d. Phase 3 — Drive (approved 2026-10-16; building)
+## 4d. Phase 3 — Drive (✅ live-verified 2026-10-16)
 
 **Tools (9).** The built-in Drive connector minus `share_file` and `trash_file`. Each takes the built-in input schema (captured 2026-10-16) plus `account`.
 - **Reads:** `search_files`, `list_recent_files`, `get_file_metadata`, `get_file_permissions`, `read_file_content` and `download_file_content`.
@@ -425,6 +425,58 @@ Each takes the built-in input schema plus `account`. Input schemas were captured
 2. Read a Google Doc and a PDF.
 3. Create a text file on Stratify, rename it and move it to another of your folders.
 4. Ask to share it, or to trash it. Both must be refused.
+
+## 4e. `send_self_report` (built and audited 2026-10-16; awaiting Seb's first live send)
+
+Source: `docs/MIGRATION.md`, Part 1, Option B. This tool is a **deliberate, owner-approved exception** to the spec's "never send". The invariant it keeps: **this server cannot email anyone other than the account's own address.** Docs, Sheets and Slides are paused until it ships.
+
+**Tool:** `send_self_report({ account, subject, body, htmlBody? })`.
+- There is no `to`, `cc`, `bcc`, `replyTo`, `from`, `headers`, `threadId` or `attachments` field; unknown keys are rejected (`strict`).
+- `account` is required and must name exactly one account. Fan-out is refused.
+- `body` (plain text) is required. A `<` anywhere in it is refused.
+- It returns `{ sent: true, to: <account email>, messageId, sentToday, dailyLimit }`.
+
+**How the guarantee is made structural, not just in the prompt:**
+1. **No adapter can send.** The only send path is a new `GoogleHttp.sendToSelf({ subject, body, htmlBody })`. It builds the MIME itself from the account's own email, which `GoogleHttp` receives when it is created per account and which is never caller input. `From` and `To` are both that address. There is no Cc, Bcc or Reply-To, and CR/LF are stripped from the subject.
+2. **The policy checks the result.** A dedicated `self-send` transport rule matches only `POST /gmail/v1/users/me/messages/send`. Its body check decodes the raw MIME, and requires all of these:
+   - exactly one `To` and one `From`, both equal to the account email;
+   - no `Cc`, `Bcc`, `Resent-*`, `Reply-To` or `Disposition-Notification-To` header;
+   - no `threadId`;
+   - nothing else in the body.
+
+   The existing `gmail-send` hard ban stays in force for `json`, `upload` and `download`, so `drafts/send` remains impossible.
+3. **The daily cap is server-side.** The limit is 6 per account per calendar day. The count comes from `audit_log` rows for this tool: a row is written *before* sending (a reservation), then the count is read back. A seventh concurrent call sees 7 and is refused. A reservation followed by a failed send still counts, so the cap errs towards fewer sends, never more. No schema change is needed.
+4. The contract scan keeps `send_message`, `send_draft`, `reply`, `reply_all` and `forward` banned. Only `send_self_report` is added to the enabled list, and the `messages/send` literal is exempt in exactly one file.
+
+**Scope:** `gmail.modify`, already granted, permits `messages.send`, so no reconnect is needed.
+
+**Self-check:** assert-based tests cover:
+- no account is refused;
+- a `<` in `body` is refused;
+- the seventh send in a day is refused;
+- the resolved recipient equals the account's address;
+- any attempt to smuggle a recipient is refused by the schema, by `sendToSelf` and by the policy.
+
+There are also policy tests showing that hand-built raw MIME with a different `To`, or with an added `Bcc`, is denied.
+
+**Testing rule:** mock only. Nothing is ever sent by me; Seb sends the first live one.
+
+**Audit A6 (2026-10-16):** no way found to reach anyone but the account itself.
+- Probed with a 120-message hostile-content fuzz through the real path, checked by an independent strict MIME parser, plus a policy matrix of 2 hosts × 19 paths × 4 transports × 4 methods. Exactly one combination passes.
+- The reserve-then-count cap held under 20 parallel calls.
+- Fixed:
+  - (low) the checker now requires CRLF-only line breaks, so a stray CR can't end its header block early;
+  - (info) the size cap counts bytes.
+- Not fixed:
+  - (low) an admin rename resets that day's count; this needs the admin session (shortcut comment in code);
+  - (low) the cap lives in the tool handler, but no other caller of `sendToSelf` exists;
+  - (low) refused calls past the cap still add audit rows.
+
+**Decisions (Seb, 2026-10-16):**
+- Design approved.
+- The daily cap resets at midnight America/Toronto.
+- Seb sends the first live report himself.
+- The edits to the trigger prompts and the Drive config in `docs/MIGRATION.md` Parts 2–5 are drafted as diffs for Seb's OK after the tool is live, then applied in one pass.
 
 ## 5. Later phases (detailed per phase after the previous gate)
 

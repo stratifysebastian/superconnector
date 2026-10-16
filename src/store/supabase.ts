@@ -364,6 +364,17 @@ export function createSupabaseStore(db: SupabaseClient, cipher: Cipher): Store {
           'audit.write',
         );
       },
+      async countToday(p) {
+        const res = await db
+          .from('audit_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('tool', p.tool)
+          .eq('account', p.account)
+          .eq('outcome', 'ok')
+          .gte('at', p.since.toISOString());
+        if (res.error) throw new Error(`Store audit.countToday failed: ${res.error.message}`);
+        return res.count ?? 0;
+      },
     },
   };
 }

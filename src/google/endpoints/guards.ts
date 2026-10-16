@@ -3,6 +3,8 @@
  * This file necessarily names the forbidden things, so it is the one policy file the text scan exempts.
  */
 
+import { SELF_SEND_PATH } from './gmail-self-send';
+
 const BANNED_CUSTOM_METHODS = ['send', 'trash', 'untrash', 'batchdelete', 'import', 'insert', 'delete', 'quickadd', 'emptytrash'];
 
 const BANNED_BODY_KEYS = [
@@ -28,7 +30,7 @@ const SCOPED_SEGMENT_BANS = ['trash', 'untrash', 'emptytrash', 'import'];
 const OVERRIDE_AUTH_QUERY_KEYS = ['access_token', 'key', 'oauth_token', 'apikey', 'bearer_token', 'upload_protocol'];
 
 /** `pathname` is the URL's pathname (still percent-encoded). */
-export function pathBan(method: string, pathname: string, query: Record<string, string>): Ban | null {
+export function pathBan(method: string, pathname: string, query: Record<string, string>, selfSend = false): Ban | null {
   let segs: string[];
   try {
     segs = pathname
@@ -67,6 +69,8 @@ export function pathBan(method: string, pathname: string, query: Record<string, 
     if (calendar && base === 'clear') {
       return { rule: 'hard-ban/calendar-clear', reason: 'Calendar clear (wipes every event) is not allowed' };
     }
+    // The one carve-out: GoogleHttp.sendToSelf (transport 'self-send') on exactly this path. drafts send and every other transport stay banned.
+    if (gmail && base === 'send' && selfSend && method === 'POST' && pathname === SELF_SEND_PATH) continue;
     if (gmail && (base === 'send' || base === 'insert')) {
       return { rule: `hard-ban/gmail-${base}`, reason: `Gmail "${base}" is not allowed (drafts only)` };
     }
