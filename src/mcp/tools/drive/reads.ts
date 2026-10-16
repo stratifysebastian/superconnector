@@ -1,6 +1,7 @@
 import { extractText, getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
 import type { GFile, RecentOrder } from '@/core/contracts/drive';
+import { resolveAccounts } from '@/core/accounts';
 import { accountField, drive, driveTool, lookupOne, MAX_BYTES, pageToken, snippetArgs } from './common';
 import { translateQuery } from './query';
 
@@ -27,12 +28,17 @@ export const searchFilesTool = driveTool({
   kind: 'read',
   async handler(input, ctx) {
     const { q, hasFullText } = translateQuery(input.query);
+    // Account-by-account listing can't de-duplicate across pages, so a later account skips files owned by an
+    // earlier selected account (that account already lists them). shortcut: a third party's file shared with
+    // both accounts can still appear twice in fullText results; fix if Drive turns out to sort fullText.
+    const selected = hasFullText ? resolveAccounts(input.account, await ctx.store.accounts.list()) : [];
     const r = await ctx.fanout.read<GFile>({
       selector: input.account,
       page: { pageSize: input.pageSize ?? 20, cursor: input.pageToken },
       fetch: async (account, token, pageSize) => {
         const p = await drive(ctx, account).searchFiles({ q, pageSize, ...(token ? { pageToken: token } : {}), orderByModified: !hasFullText });
-        return { items: p.items, nextPageToken: p.nextPageToken };
+        const earlier = new Set(selected.slice(0, selected.findIndex((a) => a.label === account.label)).map((a) => a.email.toLowerCase()));
+        return { items: p.items.filter((f) => !earlier.has((f.owner ?? '').toLowerCase())), nextPageToken: p.nextPageToken };
       },
       dateOf: hasFullText ? () => 0 : (f) => ms(f.modifiedTime),
       dedupeKey: (f) => f.id,
