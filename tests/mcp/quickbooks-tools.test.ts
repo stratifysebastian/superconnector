@@ -54,7 +54,7 @@ describe('registry', () => {
   it('registers the 21 QuickBooks tools, all on the intuit provider, and none of the excluded names', () => {
     expect(QB_NAMES).toHaveLength(21);
     const defs = getToolDefs('http://x');
-    expect(defs).toHaveLength(60);
+    expect(defs).toHaveLength(61);
     expect(defs.filter((d) => d.provider === 'intuit').map((d) => d.name).sort()).toEqual([...QB_NAMES].sort());
     expect(ENABLED_TOOL_NAMES).toEqual(expect.arrayContaining(QB_NAMES));
     expect(defs.map((d) => d.name).filter((n) => EXCLUDED_TOOL_NAMES.includes(n))).toEqual([]);

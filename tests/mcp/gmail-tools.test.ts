@@ -71,10 +71,10 @@ const call = (name: string, args: Record<string, unknown> = {}) => {
 const adapterCalls = () => Object.values(fakes).flatMap((f) => Object.values(f).filter(vi.isMockFunction).flatMap((m) => m.mock.calls));
 
 describe('registry', () => {
-  it('registers exactly the enabled names (22 Gmail, incl. send_self_report) and no excluded tool', () => {
+  it('registers exactly the enabled names (23 Gmail, incl. send_self_report and download_gmail_attachment) and no excluded tool', () => {
     const names = getToolDefs('http://x').map((d) => d.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(gmailTools()).toHaveLength(22);
+    expect(gmailTools()).toHaveLength(23);
     expect(names).toEqual(expect.arrayContaining(gmailTools().map((t) => t.name)));
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });

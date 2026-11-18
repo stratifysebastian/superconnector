@@ -1,9 +1,9 @@
-import { getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
 import type { GFile, RecentOrder } from '@/core/contracts/drive';
 import { resolveAccounts } from '@/core/accounts';
 import { accountField, drive, driveTool, lookupOne, MAX_BYTES, pageToken, snippetArgs } from './common';
 import { translateQuery } from './query';
+import { extractPdfText, PDF_MAX_PAGES } from '../pdf-text';
 
 const ms = (s: string | undefined) => {
   const t = s ? Date.parse(s) : NaN;
@@ -116,10 +116,6 @@ export const getPermissionsTool = driveTool({
 
 const NATIVE = 'application/vnd.google-apps.';
 const PDF_MAX_BYTES = 1_000_000;
-const PDF_MAX_PAGES = 100;
-const PDF_MAX_CHARS = 200_000;
-// isEvalSupported is a real pdf.js option missing from unpdf's types; a variable skips the excess-property check.
-const PDF_OPTIONS = { verbosity: 0, isEvalSupported: false, disableFontFace: true };
 const TEXTUAL = (m: string) => m.startsWith('text/') || m === 'application/json';
 
 export const readFileTool = driveTool({
@@ -150,19 +146,10 @@ export const readFileTool = driveTool({
       if (isImage) return out(`Image file (${mime}); shown as image content.`, { mcpImage: { data: Buffer.from(got.bytes).toString('base64'), mimeType: mime === 'image/png' ? 'image/png' : 'image/jpeg' } });
       if (mime === 'application/pdf') {
         if (got.bytes.length > PDF_MAX_BYTES) return out('This PDF is larger than 1 MB, which is too large to extract text from here. Use download_file_content to fetch its bytes.');
-        try {
-          // shortcut: pdf.js runs in-process, so a decompression bomb under 1 MB can still use a lot of memory; upgrade is a worker with a hard timeout.
-          const pdf = await getDocumentProxy(new Uint8Array(got.bytes), PDF_OPTIONS);
-          if (pdf.numPages > PDF_MAX_PAGES) return out(`This PDF has ${pdf.numPages} pages, more than the ${PDF_MAX_PAGES} this server reads. Use download_file_content to fetch its bytes.`);
-          let text = '';
-          for (let i = 1; i <= pdf.numPages && text.length < PDF_MAX_CHARS; i++) {
-            const page = await pdf.getPage(i);
-            text += (await page.getTextContent()).items.map((it) => ('str' in it ? it.str + (it.hasEOL ? '\n' : '') : '')).join('') + '\n';
-          }
-          return out(text.slice(0, PDF_MAX_CHARS));
-        } catch {
-          return out('The PDF text could not be extracted. Use download_file_content to fetch its bytes.');
-        }
+        const pdf = await extractPdfText(got.bytes);
+        if (pdf.ok) return out(pdf.text);
+        if (pdf.reason === 'too_many_pages') return out(`This PDF has ${pdf.pages} pages, more than the ${PDF_MAX_PAGES} this server reads. Use download_file_content to fetch its bytes.`);
+        return out('The PDF text could not be extracted. Use download_file_content to fetch its bytes.');
       }
       return out(new TextDecoder().decode(got.bytes));
     }),

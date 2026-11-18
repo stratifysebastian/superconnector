@@ -72,10 +72,10 @@ const WRITES = ['createFile', 'copyFile', 'updateFile'] as const;
 const writeCalls = () => Object.values(fakes).flatMap((f) => WRITES.flatMap((m) => (f[m] as ReturnType<typeof vi.fn>).mock.calls));
 
 describe('registry', () => {
-  it('registers exactly the enabled names (29 existing + 9 Drive + send_self_report + 21 QuickBooks = 60) and no share or trash tool', () => {
+  it('registers exactly the enabled names (29 existing + 9 Drive + send_self_report + 21 QuickBooks + download_gmail_attachment = 61) and no share or trash tool', () => {
     const names = getToolDefs('http://x').map((d) => d.name);
     expect([...names].sort()).toEqual([...ENABLED_TOOL_NAMES].sort());
-    expect(names).toHaveLength(60);
+    expect(names).toHaveLength(61);
     expect(names.filter((n) => /share|trash|delete/.test(n))).toEqual([]);
     expect(() => assertNoExcludedTools(names)).not.toThrow();
   });
@@ -317,7 +317,7 @@ describe('F1 to F7 regressions', () => {
     expect(await run({ data: 'AAAA', mimeType: 'image/png' })).toEqual(['text', 'image']);
     expect(await run({ data: 'AAAA', mimeType: 'image/svg+xml' })).toEqual(['text']);
     expect(await run({ data: 'not base64!', mimeType: 'image/png' })).toEqual(['text']);
-    expect(await run({ data: 'A'.repeat(2_000_004), mimeType: 'image/jpeg' })).toEqual(['text']);
+    expect(await run({ data: 'A'.repeat(4_000_004), mimeType: 'image/jpeg' })).toEqual(['text']);
   });
   it('refuses a deeply nested not chain cleanly and an over-long query', () => {
     expect(() => translateQuery(`${'not '.repeat(200000)}title = 'a'`)).toThrow(GuardrailError);

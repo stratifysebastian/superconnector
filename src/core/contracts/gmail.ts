@@ -107,6 +107,12 @@ export interface GmailAdapter {
   /** Null when it does not exist on this account. */
   getThread(p: { threadId: string; format: MessageFormat }): Promise<GThread | null>;
   getMessage(p: { messageId: string; format: MessageFormat }): Promise<GMessage | null>;
+  /**
+   * Raw bytes of one attachment of a message, in the order GMessage.attachments lists them (`index`). With an
+   * attachmentId the bytes come from the attachments endpoint; without one (a small inline part) from the part itself.
+   * Null when the message or attachment is not there. Read only.
+   */
+  getAttachment(p: { messageId: string; attachmentId?: string; index: number }): Promise<Uint8Array | null>;
   listDrafts(p: { q?: string; pageSize: number; pageToken?: string; full: boolean }): Promise<Page<GDraft>>;
   getDraft(p: { draftId: string; format: MessageFormat }): Promise<GDraft | null>;
   /**

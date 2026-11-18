@@ -15,6 +15,11 @@ export const HAND_BACK =
 export const MAX_BYTES = 1_500_000;
 /** create_file content: request size, which is not doubled. */
 export const MAX_UPLOAD_BYTES = 3_000_000;
+/**
+ * download_gmail_attachment with saveToDrive: the bytes come from Gmail inside the server, not from the MCP request,
+ * so the 3 MB request limit above does not apply. This is also Gmail's own attachment limit for the tool. Server-to-Google path only.
+ */
+export const MAX_GMAIL_ATTACHMENT_BYTES = 12_000_000;
 
 export const pageToken = z.string().optional().describe('Opaque nextCursor from a previous call.');
 export const snippetArgs = {

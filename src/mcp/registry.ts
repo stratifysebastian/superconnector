@@ -18,6 +18,20 @@ export function getToolDefs(baseUrl: string): AnyToolDef[] {
   return [createListAccountsTool(baseUrl), ...calendarTools(), ...gmailTools(), ...driveTools(), ...quickbooksTools()];
 }
 
+/** 3 MB of raw bytes is 4,000,000 base64 characters; text, structuredContent and this block must fit Vercel's ~4.5 MB response. */
+export const MAX_BLOCK_BASE64_CHARS = 4_000_000;
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+const validImage = (i: { data: string; mimeType: string }): boolean =>
+  /^image\/(png|jpeg|gif|webp)$/.test(i.mimeType) && i.data.length > 0 && i.data.length <= MAX_BLOCK_BASE64_CHARS && BASE64.test(i.data);
+const validResource = (r: { uri: string; mimeType: string; blob: string }): boolean =>
+  typeof r.uri === 'string' &&
+  /^gmail-attachment:\/\/[^\s/]+\/\d+$/.test(r.uri) &&
+  typeof r.mimeType === 'string' &&
+  /^[A-Za-z0-9][\w!#$&^.+-]*\/[A-Za-z0-9][\w!#$&^.+-]*$/.test(r.mimeType) &&
+  typeof r.blob === 'string' &&
+  r.blob.length <= MAX_BLOCK_BASE64_CHARS &&
+  BASE64.test(r.blob);
+
 function errorResult(message: string): CallToolResult {
   return { content: [{ type: 'text', text: message }], isError: true };
 }
@@ -46,14 +60,22 @@ export function buildServer(ctx: ToolContext, opts: BuildServerOptions): McpServ
           const result = await def.handler(args as never, provider === 'any' ? ctx : scopeToolContext(ctx, provider));
           done('ok');
           // A handler may return `mcpImage` ({data: base64, mimeType}); it becomes an image block, not JSON text.
+          // It may return `mcpResource` ({uri, mimeType, blob: base64}); it becomes an embedded resource block.
           // It may also return `mcpText`: the text block is then that string as it is (plain-text tools), not JSON.
-          const { mcpImage, mcpText, ...json } = result as { mcpImage?: { data: string; mimeType: string }; mcpText?: string } & Record<string, unknown>;
-          // Only png/jpeg, valid base64, at most 2,000,000 characters; anything else is dropped and the text result stays.
-          const okImage = mcpImage && /^image\/(png|jpeg)$/.test(mcpImage.mimeType) && mcpImage.data.length <= 2_000_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(mcpImage.data);
+          // None of the three is copied into structuredContent, so binary content is never sent twice.
+          const { mcpImage, mcpResource, mcpText, ...json } = result as {
+            mcpImage?: { data: string; mimeType: string };
+            mcpResource?: { uri: string; mimeType: string; blob: string };
+            mcpText?: string;
+          } & Record<string, unknown>;
+          // Anything invalid is dropped and the text result stays.
+          const okImage = mcpImage && validImage(mcpImage);
+          const okResource = mcpResource && validResource(mcpResource);
           return {
             content: [
               { type: 'text', text: typeof mcpText === 'string' ? mcpText : JSON.stringify(json) },
               ...(okImage ? [{ type: 'image' as const, data: mcpImage.data, mimeType: mcpImage.mimeType }] : []),
+              ...(okResource ? [{ type: 'resource' as const, resource: { uri: mcpResource.uri, mimeType: mcpResource.mimeType, blob: mcpResource.blob } }] : []),
             ],
             structuredContent: json,
           };
