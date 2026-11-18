@@ -15,25 +15,51 @@
     "internalDate": "string (epoch ms)",
     "date": "RFC3339 UTC",
     "sender": "email string",
-    "toRecipients": ["email string"],
-    "ccRecipients": ["email string"],
-    "bccRecipients": ["email string"],
-    "labelIds": ["string"],
+    "toRecipients": [
+      "email string"
+    ],
+    "ccRecipients": [
+      "email string"
+    ],
+    "bccRecipients": [
+      "email string"
+    ],
+    "labelIds": [
+      "string"
+    ],
     "sizeEstimate": "number",
     "viewUrl": "url",
     "subject": "string? (MINIMAL and above)",
     "snippet": "string? (MINIMAL and above)",
     "plaintextBody": "string? (PLAIN_TEXT, FULL_CONTENT)",
     "htmlBody": "string? (FULL_CONTENT)",
-    "attachmentIds": ["string? (PLAIN_TEXT, FULL_CONTENT)"],
+    "attachmentIds": [
+      "string? (PLAIN_TEXT, FULL_CONTENT)"
+    ],
     "attachments": "array? (shape not observed)"
   },
   "search_threads": {
-    "threads": [{ "id": "string", "messageCount": "number", "messages": ["<Message>"], "viewUrl": "url" }],
+    "threads": [
+      {
+        "id": "string",
+        "messageCount": "number",
+        "messages": [
+          "<Message>"
+        ],
+        "viewUrl": "url"
+      }
+    ],
     "nextPageToken": "string?",
     "resultCountEstimate": "string (numeric)"
   },
-  "get_thread": { "id": "string", "messageCount": "number", "messages": ["<Message>"], "viewUrl": "url" },
+  "get_thread": {
+    "id": "string",
+    "messageCount": "number",
+    "messages": [
+      "<Message>"
+    ],
+    "viewUrl": "url"
+  },
   "get_message": "<Message>",
   "list_labels": {
     "labels": [
@@ -47,7 +73,10 @@
         "messagesUnread": "number",
         "threadsTotal": "number",
         "threadsUnread": "number",
-        "color": { "backgroundColor": "hex?", "textColor": "hex?" },
+        "color": {
+          "backgroundColor": "hex?",
+          "textColor": "hex?"
+        },
         "colorPreset": "LABEL_COLOR_PRESET_*?"
       }
     ]
@@ -58,17 +87,59 @@
     "threadId": "string (hex)",
     "date": "RFC3339 UTC",
     "sender": "email string",
-    "toRecipients": ["email string"],
-    "ccRecipients": ["email string?"],
-    "bccRecipients": ["email string?"],
-    "labelIds": ["DRAFT"],
+    "toRecipients": [
+      "email string"
+    ],
+    "ccRecipients": [
+      "email string?"
+    ],
+    "bccRecipients": [
+      "email string?"
+    ],
+    "labelIds": [
+      "DRAFT"
+    ],
     "viewUrl": "url",
     "subject": "string? (DRAFT_VIEW_FULL / non-metadata formats)",
     "plaintextBody": "string? (DRAFT_VIEW_FULL / non-metadata formats)"
   },
-  "list_drafts": { "drafts": ["<Draft>"], "nextPageToken": "string?" },
+  "list_drafts": {
+    "drafts": [
+      "<Draft>"
+    ],
+    "nextPageToken": "string?"
+  },
   "get_draft": "<Draft>",
   "create_draft": "Draft with id, threadId and viewUrl (from the tool description; not observed, since creating is a write)",
   "update_draft": "Same as create_draft",
-  "label_and_spam_tools": "Not observed (they are writes). Ask Seb before assuming a shape beyond the modified Message."
+  "label_and_spam_tools": "Not observed (they are writes). Ask Seb before assuming a shape beyond the modified Message.",
+  "download_gmail_attachment": {
+    "_observed": "2026-11-18, one read-only call (Seb approved); structure only",
+    "input": {
+      "messageId": "string (required)",
+      "attachmentId": "string?",
+      "filename": "string?",
+      "mimeType": "string?",
+      "attachmentIndex": "integer >= 0? (only when a reply asks for it)"
+    },
+    "output": [
+      {
+        "type": "text",
+        "text": "Downloaded from Gmail by Anthropic's download_gmail_attachment tool: \"<filename>\" (<mimeType>, <N> bytes)."
+      },
+      {
+        "type": "resource",
+        "resource": {
+          "uri": "gmail-attachment://<messageId>/<index>",
+          "mimeType": "<mimeType>",
+          "blob": "<base64>"
+        }
+      }
+    ],
+    "notes": [
+      "With only messageId and one attachment, it returns attachment index 0.",
+      "Files over 12 MB are refused; when the attachment cannot be identified, the reply lists the email's attachments with numbers, to retry with attachmentIndex.",
+      "search_threads output now also carries addressDisplayNames [{displayName,emailAddress}] per message (new since 2026-10-16; not yet mirrored)."
+    ]
+  }
 }
