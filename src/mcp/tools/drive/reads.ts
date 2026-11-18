@@ -149,6 +149,7 @@ export const readFileTool = driveTool({
         const pdf = await extractPdfText(got.bytes);
         if (pdf.ok) return out(pdf.text);
         if (pdf.reason === 'too_many_pages') return out(`This PDF has ${pdf.pages} pages, more than the ${PDF_MAX_PAGES} this server reads. Use download_file_content to fetch its bytes.`);
+        if (pdf.reason === 'expands') return out('This PDF expands too much to read safely; use download_file_content to fetch its bytes.');
         return out('The PDF text could not be extracted. Use download_file_content to fetch its bytes.');
       }
       return out(new TextDecoder().decode(got.bytes));

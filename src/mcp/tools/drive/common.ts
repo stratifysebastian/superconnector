@@ -46,7 +46,7 @@ export async function audited<T>(
   } catch (e) {
     const blocked = e instanceof GuardrailError;
     await ctx.store.audit.write({ tool, account: account.label, targetId, outcome: blocked ? 'rejected' : 'error' });
-    throw blocked && !e.message.includes(HAND_BACK) ? new GuardrailError(e.rule, `${e.message} ${HAND_BACK}`) : e;
+    throw blocked && e.rule !== 'upload/content-type' && !e.message.includes(HAND_BACK) ? new GuardrailError(e.rule, `${e.message} ${HAND_BACK}`) : e;
   }
 }
 

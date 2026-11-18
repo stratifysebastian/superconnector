@@ -20,6 +20,8 @@ export function getToolDefs(baseUrl: string): AnyToolDef[] {
 
 /** 3 MB of raw bytes is 4,000,000 base64 characters; text, structuredContent and this block must fit Vercel's ~4.5 MB response. */
 export const MAX_BLOCK_BASE64_CHARS = 4_000_000;
+/** Largest JSON-RPC result we send; Vercel's limit is about 4.5 MB. */
+export const MAX_RESPONSE_BYTES = 4_300_000;
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const validImage = (i: { data: string; mimeType: string }): boolean =>
   /^image\/(png|jpeg|gif|webp)$/.test(i.mimeType) && i.data.length > 0 && i.data.length <= MAX_BLOCK_BASE64_CHARS && BASE64.test(i.data);
@@ -71,7 +73,7 @@ export function buildServer(ctx: ToolContext, opts: BuildServerOptions): McpServ
           // Anything invalid is dropped and the text result stays.
           const okImage = mcpImage && validImage(mcpImage);
           const okResource = mcpResource && validResource(mcpResource);
-          return {
+          const built: CallToolResult = {
             content: [
               { type: 'text', text: typeof mcpText === 'string' ? mcpText : JSON.stringify(json) },
               ...(okImage ? [{ type: 'image' as const, data: mcpImage.data, mimeType: mcpImage.mimeType }] : []),
@@ -79,6 +81,14 @@ export function buildServer(ctx: ToolContext, opts: BuildServerOptions): McpServ
             ],
             structuredContent: json,
           };
+          // The real guarantee for Vercel's ~4.5 MB response: whatever the text, names and blobs add up to.
+          if (Buffer.byteLength(JSON.stringify(built)) > MAX_RESPONSE_BYTES) {
+            return {
+              ...built,
+              content: [...built.content.filter((c) => c.type === 'text'), { type: 'text', text: 'The file was too large to return here. Use saveToDrive (where the tool has it) or download_file_content to get it.' }],
+            };
+          }
+          return built;
         } catch (e) {
           if (e instanceof AccountSelectionError || e instanceof GuardrailError) {
             done('rejected', 'warn');

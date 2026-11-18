@@ -100,6 +100,15 @@ describe('identifying the attachment', () => {
   it('an index past the end falls through to the next rule', async () => {
     expect((await call({ messageId: 'm1', attachmentIndex: 9, filename: 'one.pdf' })).attachment.index).toBe(0);
   });
+  it('a named but unmatched request never falls back to the only attachment', async () => {
+    gm.stratify!.messages = [msg('m2', [att(1, 'one.pdf', 'application/pdf')])];
+    for (const args of [{ attachmentIndex: 9 }, { attachmentId: 'stale' }, { filename: 'invoice.pdf' }, { mimeType: 'text/csv' }]) {
+      const r = await call({ messageId: 'm2', ...args });
+      expect(r.mcpText).toMatch(/^Could not tell which attachment[^\n]*1:\n0\. "one\.pdf"/);
+      expect(r.attachment).toBeUndefined();
+    }
+    expect(gm.stratify!.getAttachment).not.toHaveBeenCalled();
+  });
   it('the only attachment needs no input', async () => {
     gm.stratify!.messages = [msg('m2', [att(1, 'one.pdf', 'application/pdf')])];
     expect((await call({ messageId: 'm2' })).attachment.index).toBe(0);
@@ -137,13 +146,18 @@ describe('what comes back', () => {
     expect(r.account).toBe('stratify');
   });
 
-  it('large PDF (over 3 MB): text only, with a note about saveToDrive', async () => {
+  it('large PDF (over 3 MB): no extraction at all, the too-big message with saveToDrive', async () => {
     gm.stratify!.bytes.a1 = Buffer.concat([PDF, Buffer.alloc(3_500_000, 0x20)]);
     const r = await call({ messageId: 'm1', attachmentIndex: 0 });
     expect(r.mcpResource).toBeUndefined();
     expect(r.mcpImage).toBeUndefined();
-    expect(r.mcpText).toMatch(/Extracted text|could not be extracted/);
-    expect(r.mcpText).toMatch(/too big to return.*saveToDrive: true/s);
+    expect(r.mcpText).not.toMatch(/Extracted text|could not be extracted/);
+    expect(r.mcpText).toMatch(/too big to return directly.*saveToDrive: true/s);
+    // declared size over 3 MB: not even fetched
+    gm.stratify!.messages = [msg('m10', [att(1, 'big.pdf', 'application/pdf', 3_000_001)])];
+    vi.mocked(gm.stratify!.getAttachment).mockClear();
+    expect((await call({ messageId: 'm10' })).mcpText).toMatch(/too big to return directly/);
+    expect(gm.stratify!.getAttachment).not.toHaveBeenCalled();
   });
 
   it('image: an image block', async () => {
