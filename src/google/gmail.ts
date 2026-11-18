@@ -109,10 +109,14 @@ const flagsFor = (f: MessageFormat): Flags => ({
 const apiFormat = (f: MessageFormat): 'metadata' | 'full' => (flagsFor(f).plain ? 'full' : 'metadata');
 
 interface Content { text?: string; html?: string; attachments: (GAttachmentMeta & { part: Part })[] }
+/** A named part, or an unnamed one that has an attachmentId (inline image). Large text bodies and containers are not attachments. */
+const isAttachmentPart = (p: Part): boolean =>
+  !!p.filename || (!!p.body?.attachmentId && !/^(multipart\/|text\/(plain|html)$)/.test(p.mimeType ?? ''));
+
 /** shortcut: first text/plain and first text/html win; later alternative parts are ignored. */
 function walk(p: Part | undefined, c: Content): Content {
   if (!p) return c;
-  if (p.filename) {
+  if (isAttachmentPart(p)) {
     c.attachments.push({ id: p.body?.attachmentId, filename: p.filename, mimeType: p.mimeType, size: p.body?.size, part: p });
   } else if (p.mimeType === 'text/plain' && c.text === undefined && p.body?.data !== undefined) c.text = decode(p.body.data);
   else if (p.mimeType === 'text/html' && c.html === undefined && p.body?.data !== undefined) c.html = decode(p.body.data);
@@ -315,6 +319,16 @@ export function createLiveGmailAdapter(ctx: AdapterContext): GmailAdapter {
     async getMessage(p) {
       const r = await notFoundToNull(fetchMessage(p.messageId, p.format));
       return r && mapMessage(r, p.format);
+    },
+
+    async getAttachment(p) {
+      if (p.attachmentId) {
+        const r = await notFoundToNull(get<{ data?: string }>(`/messages/${enc(p.messageId)}/attachments/${enc(p.attachmentId)}`));
+        return r && new Uint8Array(Buffer.from(r.data ?? '', 'base64url'));
+      }
+      const raw = await notFoundToNull(fetchMessage(p.messageId, 'FULL_CONTENT'));
+      const data = raw && walk(raw.payload, { attachments: [] }).attachments[p.index]?.part.body?.data;
+      return data == null ? null : new Uint8Array(Buffer.from(data, 'base64url'));
     },
 
     async listDrafts(p) {

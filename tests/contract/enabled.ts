@@ -15,6 +15,7 @@ export const ENABLED_TOOL_NAMES: readonly string[] = [
   'search_threads',
   'get_thread',
   'get_message',
+  'download_gmail_attachment',
   'list_drafts',
   'get_draft',
   'list_labels',

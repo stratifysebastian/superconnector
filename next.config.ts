@@ -11,6 +11,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // The PDF worker is loaded by path at run time, so the build must ship it and the unpdf it imports.
+  outputFileTracingIncludes: { '/api/mcp': ['./src/mcp/tools/pdf-worker.mjs', './node_modules/unpdf/**/*'] },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

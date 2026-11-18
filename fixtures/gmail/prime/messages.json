@@ -157,7 +157,15 @@
    "subject": "FAKE prime Support ticket update #6",
    "snippet": "FAKE body 6 for prime: support ticket update.",
    "plaintextBody": "FAKE body 6 for prime: support ticket update.",
-   "rfcMessageId": "<prime-19a7c0000008@mail.example>"
+   "rfcMessageId": "<prime-19a7c0000008@mail.example>",
+   "attachments": [
+    {
+     "id": "att-prime-3",
+     "filename": "FAKE-orders.csv",
+     "mimeType": "text/csv",
+     "size": 37
+    }
+   ]
   },
   {
    "id": "19a7c0000009",
@@ -173,7 +181,15 @@
    "subject": "FAKE prime Budget question #7",
    "snippet": "FAKE body 7 for prime: budget question.",
    "plaintextBody": "FAKE body 7 for prime: budget question.",
-   "rfcMessageId": "<prime-19a7c0000009@mail.example>"
+   "rfcMessageId": "<prime-19a7c0000009@mail.example>",
+   "attachments": [
+    {
+     "id": "att-prime-4",
+     "filename": "FAKE-large.bin",
+     "mimeType": "application/octet-stream",
+     "size": 4000000
+    }
+   ]
   },
   {
    "id": "19a7c000000a",
@@ -190,7 +206,15 @@
    "subject": "FAKE prime Travel plans #8",
    "snippet": "FAKE body 8 for prime: travel plans.",
    "plaintextBody": "FAKE body 8 for prime: travel plans.",
-   "rfcMessageId": "<prime-19a7c000000a@mail.example>"
+   "rfcMessageId": "<prime-19a7c000000a@mail.example>",
+   "attachments": [
+    {
+     "id": "att-prime-5",
+     "filename": "FAKE-huge.zip",
+     "mimeType": "application/zip",
+     "size": 13000000
+    }
+   ]
   },
   {
    "id": "19a7c000000b",

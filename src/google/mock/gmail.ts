@@ -232,6 +232,17 @@ export function createMockGmailAdapter(ctx: AdapterContext): GmailAdapter {
         return m ? toMessage(m, format, email) : null;
       }),
 
+    getAttachment: ({ messageId, attachmentId, index }) =>
+      run(() => {
+        const atts = s().messages.find((m) => m.id === messageId)?.attachments ?? [];
+        const att = attachmentId ? atts.find((a) => a.id === attachmentId) : atts[index];
+        if (!att?.id) return null;
+        const f = loadFixture<Record<string, { contentBase64?: string; generateBytes?: number }>>('gmail', label, 'attachments')[att.id];
+        if (!f) return null;
+        // generateBytes: large attachments are made on demand so no megabytes are committed.
+        return f.generateBytes !== undefined ? new Uint8Array(f.generateBytes).fill(0x61) : new Uint8Array(Buffer.from(f.contentBase64 ?? '', 'base64'));
+      }),
+
     listDrafts: (p) =>
       run(() => {
         const q = p.q?.toLowerCase();

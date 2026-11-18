@@ -36,10 +36,10 @@ describe('QuickBooks adapters', () => {
     expect(json).toHaveBeenCalledWith({ method: 'GET', path: '/v3/company/mock-realm-1/companyinfo/mock-realm-1' });
   });
 
-  it('registers 60 tools: 21 QuickBooks (provider intuit), list_accounts (any) and the rest Google', () => {
+  it('registers 61 tools: 21 QuickBooks (provider intuit), list_accounts (any) and the rest Google', () => {
     const defs = getToolDefs('http://x');
-    expect(defs).toHaveLength(60);
-    expect(ENABLED_TOOL_NAMES).toHaveLength(60);
+    expect(defs).toHaveLength(61);
+    expect(ENABLED_TOOL_NAMES).toHaveLength(61);
     const intuit = defs.filter((d) => d.provider === 'intuit');
     expect(intuit).toHaveLength(21);
     for (const d of defs.filter((x) => x.provider !== 'intuit')) expect(d.provider ?? 'google').toBe(d.name === 'list_accounts' ? 'any' : 'google');

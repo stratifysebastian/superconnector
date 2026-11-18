@@ -85,6 +85,21 @@ describe('mock gmail', () => {
     expect(await a.getThread({ threadId: 'nope', format: 'MINIMAL' })).toBeNull();
   });
 
+  it('serves attachment bytes from fixtures, generating the large ones on demand', async () => {
+    const a = adapter('stratify');
+    const pdf = await a.getAttachment({ messageId: '18f2a0000007', attachmentId: 'att-stratify-1', index: 0 });
+    expect(Buffer.from(pdf!).subarray(0, 5).toString()).toBe('%PDF-');
+    const png = await a.getAttachment({ messageId: '18f2a0000007', index: 1 }); // by index, no id
+    expect(Buffer.from(png!).subarray(1, 4).toString()).toBe('PNG');
+    expect(Buffer.from((await a.getAttachment({ messageId: '18f2a0000008', attachmentId: 'att-stratify-3', index: 0 }))!).toString()).toContain('FAKE widget');
+    expect((await a.getAttachment({ messageId: '18f2a0000009', attachmentId: 'att-stratify-4', index: 0 }))!.length).toBe(4_000_000);
+    expect((await a.getAttachment({ messageId: '18f2a000000a', attachmentId: 'att-stratify-5', index: 0 }))!.length).toBe(13_000_000);
+    expect(await a.getAttachment({ messageId: '18f2a0000007', attachmentId: 'nope', index: 0 })).toBeNull();
+    expect(await a.getAttachment({ messageId: 'nope', attachmentId: 'att-stratify-1', index: 0 })).toBeNull();
+    // a message of one account is not served by the other
+    expect(await adapter('prime').getAttachment({ messageId: '18f2a0000007', index: 0 })).toBeNull();
+  });
+
   it('builds view urls from decimal ids and the account email', async () => {
     const t = await adapter('stratify').getThread({ threadId: '18f2a0000001', format: 'METADATA_ONLY' });
     const dec = (h: string) => BigInt(`0x${h}`).toString();

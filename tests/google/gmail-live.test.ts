@@ -336,3 +336,57 @@ describe('gmail policy', () => {
     expect(calls).toHaveLength(3);
   });
 });
+
+describe('attachments', () => {
+  const withParts = (parts: unknown[]) => rawMsg({ payload: { mimeType: 'multipart/mixed', headers: hdr({ Subject: 's' }), parts } });
+
+  it('lists named parts and unnamed ones with an attachmentId, in walk order, but not large text bodies', async () => {
+    const { adapter } = setup((c) =>
+      c.url.pathname.endsWith('/messages/1a')
+        ? json(withParts([
+            { mimeType: 'text/plain', body: { attachmentId: 'bodyid', size: 99 } },
+            { mimeType: 'image/png', body: { attachmentId: 'inline1', size: 4 } },
+            { mimeType: 'multipart/related', parts: [{ mimeType: 'text/csv', filename: 'n.csv', body: { data: b64('a,b'), size: 3 } }] },
+            { mimeType: 'application/pdf', filename: 'a.pdf', body: { attachmentId: 'att1', size: 5 } },
+          ]))
+        : undefined,
+    );
+    const m = await adapter.getMessage({ messageId: '1a', format: 'FULL_CONTENT' });
+    expect(m?.attachments).toEqual([
+      { id: 'inline1', mimeType: 'image/png', size: 4 },
+      { filename: 'n.csv', mimeType: 'text/csv', size: 3 },
+      { id: 'att1', filename: 'a.pdf', mimeType: 'application/pdf', size: 5 },
+    ]);
+    expect(m?.attachmentIds).toEqual(['inline1', 'att1']);
+  });
+
+  it('getAttachment decodes the base64url data of the attachments endpoint', async () => {
+    const bytes = Buffer.from([0xfb, 0xff, 0x00, 0x41]); // base64url differs from base64 for these
+    const { adapter, calls } = setup(() => json({ size: 4, data: bytes.toString('base64url') }));
+    const out = await adapter.getAttachment({ messageId: '1a', attachmentId: 'ANGjdJ_att-1', index: 0 });
+    expect(Buffer.from(out!)).toEqual(bytes);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.method).toBe('GET');
+    expect(calls[0]!.url.pathname).toBe('/gmail/v1/users/me/messages/1a/attachments/ANGjdJ_att-1');
+  });
+
+  it('getAttachment without an id decodes the inline data of the part at that index', async () => {
+    const { adapter, calls } = setup((c) =>
+      c.url.pathname.endsWith('/messages/1a')
+        ? json(withParts([
+            { mimeType: 'application/pdf', filename: 'a.pdf', body: { attachmentId: 'att1', size: 5 } },
+            { mimeType: 'text/csv', filename: 'n.csv', body: { data: b64('a,b'), size: 3 } },
+          ]))
+        : undefined,
+    );
+    expect(Buffer.from((await adapter.getAttachment({ messageId: '1a', index: 1 }))!).toString()).toBe('a,b');
+    expect(await adapter.getAttachment({ messageId: '1a', index: 0 })).toBeNull(); // no data and no id given
+    expect(await adapter.getAttachment({ messageId: '1a', index: 5 })).toBeNull();
+    expect(calls.every((c) => c.method === 'GET')).toBe(true);
+  });
+
+  it('getAttachment returns null for a missing message', async () => {
+    const { adapter } = setup(() => json({ error: { message: 'x' } }, 404));
+    expect(await adapter.getAttachment({ messageId: 'gone', attachmentId: 'a', index: 0 })).toBeNull();
+  });
+});

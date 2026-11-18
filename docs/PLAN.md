@@ -573,6 +573,25 @@ Guesses still unverified live:
 - Complete Intuit's production-keys questionnaire.
 - Enter the client ID and secret at `/connect`.
 
+## 4g. Gmail `download_gmail_attachment` (requested by Seb 2026-11-18; built and audited)
+
+**Decisions (Seb, 2026-11-18):** "read + save to Drive". The built-in output shape was observed once, read-only, and is recorded in `docs/builtin-tools/gmail.json`.
+- **PDFs:** returned as text, plus the file when it is 3 MB or less.
+- **Images:** returned as image blocks, up to 3 MB.
+- **Other files:** returned as `gmail-attachment://` resources, up to 3 MB.
+- **`saveToDrive`:** up to 12 MB, saved into a private "Superconnector attachments" folder in the same account's Drive. The save is refused if that folder is shared.
+
+**Audit A9:** no isolation or leak issues. Fixed:
+- **(medium) Response size:** the PDF text is clamped, names are cut to 255 characters, and the registry drops binary blocks when a result would exceed 4.3 MB.
+- **(medium) PDF bombs:**
+  - Gmail extracts text only from PDFs of 3 MB or less;
+  - a Flate pre-scan refuses PDFs that inflate past 64 MB;
+  - pdf.js runs in a `worker_threads` Worker (256 MB heap, 10 s timeout). This applies to Drive `read_file_content` too.
+- **(low)** No silent fallback when a named attachment doesn't match.
+- **(low)** Drive titles and MIME types are sanitised.
+
+**Live risk:** the worker is loaded from `process.cwd()/src/mcp/tools/pdf-worker.mjs`, traced through `outputFileTracingIncludes`. That's verified in the build, but not yet in a live request. If it fails on Vercel, PDF text from Gmail and Drive returns "could not be extracted".
+
 ## 5. Later phases (detailed per phase after the previous gate)
 
 Each phase follows the same pattern:
